@@ -1,7 +1,7 @@
-import type { Chain } from "@thirdweb-dev/chains";
 import { useSupportedChains } from "@thirdweb-dev/react";
+import { useFavouriteChainIds } from "app/(dashboard)/(chain)/components/client/star-button";
 import { useMemo } from "react";
-import { useFavouriteChainIds } from "../../../app/(dashboard)/(chain)/components/client/star-button";
+import type { ChainMetadata } from "thirdweb/chains";
 
 export function useFavoriteChains() {
   const allChains = useSupportedChains();
@@ -9,7 +9,7 @@ export function useFavoriteChains() {
 
   const data = useMemo(() => {
     if (favChainsQuery.data) {
-      const _chains: Chain[] = [];
+      const _chains: ChainMetadata[] = [];
       // biome-ignore lint/complexity/noForEach: FIXME
       favChainsQuery.data.forEach((chainId) => {
         const chain = allChains.find((c) => String(c.chainId) === chainId);
@@ -21,7 +21,7 @@ export function useFavoriteChains() {
       return _chains;
     }
 
-    return [] as Chain[];
+    return [] as ChainMetadata[];
   }, [favChainsQuery.data, allChains]);
 
   return {

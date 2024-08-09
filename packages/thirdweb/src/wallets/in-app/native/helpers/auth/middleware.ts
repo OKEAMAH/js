@@ -3,7 +3,7 @@ import {
   AuthProvider,
   type AuthStoredTokenWithCookieReturnType,
   RecoveryShareManagement,
-} from "../../../core/authentication/type.js";
+} from "../../../core/authentication/types.js";
 import { ErrorMessages } from "../errors.js";
 import {
   getDeviceShare,
@@ -154,13 +154,11 @@ async function getRecoveryCode(
       return recoveryCode;
     } else {
       try {
-        // temporary fork for discord until we migrate all methods to the new auth flow
-        const code = await (storedToken.authProvider === AuthProvider.DISCORD
-          ? getCognitoRecoveryPasswordV2(client)
-          : getCognitoRecoveryPasswordV1(client));
-        return code;
+        return await getCognitoRecoveryPasswordV2(client);
       } catch (e) {
-        throw new Error("Something went wrong getting cognito recovery code");
+        return await getCognitoRecoveryPasswordV1(client).catch(() => {
+          throw new Error("Something went wrong getting cognito recovery code");
+        });
       }
     }
   } else if (

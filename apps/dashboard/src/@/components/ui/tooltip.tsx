@@ -19,7 +19,7 @@ const TooltipContent = React.forwardRef<
     ref={ref}
     sideOffset={sideOffset}
     className={cn(
-      "z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+      "z-50 overflow-hidden rounded-md border border-border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
       className,
     )}
     {...props}
@@ -31,15 +31,24 @@ export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider };
 
 export function ToolTipLabel(props: {
   children: React.ReactNode;
-  label: string;
+  label: string | undefined;
   rightIcon?: React.ReactNode;
   leftIcon?: React.ReactNode;
 }) {
+  if (!props.label) {
+    return props.children;
+  }
+
   return (
     <TooltipProvider>
       <Tooltip delayDuration={100} disableHoverableContent={true}>
-        <TooltipTrigger asChild>{props.children}</TooltipTrigger>
-        <TooltipContent sideOffset={10}>
+        <TooltipTrigger asChild className="!pointer-events-auto">
+          {props.children}
+        </TooltipTrigger>
+        <TooltipContent
+          sideOffset={10}
+          className="max-w-[300px] leading-relaxed"
+        >
           <div className="p-2 text-sm flex items-center gap-1.5">
             {props.leftIcon}
             {props.label}

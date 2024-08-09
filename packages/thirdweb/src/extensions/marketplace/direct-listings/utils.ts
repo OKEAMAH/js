@@ -64,9 +64,13 @@ export async function mapDirectListing(
     endTimeInSeconds: rawListing.endTimestamp,
     isReservedListing: rawListing.reserved,
     status,
+    type: "direct-listing",
   };
 }
 
+/**
+ * @extension MARKETPLACE
+ */
 export type IsListingValidParams = {
   listing: DirectListing;
   quantity?: bigint;

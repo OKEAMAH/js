@@ -72,7 +72,28 @@ export function useNFTDrawerTabs({
     },
   );
 
-  const isMinterRole = useIsMinter(oldContract);
+  const isMinterRole = useIsMinter(contract);
+  const hasNewClaimConditions = useMemo(
+    () =>
+      detectFeatures(oldContract, [
+        // erc721
+        "ERC721ClaimConditionsV2",
+        "ERC721ClaimPhasesV2",
+        // erc1155
+        "ERC1155ClaimConditionsV2",
+        "ERC1155ClaimPhasesV2",
+        // erc20
+        "ERC20ClaimConditionsV2",
+        "ERC20ClaimPhasesV2",
+      ]),
+    [oldContract],
+  );
+  const contractInfo = useMemo(() => {
+    return {
+      hasNewClaimConditions,
+      isErc20: detectFeatures(oldContract, ["ERC20"]),
+    };
+  }, [oldContract, hasNewClaimConditions]);
 
   return useMemo(() => {
     const isMintable = detectFeatures(oldContract, ["ERC1155Mintable"]);
@@ -115,6 +136,7 @@ export function useNFTDrawerTabs({
           isDisabled: false,
           children: (
             <ClaimConditionTab
+              contractInfo={contractInfo}
               contract={oldContract}
               tokenId={tokenId}
               isColumn
@@ -131,7 +153,13 @@ export function useNFTDrawerTabs({
           disabledText: erc1155
             ? "You don't own any copy of this NFT"
             : "You don't own this NFT",
-          children: <TransferTab contract={oldContract} tokenId={tokenId} />,
+          children: (
+            <TransferTab
+              contractAddress={oldContract.getAddress()}
+              chainId={oldContract.chainId}
+              tokenId={tokenId}
+            />
+          ),
         },
       ]);
     }
@@ -141,17 +169,29 @@ export function useNFTDrawerTabs({
           title: "Airdrop",
           isDisabled: !isOwner,
           disabledText: "You don't own any copy of this NFT",
-          children: <AirdropTab contract={erc1155} tokenId={tokenId} />,
+          children: (
+            <AirdropTab
+              contractAddress={erc1155.getAddress()}
+              chainId={erc1155.chainId}
+              tokenId={tokenId}
+            />
+          ),
         },
       ]);
     }
-    if (isBurnable) {
+    if (isBurnable && oldContract) {
       tabs = tabs.concat([
         {
           title: "Burn",
           isDisabled: !isOwner,
           disabledText: "You don't own this NFT",
-          children: <BurnTab contract={oldContract} tokenId={tokenId} />,
+          children: (
+            <BurnTab
+              contractAddress={oldContract?.getAddress()}
+              chainId={oldContract?.chainId}
+              tokenId={tokenId}
+            />
+          ),
         },
       ]);
     }
@@ -161,7 +201,13 @@ export function useNFTDrawerTabs({
           title: "Mint",
           isDisabled: false,
           disabledText: "You don't have minter permissions",
-          children: <MintSupplyTab contract={erc1155} tokenId={tokenId} />,
+          children: (
+            <MintSupplyTab
+              contractAddress={erc1155.getAddress()}
+              chainId={erc1155.chainId}
+              tokenId={tokenId}
+            />
+          ),
         },
       ]);
     }
@@ -201,5 +247,6 @@ export function useNFTDrawerTabs({
     address,
     tokenId,
     isMinterRole,
+    contractInfo,
   ]);
 }

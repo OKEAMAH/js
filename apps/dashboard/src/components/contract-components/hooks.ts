@@ -6,14 +6,6 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import {
-  Polygon,
-  ZkcandySepoliaTestnet,
-  Zksync,
-  ZksyncEraGoerliTestnetDeprecated,
-  ZksyncSepoliaTestnet,
-  getChainByChainIdAsync,
-} from "@thirdweb-dev/chains";
 import { useSDK, useSDKChainId, useSigner } from "@thirdweb-dev/react";
 import {
   type Abi,
@@ -42,7 +34,6 @@ import {
   zkDeployContractFromUri,
 } from "@thirdweb-dev/sdk/evm/zksync";
 import type { SnippetApiResponse } from "components/contract-tabs/code/types";
-import { utils } from "ethers";
 import { useSupportedChain } from "hooks/chains/configureChains";
 import { isEnsName, resolveEns } from "lib/ens";
 import { getDashboardChainRpc } from "lib/rpc";
@@ -50,12 +41,21 @@ import { StorageSingleton, getThirdwebSDK } from "lib/sdk";
 import type { StaticImageData } from "next/image";
 import { useMemo } from "react";
 import {
+  abstractTestnet,
+  polygon,
+  zkCandySepolia,
+  zkSync,
+  zkSyncSepolia,
+} from "thirdweb/chains";
+import {
   useActiveAccount,
   useActiveWallet,
   useActiveWalletChain,
 } from "thirdweb/react";
+import { isAddress } from "thirdweb/utils";
 import invariant from "tiny-invariant";
 import type { z } from "zod";
+import type { CustomContractDeploymentFormData } from "./contract-deploy-form/custom-contract";
 import {
   getStepAddToRegistry,
   getStepDeploy,
@@ -63,7 +63,6 @@ import {
   useDeployContextModal,
 } from "./contract-deploy-form/deploy-context-modal";
 import { uploadContractMetadata } from "./contract-deploy-form/deploy-form-utils";
-import type { Recipient } from "./contract-deploy-form/split-fieldset";
 import type { ContractId } from "./types";
 import { addContractToMultiChainRegistry } from "./utils";
 
@@ -90,6 +89,19 @@ interface RawPredeployMetadata {
   analytics?: Record<string, any>;
   // biome-ignore lint/suspicious/noExplicitAny: FIXME
   compilers?: Record<string, any>;
+}
+
+function isChainIdZkSync(chainId?: number) {
+  switch (chainId) {
+    case zkSync.id:
+    case zkSyncSepolia.id:
+    case zkCandySepolia.id:
+    case abstractTestnet.id:
+      // TODO - add more ZK chains here
+      return true;
+    default:
+      return false;
+  }
 }
 
 // metadata PRE publish, only has the compiler output info (from CLI)
@@ -221,8 +233,8 @@ export function useContractPrePublishMetadata(uri: string, address?: string) {
       // TODO: Make this nicer.
       invariant(uri !== "ipfs://undefined", "uri can't be undefined");
       const sdk = getThirdwebSDK(
-        Polygon.chainId,
-        getDashboardChainRpc(Polygon),
+        polygon.id,
+        getDashboardChainRpc(polygon.id, undefined),
       );
       return await sdk
         ?.getPublisher()
@@ -257,7 +269,10 @@ async function fetchFullPublishMetadata(
 // Metadata POST publish, contains all the extra information filled in by the user
 export function useContractFullPublishMetadata(uri: string) {
   const contractIdIpfsHash = toContractIdIpfsHash(uri);
-  const sdk = getThirdwebSDK(Polygon.chainId, getDashboardChainRpc(Polygon));
+  const sdk = getThirdwebSDK(
+    polygon.id,
+    getDashboardChainRpc(polygon.id, undefined),
+  );
   const queryClient = useQueryClient();
 
   return useQuery(
@@ -279,7 +294,10 @@ export function useContractFullPublishMetadata(uri: string) {
 }
 
 async function fetchPublisherProfile(publisherAddress?: string | null) {
-  const sdk = getThirdwebSDK(Polygon.chainId, getDashboardChainRpc(Polygon));
+  const sdk = getThirdwebSDK(
+    polygon.id,
+    getDashboardChainRpc(polygon.id, undefined),
+  );
   invariant(publisherAddress, "address is not defined");
   return await sdk.getPublisher().getPublisherProfile(publisherAddress);
 }
@@ -349,7 +367,10 @@ export function useAllVersions(
   publisherAddress?: string,
   contractName?: string,
 ) {
-  const sdk = getThirdwebSDK(Polygon.chainId, getDashboardChainRpc(Polygon));
+  const sdk = getThirdwebSDK(
+    polygon.id,
+    getDashboardChainRpc(polygon.id, undefined),
+  );
   return useQuery(
     ["all-releases", publisherAddress, contractName],
     () => fetchAllVersions(sdk, publisherAddress, contractName),
@@ -376,7 +397,9 @@ export function usePublishedContractsFromDeploy(
       invariant(contractAddress, "contractAddress is not defined");
       invariant(cId, "chain not defined");
 
-      const rpcUrl = chainInfo ? getDashboardChainRpc(chainInfo) : undefined;
+      const rpcUrl = chainInfo
+        ? getDashboardChainRpc(cId, chainInfo)
+        : undefined;
 
       invariant(rpcUrl, "rpcUrl not defined");
       const sdk = getThirdwebSDK(cId, rpcUrl);
@@ -386,8 +409,8 @@ export function usePublishedContractsFromDeploy(
         .resolveContractUriFromAddress(contractAddress);
 
       const polygonSdk = getThirdwebSDK(
-        Polygon.chainId,
-        getDashboardChainRpc(Polygon),
+        polygon.id,
+        getDashboardChainRpc(polygon.id, undefined),
       );
 
       return await polygonSdk
@@ -411,7 +434,10 @@ export async function fetchPublishedContractInfo(
 }
 
 export function usePublishedContractInfo(contract: PublishedContract) {
-  const sdk = getThirdwebSDK(Polygon.chainId, getDashboardChainRpc(Polygon));
+  const sdk = getThirdwebSDK(
+    polygon.id,
+    getDashboardChainRpc(polygon.id, undefined),
+  );
   return useQuery(
     ["released-contract", contract],
     () => fetchPublishedContractInfo(sdk, contract),
@@ -559,21 +585,10 @@ export function useEditProfileMutation() {
   );
 }
 
-interface ContractDeployMutationParams {
-  recipients?: Recipient[];
-  deployParams: Record<string, string>;
-  contractMetadata?: {
-    name: string;
-    description: string;
-    image: string;
-    symbol: string;
-  };
-  address?: string;
-  addToDashboard?: boolean;
-  deployDeterministic?: boolean;
-  saltForCreate2?: string;
-  signerAsSalt?: boolean;
-}
+type ContractDeployMutationParams = CustomContractDeploymentFormData & {
+  address: string | undefined;
+  addToDashboard: boolean;
+};
 
 export function useCustomContractDeployMutation(
   ipfsHash: string,
@@ -607,7 +622,9 @@ export function useCustomContractDeployMutation(
   const walletId = useActiveWallet()?.id;
 
   return useMutation(
-    async (data: ContractDeployMutationParams) => {
+    async (_data: ContractDeployMutationParams) => {
+      const data = { ..._data };
+
       invariant(
         sdk && "getPublisher" in sdk,
         "sdk is not ready or does not support publishing",
@@ -639,11 +656,7 @@ export function useCustomContractDeployMutation(
       // open the modal with the appropriate steps
       deployContext.open(steps);
 
-      const isZkSync =
-        chainId === Zksync.chainId ||
-        chainId === ZksyncSepoliaTestnet.chainId ||
-        chainId === ZkcandySepoliaTestnet.chainId ||
-        chainId === ZksyncEraGoerliTestnetDeprecated.chainId;
+      const isZkSync = isChainIdZkSync(chainId);
 
       let contractAddress: string;
       try {
@@ -768,9 +781,6 @@ export function useCustomContractDeployMutation(
             const { compilerMetadata } = await fetchAndCacheDeployMetadata(
               publishUri,
               StorageSingleton,
-              {
-                compilerType: "zksolc",
-              },
             );
             uriToRegister = compilerMetadata.fetchedMetadataUri;
           }
@@ -779,7 +789,7 @@ export function useCustomContractDeployMutation(
           await addContractToMultiChainRegistry(
             {
               address: contractAddress,
-              chainId,
+              chainId: chainId as number,
               metadataURI: uriToRegister,
             },
             account,
@@ -846,6 +856,7 @@ export function useCustomContractDeployMutation(
               chainId,
             },
             account,
+            300000n,
           );
 
           deployContext.nextStep();
@@ -883,11 +894,7 @@ export function useTransactionsForDeploy(publishMetadataOrUri: string) {
       invariant(sdk, "sdk not provided");
 
       // Handle separately for ZkSync
-      if (
-        chainId === Zksync.chainId ||
-        chainId === ZksyncSepoliaTestnet.chainId ||
-        chainId === ZksyncEraGoerliTestnetDeprecated.chainId
-      ) {
+      if (isChainIdZkSync(chainId)) {
         return await getZkTransactionsForDeploy();
       }
 
@@ -965,7 +972,10 @@ export function usePublishedContractsQuery(
   address?: string,
   feature?: FeatureName,
 ) {
-  const sdk = getThirdwebSDK(Polygon.chainId, getDashboardChainRpc(Polygon));
+  const sdk = getThirdwebSDK(
+    polygon.id,
+    getDashboardChainRpc(polygon.id, undefined),
+  );
   const queryClient = useQueryClient();
   return useQuery<PublishedContractDetails[]>(
     ["published-contracts", address, feature],
@@ -1047,7 +1057,7 @@ export function ensQuery(addressOrEnsName?: string) {
     addressOrEnsName = "deployer.thirdweb.eth";
   }
   const placeholderData = {
-    address: utils.isAddress(addressOrEnsName || "")
+    address: isAddress(addressOrEnsName || "")
       ? addressOrEnsName || null
       : null,
     ensName: null,
@@ -1059,13 +1069,13 @@ export function ensQuery(addressOrEnsName?: string) {
         return placeholderData;
       }
       // if it is neither an address or an ens name then return the placeholder data only
-      if (!utils.isAddress(addressOrEnsName) && !isEnsName(addressOrEnsName)) {
+      if (!isAddress(addressOrEnsName) && !isEnsName(addressOrEnsName)) {
         throw new Error("Invalid address or ENS name.");
       }
 
       const { address, ensName } = await resolveEns(addressOrEnsName).catch(
         () => ({
-          address: utils.isAddress(addressOrEnsName || "")
+          address: isAddress(addressOrEnsName || "")
             ? addressOrEnsName || null
             : null,
           ensName: null,
@@ -1083,7 +1093,7 @@ export function ensQuery(addressOrEnsName?: string) {
     },
     enabled:
       !!addressOrEnsName &&
-      (utils.isAddress(addressOrEnsName) || isEnsName(addressOrEnsName)),
+      (isAddress(addressOrEnsName) || isEnsName(addressOrEnsName)),
     // 24h
     cacheTime: 60 * 60 * 24 * 1000,
     // 1h
@@ -1133,12 +1143,11 @@ export function useFeatureContractCodeSnippetQuery(language: string) {
 }
 
 export function useCustomFactoryAbi(contractAddress: string, chainId: number) {
+  const chain = useSupportedChain(chainId);
   return useQuery(
     ["custom-factory-abi", { contractAddress, chainId }],
     async () => {
-      const chain = await getChainByChainIdAsync(chainId);
-      const sdk = getThirdwebSDK(chainId, getDashboardChainRpc(chain));
-
+      const sdk = getThirdwebSDK(chainId, getDashboardChainRpc(chainId, chain));
       return (await sdk.getContract(contractAddress)).abi;
     },
     {

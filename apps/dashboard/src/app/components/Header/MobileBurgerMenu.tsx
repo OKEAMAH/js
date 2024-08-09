@@ -1,9 +1,9 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { Menu, XIcon } from "lucide-react";
 import Link from "next/link";
 import { useLayoutEffect, useState } from "react";
-import { Button } from "../../../@/components/ui/button";
 import { headerLinks } from "./headerLinks";
 
 export function MobileBurgerMenu() {
@@ -26,7 +26,7 @@ export function MobileBurgerMenu() {
   return (
     <>
       <Button
-        variant="ghost"
+        variant="outline"
         size="icon"
         className="md:hidden"
         onClick={() => setShowBurgerMenu(!showBurgerMenu)}

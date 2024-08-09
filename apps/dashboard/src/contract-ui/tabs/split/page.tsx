@@ -1,5 +1,5 @@
+import { thirdwebClient } from "@/constants/client";
 import { useDashboardEVMChainId } from "@3rdweb-sdk/react";
-import { useBalanceForAddress } from "@3rdweb-sdk/react/hooks/useBalanceForAddress";
 import {
   useSplitBalances,
   useSplitData,
@@ -15,12 +15,14 @@ import {
   StatNumber,
 } from "@chakra-ui/react";
 import { useContract } from "@thirdweb-dev/react";
-import { constants, BigNumber, ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { useSupportedChainsRecord } from "hooks/chains/configureChains";
 import { useMemo } from "react";
-import { useActiveAccount } from "thirdweb/react";
+import { ZERO_ADDRESS } from "thirdweb";
+import { useActiveAccount, useWalletBalance } from "thirdweb/react";
 import { Card, Heading, Text } from "tw-components";
 import { shortenIfAddress } from "utils/usedapp-external";
+import { useV5DashboardChain } from "../../../lib/v5-adapter";
 import { DistributeButton } from "./components/distribute-button";
 
 export type Balance = {
@@ -42,10 +44,15 @@ export const ContractSplitPage: React.FC<SplitPageProps> = ({
   const contractQuery = useContract(contractAddress, "split");
   const configuredChainsRecord = useSupportedChainsRecord();
   const chainId = useDashboardEVMChainId();
-  const chain = chainId ? configuredChainsRecord[chainId] : undefined;
-
+  const v4Chain = chainId ? configuredChainsRecord[chainId] : undefined;
   const splitQuery = useSplitData(contractQuery.contract);
-  const nativeBalanceQuery = useBalanceForAddress(contractAddress);
+  const v5Chain = useV5DashboardChain(chainId);
+
+  const nativeBalanceQuery = useWalletBalance({
+    address: contractAddress,
+    client: thirdwebClient,
+    chain: v5Chain,
+  });
   const balanceQuery = useSplitBalances(contractAddress);
 
   const balances = useMemo(() => {
@@ -56,7 +63,7 @@ export const ContractSplitPage: React.FC<SplitPageProps> = ({
     return [
       {
         name: "Native Token",
-        token_address: constants.AddressZero,
+        token_address: ZERO_ADDRESS,
         balance: nativeBalanceQuery?.data?.value?.toString() || "0",
         display_balance: nativeBalanceQuery?.data?.displayValue || "0.0",
         decimals: nativeBalanceQuery?.data?.decimals || 18,
@@ -121,13 +128,13 @@ export const ContractSplitPage: React.FC<SplitPageProps> = ({
                 {nativeBalanceQuery.data?.symbol}
               </StatLabel>
               <StatNumber>{nativeBalanceQuery?.data?.displayValue}</StatNumber>
-              {shareOfBalancesForConnectedWallet[constants.AddressZero] && (
+              {shareOfBalancesForConnectedWallet[ZERO_ADDRESS] && (
                 <StatNumber>
                   <Text size="body.md">
                     <Text as="span" size="label.md">
                       Your Share:
                     </Text>{" "}
-                    {shareOfBalancesForConnectedWallet[constants.AddressZero]}
+                    {shareOfBalancesForConnectedWallet[ZERO_ADDRESS]}
                   </Text>
                 </StatNumber>
               )}
@@ -143,7 +150,7 @@ export const ContractSplitPage: React.FC<SplitPageProps> = ({
                   <Card as={Stat} key={balance.token_address} maxWidth="2xs">
                     <StatLabel as={Heading} size="label.lg">
                       {balance.name === "Native Token"
-                        ? chain?.nativeCurrency.symbol || "Native Token"
+                        ? v4Chain?.nativeCurrency.symbol || "Native Token"
                         : balance.symbol ||
                           shortenIfAddress(balance.token_address)}
                     </StatLabel>

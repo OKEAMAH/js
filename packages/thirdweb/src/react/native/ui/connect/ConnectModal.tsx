@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { SvgXml } from "react-native-svg";
-import type { MultiStepAuthProviderType } from "../../../../wallets/in-app/core/authentication/type.js";
+import type { MultiStepAuthProviderType } from "../../../../wallets/in-app/core/authentication/types.js";
 import type { InAppWalletAuth } from "../../../../wallets/in-app/core/wallet/types.js";
 import type { Wallet } from "../../../../wallets/interfaces/wallet.js";
 import { parseTheme } from "../../../core/design-system/CustomThemeProvider.js";
@@ -9,11 +9,12 @@ import type { Theme } from "../../../core/design-system/index.js";
 import { useSiweAuth } from "../../../core/hooks/auth/useSiweAuth.js";
 import type { ConnectButtonProps } from "../../../core/hooks/connection/ConnectButtonProps.js";
 import type { ConnectEmbedProps } from "../../../core/hooks/connection/ConnectEmbedProps.js";
+import { useActiveAccount } from "../../../core/hooks/wallets/useActiveAccount.js";
+import { useActiveWallet } from "../../../core/hooks/wallets/useActiveWallet.js";
+import { useDisconnect } from "../../../core/hooks/wallets/useDisconnect.js";
+import { useConnectionManager } from "../../../core/providers/connection-manager.js";
 import { useWalletInfo } from "../../../core/utils/wallet.js";
 import { radius, spacing } from "../../design-system/index.js";
-import { useActiveWallet } from "../../hooks/wallets/useActiveWallet.js";
-import { useDisconnect } from "../../hooks/wallets/useDisconnect.js";
-import { connectionManager } from "../../index.js";
 import { getDefaultWallets } from "../../wallets/defaultWallets.js";
 import { type ContainerType, Header } from "../components/Header.js";
 import { RNImage } from "../components/RNImage.js";
@@ -60,7 +61,8 @@ export type ModalState =
 export function ConnectEmbed(props: ConnectEmbedProps) {
   const theme = parseTheme(props.theme);
   const wallet = useActiveWallet();
-  const siweAuth = useSiweAuth(wallet, props.auth);
+  const account = useActiveAccount();
+  const siweAuth = useSiweAuth(wallet, account, props.auth);
   const needsAuth = siweAuth.requiresAuth && !siweAuth.isLoggedIn;
   const isConnected = wallet && !needsAuth;
   const adaptedProps = {
@@ -105,6 +107,7 @@ export function ConnectModal(
     | undefined;
   const externalWallets = wallets.filter((wallet) => wallet.id !== "inApp");
   const showBranding = props.connectModal?.showThirdwebBranding !== false;
+  const connectionManager = useConnectionManager();
 
   const connector = useCallback(
     async (args: {
@@ -145,7 +148,14 @@ export function ConnectModal(
         });
       }
     },
-    [client, accountAbstraction, onConnect, onClose, siweAuth],
+    [
+      client,
+      accountAbstraction,
+      onConnect,
+      onClose,
+      siweAuth,
+      connectionManager,
+    ],
   );
 
   let content: JSX.Element;

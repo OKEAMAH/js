@@ -1,40 +1,24 @@
 import type { FrameValidationData } from "@coinbase/onchainkit";
-import { Base } from "@thirdweb-dev/chains";
-import type { SmartContract } from "@thirdweb-dev/sdk";
-import { type BaseContract, Wallet } from "ethers";
-import { getDashboardChainRpc } from "lib/rpc";
-import { getThirdwebSDK } from "lib/sdk";
-
-export const getContractForErc721OpenEdition = async (
-  contractAddress: string,
-) => {
-  // Create a reandom signer. This is required to encode erc721 tx data
-  const signer = Wallet.createRandom();
-
-  // Initalize sdk
-  const sdk = getThirdwebSDK(
-    Base.chainId,
-    getDashboardChainRpc(Base),
-    undefined,
-    signer,
-  );
-
-  // Get contract instance
-  const contract = await sdk.getContract(contractAddress);
-
-  // Return contract instance
-  return contract;
-};
+import { thirdwebClient } from "lib/thirdweb-client";
+import { encode, getContract } from "thirdweb";
+import type { Chain } from "thirdweb/chains";
+import { claimTo } from "thirdweb/extensions/erc721";
 
 export const getErc721PreparedEncodedData = async (
   walletAddress: string,
-  contract: SmartContract<BaseContract>,
+  contractAddress: string,
+  chain: Chain,
 ) => {
+  const contract = getContract({
+    address: contractAddress,
+    chain: chain,
+    client: thirdwebClient,
+  });
   // Prepare erc721 transaction data. Takes in destination address and quantity as parameters
-  const transaction = await contract.erc721.claimTo.prepare(walletAddress, 1);
+  const transaction = claimTo({ contract, to: walletAddress, quantity: 1n });
 
   // Encode transaction data
-  const encodedTransactionData = await transaction.encode();
+  const encodedTransactionData = await encode(transaction);
 
   // Return encoded transaction data
   return encodedTransactionData;

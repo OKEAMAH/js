@@ -1,22 +1,24 @@
 import type { ThirdwebClient } from "../../../../client/client.js";
 import { getThirdwebBaseUrl } from "../../../../utils/domains.js";
+import type { SocialAuthOption } from "../../../../wallets/types.js";
 import type { Account } from "../../../interfaces/wallet.js";
+import { siweAuthenticate } from "../../core/authentication/siwe.js";
 import {
   type AuthLoginReturnType,
+  type AuthStoredTokenWithCookieReturnType,
   type GetUser,
   type LogoutReturnType,
   type MultiStepAuthArgsType,
   type MultiStepAuthProviderType,
-  type SendEmailOtpReturnType,
   type SingleStepAuthArgsType,
   UserWalletStatus,
-  oauthStrategyToAuthProvider,
-} from "../../core/authentication/type.js";
+} from "../../core/authentication/types.js";
 import type { InAppConnector } from "../../core/interfaces/connector.js";
 import type { InAppWalletConstructorType } from "../types.js";
 import { InAppWalletIframeCommunicator } from "../utils/iFrameCommunication/InAppWalletIframeCommunicator.js";
-import { loginWithDiscord } from "./auth/discord.js";
 import { Auth, type AuthQuerierTypes } from "./auth/iframe-auth.js";
+import { loginWithOauth, loginWithOauthRedirect } from "./auth/oauth.js";
+import { sendOtp, verifyOtp } from "./auth/otp.js";
 import { loginWithPasskey, registerPasskey } from "./auth/passkeys.js";
 import { IFrameWallet } from "./in-app-account.js";
 
@@ -103,7 +105,7 @@ export class InAppWebConnector implements InAppConnector {
   }
 
   /**
-   * Gets the usr if they are logged in
+   * Gets the user if they're logged in
    * @example
    * ```js
    *  const user = await thirdwebInAppWallet.getUser();
@@ -133,52 +135,112 @@ export class InAppWebConnector implements InAppConnector {
     return this.wallet.getAccount();
   }
 
-  async preAuthenticate(
-    args: MultiStepAuthProviderType,
-  ): Promise<SendEmailOtpReturnType> {
-    const strategy = args.strategy;
-    switch (strategy) {
-      case "email": {
-        return this.auth.sendEmailLoginOtp({ email: args.email });
-      }
-      case "phone": {
-        return this.auth.sendSmsLoginOtp({ phoneNumber: args.phoneNumber });
-      }
-      default:
-        assertUnreachable(
-          strategy,
-          `Provider: ${strategy} doesn't require pre-authentication`,
-        );
-    }
+  async preAuthenticate(args: MultiStepAuthProviderType): Promise<void> {
+    return sendOtp({
+      ...args,
+      client: this.wallet.client,
+      ecosystem: this.wallet.ecosystem,
+    });
   }
 
+  authenticateWithRedirect(strategy: SocialAuthOption): void {
+    loginWithOauthRedirect({
+      authOption: strategy,
+      client: this.wallet.client,
+      ecosystem: this.wallet.ecosystem,
+    });
+  }
+
+  async loginWithAuthToken(authResult: AuthStoredTokenWithCookieReturnType) {
+    return this.auth.loginWithAuthToken(authResult);
+  }
+
+  /**
+   * Authenticates the user and returns the auth token, but does not instantiate their wallet
+   */
   async authenticate(
     args: MultiStepAuthArgsType | SingleStepAuthArgsType,
-  ): Promise<AuthLoginReturnType> {
+  ): Promise<AuthStoredTokenWithCookieReturnType> {
     const strategy = args.strategy;
     switch (strategy) {
-      case "email": {
-        return await this.auth.verifyEmailLoginOtp({
-          email: args.email,
-          otp: args.verificationCode,
+      case "email":
+        return verifyOtp({
+          ...args,
+          client: this.wallet.client,
+          ecosystem: this.wallet.ecosystem,
+        });
+      case "phone":
+        return verifyOtp({
+          ...args,
+          client: this.wallet.client,
+          ecosystem: this.wallet.ecosystem,
+        });
+      case "jwt":
+        return this.auth.authenticateWithCustomJwt({
+          jwt: args.jwt,
+          encryptionKey: args.encryptionKey,
+        });
+      case "passkey":
+        if (args.type === "sign-up") {
+          return registerPasskey({
+            client: this.wallet.client,
+            ecosystem: this.wallet.ecosystem,
+            authenticatorType: args.authenticatorType,
+            username: args.passkeyName,
+          });
+        }
+        return loginWithPasskey({
+          client: this.wallet.client,
+          ecosystem: this.wallet.ecosystem,
+          authenticatorType: args.authenticatorType,
+        });
+      case "auth_endpoint": {
+        return this.auth.authenticateWithCustomAuthEndpoint({
+          payload: args.payload,
+          encryptionKey: args.encryptionKey,
         });
       }
-      case "phone": {
-        return await this.auth.verifySmsLoginOtp({
-          otp: args.verificationCode,
-          phoneNumber: args.phoneNumber,
+      case "iframe_email_verification": {
+        return this.auth.authenticateWithIframe({
+          email: args.email,
         });
+      }
+      case "iframe": {
+        return this.auth.authenticateWithModal();
       }
       case "apple":
       case "facebook":
-      case "google": {
-        const oauthProvider = oauthStrategyToAuthProvider[strategy];
-        return this.auth.loginWithOauth({
-          oauthProvider,
+      case "google":
+      case "telegram":
+      case "farcaster":
+      case "discord": {
+        return loginWithOauth({
+          authOption: strategy,
+          client: this.wallet.client,
+          ecosystem: this.wallet.ecosystem,
           closeOpenedWindow: args.closeOpenedWindow,
           openedWindow: args.openedWindow,
         });
       }
+      case "siwe": {
+        return siweAuthenticate({
+          client: this.wallet.client,
+          ecosystem: this.wallet.ecosystem,
+          walletId: args.walletId,
+          chainId: args.chainId,
+        });
+      }
+    }
+  }
+
+  /**
+   * Authenticates the user then instantiates their wallet using the resulting auth token
+   */
+  async connect(
+    args: MultiStepAuthArgsType | SingleStepAuthArgsType,
+  ): Promise<AuthLoginReturnType> {
+    const strategy = args.strategy;
+    switch (strategy) {
       case "jwt": {
         return this.auth.loginWithCustomJwt({
           jwt: args.jwt,
@@ -192,7 +254,7 @@ export class InAppWebConnector implements InAppConnector {
         });
       }
       case "iframe_email_verification": {
-        return this.auth.loginWithEmailOtp({
+        return this.auth.loginWithIframe({
           email: args.email,
         });
       }
@@ -207,22 +269,25 @@ export class InAppWebConnector implements InAppConnector {
             authenticatorType: args.authenticatorType,
             username: args.passkeyName,
           });
-          return this.auth.loginWithAuthToken(authToken);
+          return this.loginWithAuthToken(authToken);
         }
         const authToken = await loginWithPasskey({
           client: this.wallet.client,
           ecosystem: this.wallet.ecosystem,
           authenticatorType: args.authenticatorType,
         });
-        return this.auth.loginWithAuthToken(authToken);
+        return this.loginWithAuthToken(authToken);
       }
+      case "phone":
+      case "email":
+      case "siwe":
+      case "apple":
+      case "facebook":
+      case "google":
+      case "farcaster":
+      case "telegram":
       case "discord": {
-        const authToken = await loginWithDiscord({
-          client: this.wallet.client,
-          ecosystem: this.wallet.ecosystem,
-          closeOpenedWindow: args.closeOpenedWindow,
-          openedWindow: args.openedWindow,
-        });
+        const authToken = await this.authenticate(args);
         return this.auth.loginWithAuthToken(authToken);
       }
 

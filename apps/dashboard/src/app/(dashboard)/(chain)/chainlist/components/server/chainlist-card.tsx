@@ -1,7 +1,7 @@
+import { CopyTextButton } from "@/components/ui/CopyTextButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CircleAlertIcon, TicketCheckIcon } from "lucide-react";
 import Link from "next/link";
-import { CopyTextButton } from "../../../../../../@/components/ui/CopyTextButton";
 import { ChainIcon } from "../../../components/server/chain-icon";
 import type { ChainSupportedService } from "../../../types/chain";
 import { getChainMetadata } from "../../../utils";
@@ -100,7 +100,7 @@ export async function ChainListCard({
 
               {isDeprecated && (
                 <div className="gap-1.5 flex items-center">
-                  <CircleAlertIcon className="text-destructive-foreground size-5" />
+                  <CircleAlertIcon className="text-destructive-text size-5" />
                   <p className="text-sm">Deprecated</p>
                 </div>
               )}

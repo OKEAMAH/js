@@ -1,5 +1,6 @@
+import { thirdwebClient } from "@/constants/client";
 import { popularChains } from "@3rdweb-sdk/react/components/popularChains";
-import { useColorMode } from "@chakra-ui/react";
+import { useFavoriteChains } from "@3rdweb-sdk/react/hooks/useFavoriteChains";
 import { ChainIcon } from "components/icons/ChainIcon";
 import type { StoredChain } from "contexts/configured-chains";
 import {
@@ -11,15 +12,16 @@ import {
   useRecentlyUsedChains,
 } from "hooks/chains/recentlyUsedChains";
 import { useSetIsNetworkConfigModalOpen } from "hooks/networkConfigModal";
+import { useActiveChainAsDashboardChain } from "lib/v5-adapter";
+import { useTheme } from "next-themes";
 import { useEffect, useMemo, useRef } from "react";
 import { BiChevronDown } from "react-icons/bi";
-import type { Chain } from "thirdweb";
 import { useActiveWallet } from "thirdweb/react";
 import { useNetworkSwitcherModal } from "thirdweb/react";
 import { Button } from "tw-components";
-import { thirdwebClient } from "../../@/constants/client";
-import { useFavoriteChains } from "../../@3rdweb-sdk/react/hooks/useFavoriteChains";
-import { useActiveChainAsDashboardChain } from "../../lib/v5-adapter";
+import { getSDKTheme } from "../../app/components/sdk-component-theme";
+import { mapV4ChainToV5Chain } from "../../contexts/map-chains";
+import { CustomChainRenderer } from "./CustomChainRenderer";
 
 interface NetworkSelectorButtonProps {
   disabledChainIds?: number[];
@@ -37,7 +39,7 @@ export const NetworkSelectorButton: React.FC<NetworkSelectorButtonProps> = ({
   const recentlyUsedChains = useRecentlyUsedChains();
   const addRecentlyUsedChains = useAddRecentlyUsedChainId();
   const setIsNetworkConfigModalOpen = useSetIsNetworkConfigModalOpen();
-  const { colorMode } = useColorMode();
+  const { theme } = useTheme();
   const supportedChains = useSupportedChains();
   const supportedChainsRecord = useSupportedChainsRecord();
   const favoriteChainsQuery = useFavoriteChains();
@@ -120,33 +122,30 @@ export const NetworkSelectorButton: React.FC<NetworkSelectorButtonProps> = ({
         }}
         onClick={() => {
           networkSwitcherModal.open({
-            theme: colorMode === "dark" ? "dark" : "light",
+            theme: getSDKTheme(theme === "light" ? "light" : "dark"),
             sections: [
               {
                 label: "Recently Used",
                 chains: (filteredRecentlyUsedChains ?? []).map(
-                  mapStoredChainTov5Chain,
+                  mapV4ChainToV5Chain,
                 ),
               },
               {
                 label: "Favorites",
                 chains: (favoriteChainsQuery.data ?? []).map(
-                  mapStoredChainTov5Chain,
+                  mapV4ChainToV5Chain,
                 ),
               },
               {
                 label: "Popular",
-                chains: (networksEnabled ? [] : popularChains).map(
-                  mapStoredChainTov5Chain,
-                ),
+                chains: networksEnabled ? [] : popularChains,
               },
               {
                 label: "All Networks",
-                chains: (chains ?? []).map(mapStoredChainTov5Chain),
+                chains: (chains ?? []).map(mapV4ChainToV5Chain),
               },
             ],
-            // TODO: bring this back when it works reliably
-            // renderChain: CustomChainRenderer,
+            renderChain: CustomChainRenderer,
             onCustomClick: networksEnabled
               ? undefined
               : () => {
@@ -176,20 +175,3 @@ export const NetworkSelectorButton: React.FC<NetworkSelectorButtonProps> = ({
     </>
   );
 };
-
-function mapStoredChainTov5Chain(v4Chain: StoredChain) {
-  const chain: Chain = {
-    id: v4Chain.chainId,
-    rpc: v4Chain.rpc[0],
-    // TypeScript shenanigans, just avoiding as string assertion here
-    blockExplorers: v4Chain.explorers?.map((x) => x),
-    // TypeScript shenanigans, just avoiding as string assertion here
-    faucets: v4Chain.faucets?.map((x) => x),
-    name: v4Chain.name,
-    icon: v4Chain.icon,
-    testnet: v4Chain.testnet === true ? true : undefined,
-    nativeCurrency: v4Chain.nativeCurrency,
-  };
-
-  return chain;
-}

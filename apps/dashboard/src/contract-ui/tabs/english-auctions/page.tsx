@@ -28,14 +28,18 @@ export const ContractEnglishAuctionsPage: React.FC<
         <Heading size="title.sm">Contract Auctions</Heading>
         <Flex gap={4}>
           <CreateListingButton
-            contractQuery={contractQuery}
+            contractAddress={contractQuery.contract.getAddress()}
+            chainId={contractQuery.contract.chainId}
             type="english-auctions"
             createText="Create English Auction"
           />
         </Flex>
       </Flex>
 
-      <EnglishAuctionsTable contract={contractQuery.contract} />
+      <EnglishAuctionsTable
+        contractAddress={contractQuery.contract.getAddress()}
+        chainId={contractQuery.contract.chainId}
+      />
     </Flex>
   );
 };

@@ -1,11 +1,12 @@
 import type { ThirdwebClient } from "../../../../../client/client.js";
+import type { OneOf } from "../../../../../utils/type-utils.js";
+import type { SocialAuthOption } from "../../../../../wallets/types.js";
 import {
   type AuthArgsType,
-  type AuthLoginReturnType,
   type GetAuthenticatedUserParams,
   type PreAuthArgsType,
   UserWalletStatus,
-} from "../../../core/authentication/type.js";
+} from "../../../core/authentication/types.js";
 import { getOrCreateInAppWalletConnector } from "../../../core/wallet/in-app-core.js";
 import type { Ecosystem } from "../../types.js";
 
@@ -105,6 +106,7 @@ export async function getUserPhoneNumber(options: GetAuthenticatedUserParams) {
 
 /**
  * Pre-authenticates the user based on the provided authentication strategy.
+ * Use this function to send a verification code to the user's email or phone number.
  * @param args - The arguments required for pre-authentication.
  * @returns A promise that resolves to the pre-authentication result.
  * @throws An error if the provided authentication strategy doesn't require pre-authentication.
@@ -143,8 +145,18 @@ export async function preAuthenticate(args: PreAuthArgsType) {
  * @wallet
  */
 export async function authenticate(
-  args: AuthArgsType,
-): Promise<AuthLoginReturnType> {
+  args: OneOf<
+    | AuthArgsType
+    | {
+        strategy: SocialAuthOption;
+        client: ThirdwebClient;
+        ecosystem?: Ecosystem;
+        redirect: boolean;
+      }
+  >,
+) {
   const connector = await getInAppWalletConnector(args.client, args.ecosystem);
-  return connector.authenticate(args);
+  if (args.redirect && connector.authenticateWithRedirect)
+    return connector.authenticateWithRedirect(args.strategy);
+  return connector.connect(args);
 }

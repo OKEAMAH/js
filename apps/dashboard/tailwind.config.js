@@ -8,9 +8,14 @@ module.exports = {
   theme: {
     container: {
       center: true,
-      padding: "2rem",
+      padding: {
+        // 16px
+        DEFAULT: "1rem",
+        // 24px
+        lg: "1.5rem",
+      },
       screens: {
-        "2xl": "1400px",
+        "2xl": "1440px",
       },
     },
     extend: {
@@ -30,11 +35,17 @@ module.exports = {
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
+          // destructive-foreground should only be used on destructive bg
           foreground: "hsl(var(--destructive-foreground))",
+          // destructive-text can be used on neutral bg - it's red-ish
+          text: "hsl(var(--destructive-text))",
         },
         success: {
           DEFAULT: "hsl(var(--success))",
+          // success-foreground should only be used on success bg
           foreground: "hsl(var(--success-foreground))",
+          // success-text can be used on neutral bg, it's green-ish
+          text: "hsl(var(--success-text))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",

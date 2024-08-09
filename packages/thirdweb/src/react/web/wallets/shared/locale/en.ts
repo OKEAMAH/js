@@ -8,7 +8,7 @@ export default {
   emailPlaceholder: "Email address",
   submitEmail: "Continue",
   signIn: "Sign in",
-  or: "Or",
+  or: "or",
   emailRequired: "Email address is required",
   invalidEmail: "Invalid email address",
   maxAccountsExceeded:
@@ -54,4 +54,5 @@ export default {
   phonePlaceholder: "Phone number",
   signInWithPhone: "Sign in with phone number",
   phoneRequired: "phone number is required",
+  passkey: "Passkey",
 } satisfies InAppWalletLocale;

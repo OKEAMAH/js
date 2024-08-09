@@ -20,7 +20,6 @@ import {
 } from "@chakra-ui/react";
 import { useQuery } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
-import { shortenAddress } from "@thirdweb-dev/react";
 import { ChainIcon } from "components/icons/ChainIcon";
 import { TWTable } from "components/shared/TWTable";
 import { format } from "date-fns";
@@ -28,11 +27,12 @@ import { useTrack } from "hooks/analytics/useTrack";
 import { useAllChainsData } from "hooks/chains/allChains";
 import { useTxNotifications } from "hooks/useTxNotifications";
 import { thirdwebClient } from "lib/thirdweb-client";
+import { useV5DashboardChain } from "lib/v5-adapter";
 import { useState } from "react";
 import { FiInfo, FiTrash } from "react-icons/fi";
 import { eth_getBlockByNumber, getRpcClient } from "thirdweb";
+import { shortenAddress } from "thirdweb/utils";
 import { Button, Card, FormLabel, LinkButton, Text } from "tw-components";
-import { defineDashboardChain } from "../../../lib/v5-adapter";
 import { AddressCopyButton } from "../../../tw-components/AddressCopyButton";
 
 interface ContractSubscriptionTableProps {
@@ -94,7 +94,7 @@ export const ContractSubscriptionTable: React.FC<
             href={explorer ? `${explorer.url}/address/${cell.getValue()}` : "#"}
             fontFamily="mono"
           >
-            {shortenAddress(cell.getValue(), false)}
+            {shortenAddress(cell.getValue())}
           </LinkButton>
         );
       },
@@ -237,6 +237,7 @@ const ChainLastBlockTimestamp = ({
   chainId: number;
   blockNumber: bigint;
 }) => {
+  const chain = useV5DashboardChain(chainId);
   // Get the block timestamp to display how delayed the last processed block is.
   const ethBlockQuery = useQuery({
     queryKey: ["block_timestamp", chainId, Number(blockNumber)],
@@ -245,7 +246,7 @@ const ChainLastBlockTimestamp = ({
     queryFn: async () => {
       const rpcRequest = getRpcClient({
         client: thirdwebClient,
-        chain: defineDashboardChain(chainId),
+        chain: chain,
       });
       const block = await eth_getBlockByNumber(rpcRequest, {
         blockNumber,

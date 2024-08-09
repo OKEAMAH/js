@@ -38,11 +38,6 @@ const LazyContractEnglishAuctionsPage = dynamic(() =>
     ({ ContractEnglishAuctionsPage }) => ContractEnglishAuctionsPage,
   ),
 );
-const LazyContractListingsPage = dynamic(() =>
-  import("../tabs/listings/page").then(
-    ({ ContractListingsPage }) => ContractListingsPage,
-  ),
-);
 const LazyContractSplitPage = dynamic(() =>
   import("../tabs/split/page").then(
     ({ ContractSplitPage }) => ContractSplitPage,
@@ -93,7 +88,7 @@ const LazyContractSourcesPage = dynamic(() =>
   ),
 );
 const LazyContractEditExtensionsPage = dynamic(() =>
-  import("../tabs/edit-extensions/page").then(
+  import("../tabs/manage/page").then(
     ({ ContractEditExtensionsPage }) => ContractEditExtensionsPage,
   ),
 );
@@ -130,8 +125,8 @@ export function useContractRouteConfig(
       isDefault: true,
     },
     {
-      title: "Edit extensions",
-      path: "edit-extensions",
+      title: "Manage",
+      path: "manage",
       isEnabled: extensionDetectedState({
         contractQuery,
         feature: ["ModularCore"],
@@ -195,16 +190,6 @@ export function useContractRouteConfig(
         feature: "EnglishAuctions",
       }),
       component: LazyContractEnglishAuctionsPage,
-    },
-    {
-      title: "Listings",
-      path: "listings",
-      isEnabled: contractTypeQuery.isLoading
-        ? "loading"
-        : contractTypeQuery.data === "marketplace"
-          ? "enabled"
-          : "disabled",
-      component: LazyContractListingsPage,
     },
     {
       title: "Balances",

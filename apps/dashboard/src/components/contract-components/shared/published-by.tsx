@@ -28,7 +28,7 @@ export const PublishedBy: React.FC<PublishedByProps> = ({
   const publishedContractToShow = useMemo(() => {
     const reversedPublishedContractsFromDeploy = [
       ...(publishedContractsFromDeploy.data || []),
-    ].reverse();
+    ];
 
     return (
       reversedPublishedContractsFromDeploy.find(
@@ -58,6 +58,9 @@ export const PublishedBy: React.FC<PublishedByProps> = ({
       contractId={publishedContractToShow.name}
       publisher={publisherAddress}
       version={publishedContractToShow.version}
+      isBeta={(publishedContractToShow.displayName || "")
+        .toLowerCase()
+        .includes("beta")}
     />
   );
 };

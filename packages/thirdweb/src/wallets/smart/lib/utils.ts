@@ -3,7 +3,7 @@ import type { Chain } from "../../../chains/types.js";
 import { isHex, numberToHex, toHex } from "../../../utils/encoding/hex.js";
 import type { UserOperation, UserOperationHexed } from "../types.js";
 
-const generateRandomUint192 = (): bigint => {
+export const generateRandomUint192 = (): bigint => {
   const rand1 = BigInt(Math.floor(Math.random() * 0x100000000));
   const rand2 = BigInt(Math.floor(Math.random() * 0x100000000));
   const rand3 = BigInt(Math.floor(Math.random() * 0x100000000));
@@ -43,5 +43,10 @@ export function hexlifyUserOp(userOp: UserOperation): UserOperationHexed {
 }
 
 export function isNativeAAChain(chain: Chain) {
-  return chain.id === 324 || chain.id === 300 || chain.id === 302;
+  return (
+    chain.id === 324 ||
+    chain.id === 300 ||
+    chain.id === 302 ||
+    chain.id === 11124
+  );
 }
