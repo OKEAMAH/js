@@ -31,7 +31,7 @@
     "@thirdweb-dev/storage": "2.0.14",
     "@thirdweb-dev/wallets": "2.5.17",
     "abitype": "1.0.4",
-    "aws-amplify": "^5.3.18",
+    "aws-amplify": "^6.0.0",
     "expo-application": "5.8.3",
     "expo-clipboard": "^4.8.0",
     "expo-document-picker": "^11.10.1",
