@@ -1,7 +1,12 @@
+"use client";
+
+import { SingleNetworkSelector } from "@/components/blocks/NetworkSelectors";
+import { useThirdwebClient } from "@/constants/thirdweb.client";
 import {
   type AddContractSubscriptionInput,
   useEngineAddContractSubscription,
 } from "@3rdweb-sdk/react/hooks/useEngine";
+import { useResolveContractAbi } from "@3rdweb-sdk/react/hooks/useResolveContractAbi";
 import {
   CheckboxGroup,
   Collapse,
@@ -19,21 +24,21 @@ import {
   Radio,
   RadioGroup,
   Spinner,
-  Stack,
   type UseDisclosureReturn,
   useDisclosure,
 } from "@chakra-ui/react";
-import { NetworkDropdown } from "components/contract-components/contract-publish-form/NetworkDropdown";
 import { useTrack } from "hooks/analytics/useTrack";
-import { useContractAbiItems } from "hooks/useContractAbiItems";
 import { useTxNotifications } from "hooks/useTxNotifications";
+import { useV5DashboardChain } from "lib/v5-adapter";
 import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
 import { type UseFormReturn, useForm } from "react-hook-form";
 import { AiOutlinePlusCircle } from "react-icons/ai";
+import { getContract, isAddress } from "thirdweb";
 import {
   Button,
   Card,
   Checkbox,
+  FormErrorMessage,
   FormHelperText,
   FormLabel,
   Text,
@@ -104,6 +109,7 @@ const AddModal = ({
       processTransactionReceipts: false,
       filterFunctions: [],
     },
+    mode: "onChange",
   });
 
   const onSubmit = (data: AddContractSubscriptionForm) => {
@@ -149,7 +155,11 @@ const AddModal = ({
       size="lg"
     >
       <ModalOverlay />
-      <ModalContent as="form" onSubmit={form.handleSubmit(onSubmit)}>
+      <ModalContent
+        className="!bg-background rounded-lg border border-border"
+        as="form"
+        onSubmit={form.handleSubmit(onSubmit)}
+      >
         <ModalHeader>Add Contract Subscription</ModalHeader>
         <ModalCloseButton />
 
@@ -174,41 +184,74 @@ const ModalBodyInputContract = ({
   return (
     <>
       <ModalBody>
-        <Stack spacing={4}>
+        <div className="flex flex-col gap-4">
           <Text>
             Add a contract subscription to process real-time onchain data.
           </Text>
 
           <FormControl isRequired>
             <FormLabel>Chain</FormLabel>
-            <NetworkDropdown
-              value={form.watch("chainId")}
-              onSingleChange={(val) => form.setValue("chainId", val)}
+            <SingleNetworkSelector
+              chainId={form.watch("chainId")}
+              onChange={(val) => form.setValue("chainId", val)}
             />
           </FormControl>
 
-          <FormControl isRequired>
+          <FormControl
+            isRequired
+            isInvalid={
+              !!form.getFieldState("contractAddress", form.formState).error
+            }
+          >
             <FormLabel>Contract Address</FormLabel>
             <Input
               type="text"
               placeholder="0x..."
-              {...form.register("contractAddress", { required: true })}
+              {...form.register("contractAddress", {
+                required: true,
+                validate: (v) => {
+                  const isValid = isAddress(v);
+                  return !isValid ? "Invalid address" : true;
+                },
+              })}
             />
+            <FormErrorMessage>
+              {
+                form.getFieldState("contractAddress", form.formState).error
+                  ?.message
+              }
+            </FormErrorMessage>
           </FormControl>
 
-          <FormControl isRequired>
+          <FormControl
+            isRequired
+            isInvalid={!!form.getFieldState("webhookUrl", form.formState).error}
+          >
             <FormLabel>Webhook URL</FormLabel>
             <Input
               type="url"
               placeholder="https://"
-              {...form.register("webhookUrl", { required: true })}
+              {...form.register("webhookUrl", {
+                required: true,
+                validate: (v) => {
+                  try {
+                    new URL(v);
+                    return true;
+                  } catch {
+                    return "Invalid URL";
+                  }
+                },
+              })}
             />
             <FormHelperText>
               Engine sends an HTTP request to your backend when new onchain data
               for this contract is detected.
             </FormHelperText>
+            <FormErrorMessage>
+              {form.getFieldState("webhookUrl", form.formState).error?.message}
+            </FormErrorMessage>
           </FormControl>
-        </Stack>
+        </div>
       </ModalBody>
 
       <ModalFooter>
@@ -260,7 +303,7 @@ const ModalBodyInputData = ({
   return (
     <>
       <ModalBody>
-        <Stack spacing={4}>
+        <div className="flex flex-col gap-4">
           <Text>
             Select the data type to process.
             <br />
@@ -272,7 +315,7 @@ const ModalBodyInputData = ({
           <FormControl>
             <FormLabel>Processed Data</FormLabel>
 
-            <Stack>
+            <div className="flex flex-col gap-2">
               <Checkbox
                 {...form.register("processEventLogs")}
                 checked={form.getValues("processEventLogs")}
@@ -290,7 +333,7 @@ const ModalBodyInputData = ({
               </Checkbox>
               {/* Shows all/specific events if processing event logs */}
               <Collapse in={processEventLogsDisclosure.isOpen}>
-                <Stack px={4}>
+                <div className="flex flex-col gap-2 px-4">
                   <RadioGroup
                     defaultValue="false"
                     onChange={(val: "false" | "true") => {
@@ -302,7 +345,7 @@ const ModalBodyInputData = ({
                       }
                     }}
                   >
-                    <Stack>
+                    <div className="flex flex-col gap-2">
                       <Radio value="false">
                         <Text>All events</Text>
                       </Radio>
@@ -324,9 +367,9 @@ const ModalBodyInputData = ({
                           }
                         />
                       </Collapse>
-                    </Stack>
+                    </div>
                   </RadioGroup>
-                </Stack>
+                </div>
               </Collapse>
 
               <Checkbox
@@ -346,7 +389,7 @@ const ModalBodyInputData = ({
               </Checkbox>
               {/* Shows all/specific functions if processing transaction receipts */}
               <Collapse in={processTransactionReceiptsDisclosure.isOpen}>
-                <Stack px={4}>
+                <div className="flex flex-col gap-2 px-4">
                   <RadioGroup
                     defaultValue="false"
                     onChange={(val: "false" | "true") => {
@@ -358,7 +401,7 @@ const ModalBodyInputData = ({
                       }
                     }}
                   >
-                    <Stack>
+                    <div className="flex flex-col gap-2">
                       <Radio value="false">
                         <Text>All functions</Text>
                       </Radio>
@@ -380,13 +423,13 @@ const ModalBodyInputData = ({
                           }
                         />
                       </Collapse>
-                    </Stack>
+                    </div>
                   </RadioGroup>
-                </Stack>
+                </div>
               </Collapse>
-            </Stack>
+            </div>
           </FormControl>
-        </Stack>
+        </div>
       </ModalBody>
 
       <ModalFooter as={Flex} gap={3}>
@@ -421,39 +464,79 @@ const FilterSelector = ({
   filter: string[];
   setFilter: (value: string[]) => void;
 }) => {
-  const abiItemsQuery = useContractAbiItems(
-    form.getValues("chainId"),
-    form.getValues("contractAddress") as `0x${string}`,
+  const client = useThirdwebClient();
+  const chain = useV5DashboardChain(form.getValues("chainId"));
+  const address = form.getValues("contractAddress");
+  const contract = useMemo(
+    () =>
+      chain
+        ? getContract({
+            address,
+            chain,
+            client,
+          })
+        : undefined,
+    [chain, client, address],
   );
+
+  const abiQuery = useResolveContractAbi(contract);
+
+  const abiItems = useMemo(() => {
+    if (!abiQuery.data) {
+      return {
+        readFunctions: [],
+        writeFunctions: [],
+        events: [],
+      };
+    }
+    const readFunctions: string[] = [];
+    const writeFunctions: string[] = [];
+    const events: string[] = [];
+    for (const abiItem of abiQuery.data) {
+      if (abiItem.type === "function") {
+        if (
+          abiItem.stateMutability === "pure" ||
+          abiItem.stateMutability === "view"
+        ) {
+          readFunctions.push(abiItem.name);
+        } else {
+          writeFunctions.push(abiItem.name);
+        }
+      } else if (abiItem.type === "event") {
+        events.push(abiItem.name);
+      }
+    }
+    return {
+      readFunctions: [...new Set(readFunctions)].sort(),
+      writeFunctions: [...new Set(writeFunctions)].sort(),
+      events: [...new Set(events)].sort(),
+    };
+  }, [abiQuery.data]);
 
   const filterNames = useMemo(() => {
     switch (abiItemType) {
       case "function": {
-        return abiItemsQuery.data.writeFunctions;
+        return abiItems.writeFunctions;
       }
       case "event": {
-        return abiItemsQuery.data.events;
+        return abiItems.events;
       }
       default: {
         return [];
       }
     }
-  }, [
-    abiItemType,
-    abiItemsQuery.data.events,
-    abiItemsQuery.data.writeFunctions,
-  ]);
+  }, [abiItemType, abiItems.events, abiItems.writeFunctions]);
 
   return (
     <Card>
-      {abiItemsQuery.isLoading ? (
+      {abiQuery.isPending ? (
         <Spinner size="sm" />
       ) : filterNames.length === 0 ? (
         <Text>
           Cannot resolve the contract definition. Filters are unavailable.
         </Text>
       ) : (
-        <Stack maxH={300} overflowY="auto">
+        <div className="flex max-h-[300px] flex-col gap-2 overflow-y-auto">
           <CheckboxGroup
             value={filter}
             onChange={(selected: string[]) => setFilter(selected)}
@@ -464,7 +547,7 @@ const FilterSelector = ({
               </Checkbox>
             ))}
           </CheckboxGroup>
-        </Stack>
+        </div>
       )}
     </Card>
   );

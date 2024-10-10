@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -47,21 +46,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `safeTransferFrom` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `safeTransferFrom` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `safeTransferFrom` method is supported.
  * @extension ERC1155
  * @example
  * ```ts
  * import { isSafeTransferFromSupported } from "thirdweb/extensions/erc1155";
  *
- * const supported = await isSafeTransferFromSupported(contract);
+ * const supported = isSafeTransferFromSupported(["0x..."]);
  * ```
  */
-export async function isSafeTransferFromSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isSafeTransferFromSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -73,7 +70,7 @@ export async function isSafeTransferFromSupported(
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeSafeTransferFromParams } "thirdweb/extensions/erc1155";
+ * import { encodeSafeTransferFromParams } from "thirdweb/extensions/erc1155";
  * const result = encodeSafeTransferFromParams({
  *  from: ...,
  *  to: ...,
@@ -100,7 +97,7 @@ export function encodeSafeTransferFromParams(options: SafeTransferFromParams) {
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeSafeTransferFrom } "thirdweb/extensions/erc1155";
+ * import { encodeSafeTransferFrom } from "thirdweb/extensions/erc1155";
  * const result = encodeSafeTransferFrom({
  *  from: ...,
  *  to: ...,
@@ -126,6 +123,7 @@ export function encodeSafeTransferFrom(options: SafeTransferFromParams) {
  * @extension ERC1155
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { safeTransferFrom } from "thirdweb/extensions/erc1155";
  *
  * const transaction = safeTransferFrom({
@@ -141,8 +139,7 @@ export function encodeSafeTransferFrom(options: SafeTransferFromParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function safeTransferFrom(

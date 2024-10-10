@@ -4,7 +4,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -32,21 +31,18 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `isTrustedForwarder` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `isTrustedForwarder` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `isTrustedForwarder` method is supported.
  * @extension ERC2771
  * @example
  * ```ts
  * import { isIsTrustedForwarderSupported } from "thirdweb/extensions/erc2771";
- *
- * const supported = await isIsTrustedForwarderSupported(contract);
+ * const supported = isIsTrustedForwarderSupported(["0x..."]);
  * ```
  */
-export async function isIsTrustedForwarderSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isIsTrustedForwarderSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -58,7 +54,7 @@ export async function isIsTrustedForwarderSupported(
  * @extension ERC2771
  * @example
  * ```ts
- * import { encodeIsTrustedForwarderParams } "thirdweb/extensions/erc2771";
+ * import { encodeIsTrustedForwarderParams } from "thirdweb/extensions/erc2771";
  * const result = encodeIsTrustedForwarderParams({
  *  forwarder: ...,
  * });
@@ -77,7 +73,7 @@ export function encodeIsTrustedForwarderParams(
  * @extension ERC2771
  * @example
  * ```ts
- * import { encodeIsTrustedForwarder } "thirdweb/extensions/erc2771";
+ * import { encodeIsTrustedForwarder } from "thirdweb/extensions/erc2771";
  * const result = encodeIsTrustedForwarder({
  *  forwarder: ...,
  * });
@@ -100,7 +96,7 @@ export function encodeIsTrustedForwarder(options: IsTrustedForwarderParams) {
  * @example
  * ```ts
  * import { decodeIsTrustedForwarderResult } from "thirdweb/extensions/erc2771";
- * const result = decodeIsTrustedForwarderResult("...");
+ * const result = decodeIsTrustedForwarderResultResult("...");
  * ```
  */
 export function decodeIsTrustedForwarderResult(result: Hex) {

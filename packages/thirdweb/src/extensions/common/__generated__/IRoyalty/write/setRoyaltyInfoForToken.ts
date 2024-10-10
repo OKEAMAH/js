@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -40,21 +39,21 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `setRoyaltyInfoForToken` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `setRoyaltyInfoForToken` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `setRoyaltyInfoForToken` method is supported.
  * @extension COMMON
  * @example
  * ```ts
  * import { isSetRoyaltyInfoForTokenSupported } from "thirdweb/extensions/common";
  *
- * const supported = await isSetRoyaltyInfoForTokenSupported(contract);
+ * const supported = isSetRoyaltyInfoForTokenSupported(["0x..."]);
  * ```
  */
-export async function isSetRoyaltyInfoForTokenSupported(
-  contract: ThirdwebContract<any>,
+export function isSetRoyaltyInfoForTokenSupported(
+  availableSelectors: string[],
 ) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -66,7 +65,7 @@ export async function isSetRoyaltyInfoForTokenSupported(
  * @extension COMMON
  * @example
  * ```ts
- * import { encodeSetRoyaltyInfoForTokenParams } "thirdweb/extensions/common";
+ * import { encodeSetRoyaltyInfoForTokenParams } from "thirdweb/extensions/common";
  * const result = encodeSetRoyaltyInfoForTokenParams({
  *  tokenId: ...,
  *  recipient: ...,
@@ -91,7 +90,7 @@ export function encodeSetRoyaltyInfoForTokenParams(
  * @extension COMMON
  * @example
  * ```ts
- * import { encodeSetRoyaltyInfoForToken } "thirdweb/extensions/common";
+ * import { encodeSetRoyaltyInfoForToken } from "thirdweb/extensions/common";
  * const result = encodeSetRoyaltyInfoForToken({
  *  tokenId: ...,
  *  recipient: ...,
@@ -117,6 +116,7 @@ export function encodeSetRoyaltyInfoForToken(
  * @extension COMMON
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { setRoyaltyInfoForToken } from "thirdweb/extensions/common";
  *
  * const transaction = setRoyaltyInfoForToken({
@@ -130,8 +130,7 @@ export function encodeSetRoyaltyInfoForToken(
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function setRoyaltyInfoForToken(

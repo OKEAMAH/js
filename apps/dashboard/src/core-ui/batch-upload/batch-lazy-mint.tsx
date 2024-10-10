@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Alert,
   AlertIcon,
@@ -5,26 +7,21 @@ import {
   Container,
   Flex,
   FormControl,
-  HStack,
-  Icon,
   Input,
   InputGroup,
   InputRightElement,
-  Stack,
   Textarea,
 } from "@chakra-ui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AiFillEye } from "@react-icons/all-files/ai/AiFillEye";
-import { AiFillEyeInvisible } from "@react-icons/all-files/ai/AiFillEyeInvisible";
-import type { DelayedRevealLazyMintInput } from "@thirdweb-dev/react/evm";
-import type { NFTMetadataInput } from "@thirdweb-dev/sdk";
 import { TransactionButton } from "components/buttons/TransactionButton";
 import { FileInput } from "components/shared/FileInput";
 import { useImageFileOrUrl } from "hooks/useImageFileOrUrl";
+import { ChevronLeftIcon, EyeIcon, EyeOffIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { useForm } from "react-hook-form";
-import { IoChevronBack } from "react-icons/io5";
+import type { CreateDelayedRevealBatchParams } from "thirdweb/extensions/erc721";
+import type { NFTInput } from "thirdweb/utils";
 import {
   Button,
   Card,
@@ -45,19 +42,20 @@ import { UploadStep } from "./upload-step";
 
 type DelayedSubmit = {
   revealType: "delayed";
-  data: DelayedRevealLazyMintInput;
+  data: CreateDelayedRevealBatchParams;
 };
 type InstantSubmit = {
   revealType: "instant";
-  data: { metadatas: NFTMetadataInput[] };
+  data: { metadatas: NFTInput[] };
 };
 
 type SubmitType = DelayedSubmit | InstantSubmit;
 
 interface BatchLazyMintEVMProps {
-  nextTokenIdToMint: number;
-  isRevealable: boolean;
+  nextTokenIdToMint: bigint;
+  canCreateDelayedRevealBatch: boolean;
   onSubmit: (formData: SubmitType) => Promise<unknown>;
+  chainId: number;
 }
 
 type BatchLazyMintProps = BatchLazyMintEVMProps;
@@ -92,7 +90,7 @@ const BatchLazyMintFormSchema = z
   });
 
 type BatchLazyMintFormType = z.output<typeof BatchLazyMintFormSchema> & {
-  metadatas: NFTMetadataInput[];
+  metadatas: NFTInput[];
 };
 
 function useBatchLazyMintForm() {
@@ -122,7 +120,7 @@ export const BatchLazyMint: ComponentWithChildren<BatchLazyMintProps> = (
         await processInputData(acceptedFiles, (data) =>
           form.setValue("metadatas", data),
         );
-      } catch (err) {
+      } catch {
         form.setError("metadatas", {
           message: "Invalid metadata files",
           type: "validate",
@@ -179,9 +177,9 @@ export const BatchLazyMint: ComponentWithChildren<BatchLazyMintProps> = (
         return props.onSubmit({
           revealType: "delayed",
           data: {
-            metadatas: shuffledMetadatas,
+            metadata: shuffledMetadatas,
             password: data.password,
-            placeholder: {
+            placeholderMetadata: {
               name: data.placeHolder?.name,
               description: data.placeHolder?.description,
               image: data.placeHolder?.image,
@@ -268,20 +266,23 @@ export const BatchLazyMint: ComponentWithChildren<BatchLazyMintProps> = (
                 w="100%"
                 mb={2}
               >
-                <HStack>
-                  <Icon
-                    boxSize={5}
-                    as={IoChevronBack}
-                    color="gray.600"
+                <div className="flex flex-row items-center gap-2">
+                  <Button
+                    className="text-muted-foreground"
+                    variant="ghost"
                     onClick={() => setStep(0)}
-                    cursor="pointer"
-                  />
-                  <Heading size="title.md">
+                  >
+                    <ChevronLeftIcon className="size-5 cursor-pointer" />
+                  </Button>
+                  <Heading size="title.md" className="my-auto">
                     When will you reveal your NFTs?
                   </Heading>
-                </HStack>
+                </div>
               </Flex>
-              <SelectReveal form={form} isRevealable={props.isRevealable} />
+              <SelectReveal
+                form={form}
+                canCreateDelayedRevealBatch={props.canCreateDelayedRevealBatch}
+              />
               {form.watch("revealType") && (
                 <>
                   <Checkbox {...form.register("shuffle")} mt={3}>
@@ -296,6 +297,7 @@ export const BatchLazyMint: ComponentWithChildren<BatchLazyMintProps> = (
                   </Checkbox>
                   <Box maxW={{ base: "100%", md: "61%" }}>
                     <TransactionButton
+                      txChainID={props.chainId}
                       mt={4}
                       colorScheme="primary"
                       transactionCount={1}
@@ -331,10 +333,13 @@ export const BatchLazyMint: ComponentWithChildren<BatchLazyMintProps> = (
 
 interface SelectRevealProps {
   form: ReturnType<typeof useBatchLazyMintForm>;
-  isRevealable: boolean;
+  canCreateDelayedRevealBatch: boolean;
 }
 
-const SelectReveal: React.FC<SelectRevealProps> = ({ form, isRevealable }) => {
+const SelectReveal: React.FC<SelectRevealProps> = ({
+  form,
+  canCreateDelayedRevealBatch,
+}) => {
   const [show, setShow] = useState(false);
 
   const imageUrl = useImageFileOrUrl(form.watch("placeHolder.image"));
@@ -356,155 +361,151 @@ const SelectReveal: React.FC<SelectRevealProps> = ({ form, isRevealable }) => {
           description="Collectors will mint your placeholder image, then you reveal at a later time"
           isActive={form.watch("revealType") === "delayed"}
           onClick={() => form.setValue("revealType", "delayed")}
-          disabled={!isRevealable}
+          disabled={!canCreateDelayedRevealBatch}
           disabledText="This contract doesn't implement Delayed Reveal"
         />
       </Flex>
-      <Flex>
-        <Stack spacing={6}>
-          <Stack spacing={3}>
-            {form.watch("revealType") === "delayed" && (
-              <>
-                <Heading size="title.sm">Let&apos;s set a password</Heading>
-                <Alert status="warning" borderRadius="lg">
-                  <AlertIcon />
-                  You&apos;ll need this password to reveal your NFTs. Please
-                  save it somewhere safe.
-                </Alert>
+      <div className="flex flex-col gap-3">
+        {form.watch("revealType") === "delayed" && (
+          <>
+            <Heading size="title.sm">Let&apos;s set a password</Heading>
+            <Alert status="warning" borderRadius="lg">
+              <AlertIcon />
+              You&apos;ll need this password to reveal your NFTs. Please save it
+              somewhere safe.
+            </Alert>
 
-                <Flex
-                  flexDir={{ base: "column", md: "row" }}
-                  gap={{ base: 4, md: 0 }}
-                >
-                  <FormControl
-                    isRequired
-                    isInvalid={
-                      !!form.getFieldState("password", form.formState).error
-                    }
-                    mr={4}
-                  >
-                    <FormLabel>Password</FormLabel>
-                    <InputGroup>
-                      <Input
-                        {...form.register("password")}
-                        placeholder="Choose password"
-                        type={show ? "text" : "password"}
+            <Flex
+              flexDir={{ base: "column", md: "row" }}
+              gap={{ base: 4, md: 0 }}
+            >
+              <FormControl
+                isRequired
+                isInvalid={
+                  !!form.getFieldState("password", form.formState).error
+                }
+                mr={4}
+              >
+                <FormLabel>Password</FormLabel>
+                <InputGroup>
+                  <Input
+                    {...form.register("password")}
+                    placeholder="Choose password"
+                    type={show ? "text" : "password"}
+                  />
+                  <InputRightElement cursor="pointer">
+                    {show ? (
+                      <EyeIcon
+                        onClick={() => setShow(!show)}
+                        className="size-3"
                       />
-                      <InputRightElement cursor="pointer">
-                        <Icon
-                          as={show ? AiFillEye : AiFillEyeInvisible}
-                          onClick={() => setShow(!show)}
-                        />
-                      </InputRightElement>
-                    </InputGroup>
+                    ) : (
+                      <EyeOffIcon
+                        onClick={() => setShow(!show)}
+                        className="size-3"
+                      />
+                    )}
+                  </InputRightElement>
+                </InputGroup>
 
-                    <FormErrorMessage>
-                      {
-                        form.getFieldState("password", form.formState).error
-                          ?.message
-                      }
-                    </FormErrorMessage>
-                  </FormControl>
-                  <FormControl
-                    isRequired
-                    isInvalid={
-                      !!form.getFieldState("confirmPassword", form.formState)
-                        .error
+                <FormErrorMessage>
+                  {
+                    form.getFieldState("password", form.formState).error
+                      ?.message
+                  }
+                </FormErrorMessage>
+              </FormControl>
+              <FormControl
+                isRequired
+                isInvalid={
+                  !!form.getFieldState("confirmPassword", form.formState).error
+                }
+              >
+                <FormLabel>Confirm password</FormLabel>
+                <Input
+                  {...form.register("confirmPassword")}
+                  placeholder="Confirm password"
+                  type="password"
+                />
+                <FormErrorMessage>
+                  {
+                    form.getFieldState("confirmPassword", form.formState).error
+                      ?.message
+                  }
+                </FormErrorMessage>
+              </FormControl>
+            </Flex>
+            <div className="flex flex-col gap-5">
+              <Heading size="title.sm">Placeholder</Heading>
+              <FormControl
+                isInvalid={
+                  !!form.getFieldState("placeHolder.image", form.formState)
+                    .error
+                }
+              >
+                <FormLabel>Image</FormLabel>
+                <Box width={{ base: "auto", md: "350px" }}>
+                  <FileInput
+                    accept={{ "image/*": [] }}
+                    value={imageUrl}
+                    showUploadButton
+                    setValue={(file) =>
+                      form.setValue("placeHolder.image", file)
                     }
-                  >
-                    <FormLabel>Confirm password</FormLabel>
-                    <Input
-                      {...form.register("confirmPassword")}
-                      placeholder="Confirm password"
-                      type="password"
-                    />
-                    <FormErrorMessage>
-                      {
-                        form.getFieldState("confirmPassword", form.formState)
-                          .error?.message
-                      }
-                    </FormErrorMessage>
-                  </FormControl>
-                </Flex>
-                <Stack spacing={5}>
-                  <Heading size="title.sm">Placeholder</Heading>
-                  <FormControl
-                    isInvalid={
-                      !!form.getFieldState("placeHolder.image", form.formState)
-                        .error
-                    }
-                  >
-                    <FormLabel>Image</FormLabel>
-                    <Box width={{ base: "auto", md: "350px" }}>
-                      <FileInput
-                        accept={{ "image/*": [] }}
-                        value={imageUrl}
-                        showUploadButton
-                        setValue={(file) =>
-                          form.setValue("placeHolder.image", file)
-                        }
-                        border="1px solid"
-                        borderColor="gray.200"
-                        borderRadius="md"
-                        transition="all 200ms ease"
-                        _hover={{ shadow: "sm" }}
-                      />
-                    </Box>
-                    <FormHelperText>
-                      You can optionally upload an image as the placeholder.
-                    </FormHelperText>
-                    <FormErrorMessage>
-                      {
-                        form.getFieldState("placeHolder.image", form.formState)
-                          .error?.message
-                      }
-                    </FormErrorMessage>
-                  </FormControl>
-                  <FormControl
-                    isRequired
-                    isInvalid={
-                      !!form.getFieldState("placeHolder.name", form.formState)
-                        .error
-                    }
-                  >
-                    <FormLabel>Name</FormLabel>
-                    <Input
-                      {...form.register("placeHolder.name")}
-                      placeholder="eg. My NFT (Coming soon)"
-                    />
-                    <FormErrorMessage>
-                      {
-                        form.getFieldState("placeHolder.name", form.formState)
-                          .error?.message
-                      }
-                    </FormErrorMessage>
-                  </FormControl>
-                  <FormControl
-                    isInvalid={
-                      !!form.getFieldState("placeHolder.name", form.formState)
-                        .error
-                    }
-                  >
-                    <FormLabel>Description</FormLabel>
-                    <Textarea
-                      {...form.register("placeHolder.description")}
-                      placeholder="eg. Reveal on July 15th!"
-                    />
-                    <FormErrorMessage>
-                      {
-                        form.getFieldState(
-                          "placeHolder.description",
-                          form.formState,
-                        ).error?.message
-                      }
-                    </FormErrorMessage>
-                  </FormControl>
-                </Stack>
-              </>
-            )}
-          </Stack>
-        </Stack>
-      </Flex>
+                    className="rounded border border-border transition-all duration-200"
+                  />
+                </Box>
+                <FormHelperText>
+                  You can optionally upload an image as the placeholder.
+                </FormHelperText>
+                <FormErrorMessage>
+                  {
+                    form.getFieldState("placeHolder.image", form.formState)
+                      .error?.message
+                  }
+                </FormErrorMessage>
+              </FormControl>
+              <FormControl
+                isRequired
+                isInvalid={
+                  !!form.getFieldState("placeHolder.name", form.formState).error
+                }
+              >
+                <FormLabel>Name</FormLabel>
+                <Input
+                  {...form.register("placeHolder.name")}
+                  placeholder="eg. My NFT (Coming soon)"
+                />
+                <FormErrorMessage>
+                  {
+                    form.getFieldState("placeHolder.name", form.formState).error
+                      ?.message
+                  }
+                </FormErrorMessage>
+              </FormControl>
+              <FormControl
+                isInvalid={
+                  !!form.getFieldState("placeHolder.name", form.formState).error
+                }
+              >
+                <FormLabel>Description</FormLabel>
+                <Textarea
+                  {...form.register("placeHolder.description")}
+                  placeholder="eg. Reveal on July 15th!"
+                />
+                <FormErrorMessage>
+                  {
+                    form.getFieldState(
+                      "placeHolder.description",
+                      form.formState,
+                    ).error?.message
+                  }
+                </FormErrorMessage>
+              </FormControl>
+            </div>
+          </>
+        )}
+      </div>
     </Flex>
   );
 };

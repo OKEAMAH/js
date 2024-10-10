@@ -1,10 +1,8 @@
+import { ToolTipLabel } from "@/components/ui/tooltip";
 import {
   Box,
   type BoxProps,
-  Center,
   Flex,
-  HStack,
-  Icon,
   IconButton,
   Image,
   type ImageProps,
@@ -18,19 +16,18 @@ import {
   Thead,
   Tr,
 } from "@chakra-ui/react";
-import type { NFTMetadataInput } from "@thirdweb-dev/sdk";
 import { useImageFileOrUrl } from "hooks/useImageFileOrUrl";
 import { replaceIpfsUrl } from "lib/sdk";
-import { useMemo } from "react";
 import {
-  MdFirstPage,
-  MdLastPage,
-  MdNavigateBefore,
-  MdNavigateNext,
-} from "react-icons/md";
+  ChevronFirstIcon,
+  ChevronLastIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "lucide-react";
+import { useMemo } from "react";
 import { type Column, usePagination, useTable } from "react-table";
+import type { NFTInput } from "thirdweb/utils";
 import { CodeBlock, Text } from "tw-components";
-import { parseDescription } from "utils/parseDescription";
 
 const FileImage: React.FC<ImageProps> = ({ src, ...props }) => {
   const img = useImageFileOrUrl(
@@ -52,9 +49,9 @@ const FileVideo: React.FC<
   return <Box as="video" {...props} src={video} />;
 };
 interface BatchTableProps {
-  data: NFTMetadataInput[];
+  data: NFTInput[];
   portalRef: React.RefObject<HTMLDivElement>;
-  nextTokenIdToMint?: number;
+  nextTokenIdToMint?: bigint;
 }
 
 export const BatchTable: React.FC<BatchTableProps> = ({
@@ -63,11 +60,11 @@ export const BatchTable: React.FC<BatchTableProps> = ({
   nextTokenIdToMint,
 }) => {
   const columns = useMemo(() => {
-    let cols: Column<NFTMetadataInput>[] = [];
+    let cols: Column<NFTInput>[] = [];
     if (nextTokenIdToMint !== undefined) {
       cols = cols.concat({
         Header: "Token ID",
-        accessor: (_row, index) => nextTokenIdToMint + index,
+        accessor: (_row, index) => String(nextTokenIdToMint + BigInt(index)),
       });
     }
 
@@ -104,7 +101,13 @@ export const BatchTable: React.FC<BatchTableProps> = ({
       { Header: "Name", accessor: (row) => row.name },
       {
         Header: "Description",
-        accessor: (row) => parseDescription(row.description),
+        accessor: (row) => (
+          <ToolTipLabel label={row.description}>
+            <p className="line-clamp-6 whitespace-pre-wrap">
+              {row.description}
+            </p>
+          </ToolTipLabel>
+        ),
       },
       {
         Header: "Attributes",
@@ -209,20 +212,19 @@ export const BatchTable: React.FC<BatchTableProps> = ({
           </Tbody>
         </Table>
       </TableContainer>
-
       <Portal containerRef={portalRef}>
-        <Center w="100%">
-          <HStack>
+        <div className="flex w-full items-center justify-center">
+          <div className="flex flex-row items-center gap-2">
             <IconButton
               isDisabled={!canPreviousPage}
               aria-label="first page"
-              icon={<Icon as={MdFirstPage} />}
+              icon={<ChevronFirstIcon className="size-4" />}
               onClick={() => gotoPage(0)}
             />
             <IconButton
               isDisabled={!canPreviousPage}
               aria-label="previous page"
-              icon={<Icon as={MdNavigateBefore} />}
+              icon={<ChevronLeftIcon className="size-4" />}
               onClick={() => previousPage()}
             />
             <Text whiteSpace="nowrap">
@@ -232,13 +234,13 @@ export const BatchTable: React.FC<BatchTableProps> = ({
             <IconButton
               isDisabled={!canNextPage}
               aria-label="next page"
-              icon={<Icon as={MdNavigateNext} />}
+              icon={<ChevronRightIcon className="size-4" />}
               onClick={() => nextPage()}
             />
             <IconButton
               isDisabled={!canNextPage}
               aria-label="last page"
-              icon={<Icon as={MdLastPage} />}
+              icon={<ChevronLastIcon className="size-4" />}
               onClick={() => gotoPage(pageCount - 1)}
             />
 
@@ -254,8 +256,8 @@ export const BatchTable: React.FC<BatchTableProps> = ({
               <option value="250">250</option>
               <option value="500">500</option>
             </Select>
-          </HStack>
-        </Center>
+          </div>
+        </div>
       </Portal>
     </Flex>
   );

@@ -1,3 +1,5 @@
+"use client";
+import { cn } from "@/lib/utils";
 import { CustomConnectWallet } from "@3rdweb-sdk/react/components/connect-wallet";
 import {
   AccountStatus,
@@ -6,22 +8,17 @@ import {
   useApiKeys,
 } from "@3rdweb-sdk/react/hooks/useApi";
 import { useLoggedInUser } from "@3rdweb-sdk/react/hooks/useLoggedInUser";
-import {
-  Flex,
-  HStack,
-  VStack,
-  useBreakpointValue,
-  useColorMode,
-} from "@chakra-ui/react";
+import { Flex, useBreakpointValue } from "@chakra-ui/react";
 import { ChakraNextImage } from "components/Image";
+import { OPSponsoredChains } from "constants/chains";
 import { useTrack } from "hooks/analytics/useTrack";
 import { useLocalStorage } from "hooks/useLocalStorage";
+import { useTheme } from "next-themes";
 import type { StaticImageData } from "next/image";
 import { useRouter } from "next/router";
 import { useEffect, useMemo } from "react";
 import { useActiveWalletChain } from "thirdweb/react";
 import { Button, Card, Heading, Link, LinkButton, Text } from "tw-components";
-import { OPSponsoredChains } from "../../constants/chains";
 
 enum Step {
   Keys = "keys",
@@ -56,7 +53,7 @@ export const OnboardingSteps: React.FC<OnboardingStepsProps> = ({
   const apiKeysQuery = useApiKeys();
   const router = useRouter();
   const trackEvent = useTrack();
-  const { colorMode } = useColorMode();
+  const { theme } = useTheme();
   const { data: credits } = useAccountCredits();
   const opCredit = credits?.find((crd) => crd.name.startsWith("OP -"));
   const [onboardingPaymentMethod, setOnboardingPaymentMethod] = useLocalStorage(
@@ -276,16 +273,17 @@ export const OnboardingSteps: React.FC<OnboardingStepsProps> = ({
       gap={8}
       justifyContent="space-between"
       overflow="hidden"
+      className="bg-muted/50"
     >
-      <VStack
-        gap={2}
-        alignItems="flex-start"
-        p={6}
-        w={rightImageDark && !isMobile ? "60%" : "100%"}
+      <div
+        className={cn(
+          "flex flex-col items-start gap-2 p-6",
+          rightImageDark && !isMobile ? "w-[60%]" : "w-full",
+        )}
       >
         <Heading size="title.sm">{title}</Heading>
         <Text>{description}</Text>
-        <HStack mt={4} alignItems="center">
+        <div className="mt-4 flex flex-row items-center gap-2">
           {isLoggedIn ? (
             <Button
               size="sm"
@@ -311,13 +309,13 @@ export const OnboardingSteps: React.FC<OnboardingStepsProps> = ({
               Skip
             </Button>
           )}
-        </HStack>
-      </VStack>
-      {rightImageDark && !isMobile && colorMode === "dark" && (
-        <ChakraNextImage src={rightImageDark} alt={""} w="50%" priority />
+        </div>
+      </div>
+      {rightImageDark && !isMobile && theme === "dark" && (
+        <ChakraNextImage src={rightImageDark} alt="" w="50%" priority />
       )}
-      {rightImageLight && !isMobile && colorMode === "light" && (
-        <ChakraNextImage src={rightImageLight} alt={""} w="50%" priority />
+      {rightImageLight && !isMobile && theme === "light" && (
+        <ChakraNextImage src={rightImageLight} alt="" w="50%" priority />
       )}
     </Card>
   );

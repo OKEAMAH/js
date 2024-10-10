@@ -1,21 +1,28 @@
 import type { Address } from "abitype";
-import type { BaseTransactionOptions } from "../../../transaction/types.js";
+import type {
+  BaseTransactionOptions,
+  WithOverrides,
+} from "../../../transaction/types.js";
 import { toUnits } from "../../../utils/units.js";
 
 import type { Prettify } from "../../../utils/type-utils.js";
 import { transferFrom as generatedTransferFrom } from "../__generated__/IERC20/write/transferFrom.js";
+
 /**
  * Represents the parameters for the `transferFrom` function.
+ * @extension ERC20
  */
 export type TransferFromParams = Prettify<
-  { to: Address; from: Address } & (
-    | {
-        amount: number | string;
-      }
-    | {
-        amountWei: bigint;
-      }
-  )
+  WithOverrides<
+    { to: Address; from: Address } & (
+      | {
+          amount: number | string;
+        }
+      | {
+          amountWei: bigint;
+        }
+    )
+  >
 >;
 
 /**
@@ -64,6 +71,7 @@ export function transferFrom(
             amountWei: amount,
             tokenAddress: options.contract.address,
           },
+          ...options.overrides,
         },
       } as const;
     },

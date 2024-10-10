@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -45,19 +44,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `add` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `add` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `add` method is supported.
  * @extension FARCASTER
  * @example
  * ```ts
  * import { isAddSupported } from "thirdweb/extensions/farcaster";
  *
- * const supported = await isAddSupported(contract);
+ * const supported = isAddSupported(["0x..."]);
  * ```
  */
-export async function isAddSupported(contract: ThirdwebContract<any>) {
+export function isAddSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -69,7 +68,7 @@ export async function isAddSupported(contract: ThirdwebContract<any>) {
  * @extension FARCASTER
  * @example
  * ```ts
- * import { encodeAddParams } "thirdweb/extensions/farcaster";
+ * import { encodeAddParams } from "thirdweb/extensions/farcaster";
  * const result = encodeAddParams({
  *  keyType: ...,
  *  key: ...,
@@ -94,7 +93,7 @@ export function encodeAddParams(options: AddParams) {
  * @extension FARCASTER
  * @example
  * ```ts
- * import { encodeAdd } "thirdweb/extensions/farcaster";
+ * import { encodeAdd } from "thirdweb/extensions/farcaster";
  * const result = encodeAdd({
  *  keyType: ...,
  *  key: ...,
@@ -117,6 +116,7 @@ export function encodeAdd(options: AddParams) {
  * @extension FARCASTER
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { add } from "thirdweb/extensions/farcaster";
  *
  * const transaction = add({
@@ -131,8 +131,7 @@ export function encodeAdd(options: AddParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function add(

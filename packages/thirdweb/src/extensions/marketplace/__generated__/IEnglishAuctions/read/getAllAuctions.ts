@@ -4,7 +4,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -93,21 +92,18 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `getAllAuctions` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `getAllAuctions` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `getAllAuctions` method is supported.
  * @extension MARKETPLACE
  * @example
  * ```ts
  * import { isGetAllAuctionsSupported } from "thirdweb/extensions/marketplace";
- *
- * const supported = await isGetAllAuctionsSupported(contract);
+ * const supported = isGetAllAuctionsSupported(["0x..."]);
  * ```
  */
-export async function isGetAllAuctionsSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isGetAllAuctionsSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -119,7 +115,7 @@ export async function isGetAllAuctionsSupported(
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeGetAllAuctionsParams } "thirdweb/extensions/marketplace";
+ * import { encodeGetAllAuctionsParams } from "thirdweb/extensions/marketplace";
  * const result = encodeGetAllAuctionsParams({
  *  startId: ...,
  *  endId: ...,
@@ -137,7 +133,7 @@ export function encodeGetAllAuctionsParams(options: GetAllAuctionsParams) {
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeGetAllAuctions } "thirdweb/extensions/marketplace";
+ * import { encodeGetAllAuctions } from "thirdweb/extensions/marketplace";
  * const result = encodeGetAllAuctions({
  *  startId: ...,
  *  endId: ...,
@@ -161,7 +157,7 @@ export function encodeGetAllAuctions(options: GetAllAuctionsParams) {
  * @example
  * ```ts
  * import { decodeGetAllAuctionsResult } from "thirdweb/extensions/marketplace";
- * const result = decodeGetAllAuctionsResult("...");
+ * const result = decodeGetAllAuctionsResultResult("...");
  * ```
  */
 export function decodeGetAllAuctionsResult(result: Hex) {

@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -111,21 +110,21 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `validatePaymasterUserOp` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `validatePaymasterUserOp` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `validatePaymasterUserOp` method is supported.
  * @extension ERC4337
  * @example
  * ```ts
  * import { isValidatePaymasterUserOpSupported } from "thirdweb/extensions/erc4337";
  *
- * const supported = await isValidatePaymasterUserOpSupported(contract);
+ * const supported = isValidatePaymasterUserOpSupported(["0x..."]);
  * ```
  */
-export async function isValidatePaymasterUserOpSupported(
-  contract: ThirdwebContract<any>,
+export function isValidatePaymasterUserOpSupported(
+  availableSelectors: string[],
 ) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -137,7 +136,7 @@ export async function isValidatePaymasterUserOpSupported(
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeValidatePaymasterUserOpParams } "thirdweb/extensions/erc4337";
+ * import { encodeValidatePaymasterUserOpParams } from "thirdweb/extensions/erc4337";
  * const result = encodeValidatePaymasterUserOpParams({
  *  userOp: ...,
  *  userOpHash: ...,
@@ -162,7 +161,7 @@ export function encodeValidatePaymasterUserOpParams(
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeValidatePaymasterUserOp } "thirdweb/extensions/erc4337";
+ * import { encodeValidatePaymasterUserOp } from "thirdweb/extensions/erc4337";
  * const result = encodeValidatePaymasterUserOp({
  *  userOp: ...,
  *  userOpHash: ...,
@@ -188,6 +187,7 @@ export function encodeValidatePaymasterUserOp(
  * @extension ERC4337
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { validatePaymasterUserOp } from "thirdweb/extensions/erc4337";
  *
  * const transaction = validatePaymasterUserOp({
@@ -201,8 +201,7 @@ export function encodeValidatePaymasterUserOp(
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function validatePaymasterUserOp(

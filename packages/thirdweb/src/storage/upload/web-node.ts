@@ -15,10 +15,7 @@ export async function uploadBatch<const TFiles extends UploadableFile[]>(
     `https://${getThirdwebDomains().storage}/ipfs/upload`,
     {
       method: "POST",
-      headers: {
-        ...headers,
-        // ...form.getHeaders(),
-      },
+      headers,
       body: form,
     },
   );
@@ -28,6 +25,16 @@ export async function uploadBatch<const TFiles extends UploadableFile[]>(
     if (res.status === 401) {
       throw new Error(
         "Unauthorized - You don't have permission to use this service.",
+      );
+    }
+    if (res.status === 402) {
+      throw new Error(
+        "You have reached your storage limit. Please add a valid payment method to continue using the service.",
+      );
+    }
+    if (res.status === 403) {
+      throw new Error(
+        "Forbidden - You don't have permission to use this service.",
       );
     }
     throw new Error(

@@ -1,148 +1,83 @@
+"use client";
+
 import {
-  useCanExecuteProposal,
-  useCastVoteMutation,
-  useExecuteProposalMutation,
-  useHasVotedOnProposal,
-  useTokensDelegated,
+  tokensDelegated,
+  votingTokenDecimals,
 } from "@3rdweb-sdk/react/hooks/useVote";
 import { Flex, Icon } from "@chakra-ui/react";
-import {
-  ProposalState,
-  type Proposal as ProposalType,
-  type Vote,
-  VoteType,
-} from "@thirdweb-dev/sdk";
 import { TransactionButton } from "components/buttons/TransactionButton";
-import { utils } from "ethers";
-import { useTxNotifications } from "hooks/useTxNotifications";
-import { useCallback, useMemo } from "react";
+import { useState } from "react";
 import { FiCheck, FiMinus, FiX } from "react-icons/fi";
+import { toast } from "sonner";
+import { type ThirdwebContract, toTokens } from "thirdweb";
+import * as VoteExt from "thirdweb/extensions/vote";
+import {
+  useActiveAccount,
+  useReadContract,
+  useSendAndConfirmTransaction,
+} from "thirdweb/react";
 import { Button, Card, Text } from "tw-components";
 
-interface IProposalMetadata {
-  color: string;
-  title: string;
-}
-
-const ProposalStateToMetadataMap: Record<ProposalState, IProposalMetadata> = {
-  [ProposalState.Pending]: {
-    // Vote hasnt started yet
-    color: "gray.500",
-    title: "Pending",
-  },
-  [ProposalState.Active]: {
-    // Vote is ongoing
-    color: "primary.500",
-    title: "Active",
-  },
-  [ProposalState.Canceled]: {
-    // Proposal cancelled before vote was closed
-    color: "red.500",
-    title: "Canceled",
-  },
-  [ProposalState.Defeated]: {
-    // Proposal was defeated
-    color: "red.500",
-    title: "Defeated",
-  },
-  [ProposalState.Succeeded]: {
-    // Proposal was successful
-    color: "green.500",
-    title: "Succeeded",
-  },
-  [ProposalState.Queued]: {
-    // Proposal execution transaction is pending
-    color: "yellow.500",
-    title: "Queued",
-  },
-  [ProposalState.Expired]: {
-    // Proposal expired?
-    color: "gray.500",
-    title: "Expired",
-  },
-  [ProposalState.Executed]: {
-    // Proposal has been executed
-    color: "green.500",
-    title: "Executed",
-  },
+const ProposalStateToMetadataMap: Record<
+  keyof typeof VoteExt.ProposalState,
+  string
+> = {
+  pending: "gray.500",
+  active: "primary.500",
+  canceled: "red.500",
+  defeated: "red.500",
+  succeeded: "green.500",
+  queued: "yellow.500",
+  expired: "gray.500",
+  executed: "green.500",
 };
 
 interface IProposal {
-  proposal: ProposalType;
-  contract?: Vote;
+  proposal: VoteExt.ProposalItem;
+  contract: ThirdwebContract;
 }
 
 export const Proposal: React.FC<IProposal> = ({ proposal, contract }) => {
-  const { data: hasVoted, isLoading: hasVotedLoading } = useHasVotedOnProposal(
+  const account = useActiveAccount();
+  const hasVotedQuery = useReadContract(VoteExt.hasVoted, {
     contract,
-    proposal.proposalId.toString(),
-  );
-  const { data: canExecute } = useCanExecuteProposal(
-    contract,
-    proposal.proposalId.toString(),
-  );
-  const { data: delegated } = useTokensDelegated(contract);
-  const { mutate: execute, isLoading: isExecuting } =
-    useExecuteProposalMutation(contract, proposal.proposalId.toString());
-  const {
-    mutate: vote,
-    isLoading: isVoting,
-    variables,
-  } = useCastVoteMutation(contract, proposal.proposalId.toString());
-  const votes = useMemo(() => {
-    return {
-      for: Number.parseFloat(
-        utils.formatUnits(
-          proposal.votes.find((voteData) => voteData.type === VoteType.For)
-            ?.count || 0,
-          18,
-        ),
-      ),
-      against: Number.parseFloat(
-        utils.formatUnits(
-          proposal.votes.find((voteData) => voteData.type === VoteType.Against)
-            ?.count || 0,
-          18,
-        ),
-      ),
-      abstain: Number.parseFloat(
-        utils.formatUnits(
-          proposal.votes.find((voteData) => voteData.type === VoteType.Abstain)
-            ?.count || 0,
-          18,
-        ),
-      ),
-    };
-  }, [proposal]);
-
-  const { onSuccess: castVoteSuccess, onError: castVoteError } =
-    useTxNotifications("Vote cast successfully", "Error casting vote");
-
-  const castVote = useCallback(
-    (voteType: VoteType) => {
-      vote(
-        { voteType },
-        {
-          onSuccess: castVoteSuccess,
-          onError: castVoteError,
-        },
-      );
+    account: account?.address || "",
+    proposalId: proposal.proposalId,
+    queryOptions: {
+      enabled: !!account,
     },
-    [castVoteError, castVoteSuccess, vote],
-  );
+  });
+  const canExecuteQuery = useReadContract(VoteExt.canExecute, {
+    contract,
+    proposalId: proposal.proposalId,
+  });
+  const decimalQuery = useReadContract(votingTokenDecimals, {
+    contract,
+  });
+  const tokensDelegatedQuery = useReadContract(tokensDelegated, {
+    contract,
+    account,
+    queryOptions: { enabled: !!account },
+  });
 
-  const { onSuccess: executeSuccess, onError: executeError } =
-    useTxNotifications(
-      "Proposal executed successfully",
-      "Error executing proposal",
-    );
+  const sendTx = useSendAndConfirmTransaction();
 
-  const executeProposal = useCallback(() => {
-    execute(undefined, {
-      onSuccess: executeSuccess,
-      onError: executeError,
+  const [voteType, setVoteType] = useState<VoteExt.VoteType | null>(null);
+
+  function castVote(vote: VoteExt.VoteType) {
+    setVoteType(vote);
+    const castVoteTx = VoteExt.castVote({
+      contract,
+      proposalId: proposal.proposalId,
+      support: vote,
     });
-  }, [execute, executeError, executeSuccess]);
+    toast.promise(sendTx.mutateAsync(castVoteTx), {
+      loading: "Casting vote...",
+      success: "Vote cast successfully",
+      error: "Error casting vote",
+      onAutoClose: () => setVoteType(null),
+    });
+  }
 
   return (
     <Card key={proposal.proposalId.toString()}>
@@ -151,10 +86,14 @@ export const Proposal: React.FC<IProposal> = ({ proposal, contract }) => {
           paddingY="0px"
           paddingX="16px"
           borderRadius="25px"
-          bg={ProposalStateToMetadataMap[proposal.state].color}
+          bg={
+            ProposalStateToMetadataMap[
+              proposal.stateLabel as keyof typeof VoteExt.ProposalState
+            ] || "gray.500"
+          }
         >
           <Text color="white">
-            {ProposalStateToMetadataMap[proposal.state].title}
+            {`${proposal.stateLabel?.charAt(0).toUpperCase()}${proposal.stateLabel?.slice(1)}`}
           </Text>
         </Flex>
       </Flex>
@@ -166,67 +105,91 @@ export const Proposal: React.FC<IProposal> = ({ proposal, contract }) => {
         {proposal.proposer}
       </Text>
 
-      {(votes.for > 0 || votes.against > 0 || votes.abstain > 0) && (
+      {(proposal.votes.for > 0n ||
+        proposal.votes.against > 0n ||
+        proposal.votes.abstain > 0n) && (
         <>
           <Text mt="16px">
-            <strong>For:</strong> {votes.for}
+            <strong>For:</strong>{" "}
+            {decimalQuery.isPending
+              ? "Loading..."
+              : toTokens(proposal.votes.for, decimalQuery.data || 18)}
           </Text>
           <Text>
-            <strong>Against:</strong> {votes.against}
+            <strong>Against:</strong>{" "}
+            {decimalQuery.isPending
+              ? "Loading..."
+              : toTokens(proposal.votes.against, decimalQuery.data || 18)}
           </Text>
           <Text>
-            <strong>Abstained:</strong> {votes.abstain}
+            <strong>Abstained:</strong>{" "}
+            {decimalQuery.isPending
+              ? "Loading..."
+              : toTokens(proposal.votes.abstain, decimalQuery.data || 18)}
           </Text>
         </>
       )}
 
-      {proposal.state === ProposalState.Active &&
-      !hasVoted &&
-      !hasVotedLoading &&
-      delegated ? (
+      {proposal.state === VoteExt.ProposalState.active &&
+      !hasVotedQuery.data &&
+      !hasVotedQuery.isPending &&
+      tokensDelegatedQuery.data ? (
         <Flex mt="24px" gap={2}>
           <TransactionButton
+            txChainID={contract.chain.id}
             size="sm"
             transactionCount={1}
             rightIcon={<Icon as={FiCheck} />}
             onClick={() => castVote(1)}
             colorScheme="green"
-            isDisabled={isVoting && variables?.voteType !== 1}
-            isLoading={isVoting && variables?.voteType === 1}
+            isDisabled={sendTx.isPending && voteType !== 1}
+            isLoading={sendTx.isPending && voteType === 1}
           >
             Approve
           </TransactionButton>
           <TransactionButton
+            txChainID={contract.chain.id}
             size="sm"
             transactionCount={1}
             rightIcon={<Icon as={FiX} />}
             onClick={() => castVote(0)}
             colorScheme="red"
-            isDisabled={isVoting && variables?.voteType !== 0}
-            isLoading={isVoting && variables?.voteType === 0}
+            isDisabled={sendTx.isPending && voteType !== 0}
+            isLoading={sendTx.isPending && voteType === 0}
           >
             Against
           </TransactionButton>
           <TransactionButton
+            txChainID={contract.chain.id}
             colorScheme="blackAlpha"
             size="sm"
             transactionCount={1}
             rightIcon={<Icon as={FiMinus} />}
             onClick={() => castVote(2)}
-            isDisabled={isVoting && variables?.voteType !== 2}
-            isLoading={isVoting && variables?.voteType === 2}
+            isDisabled={sendTx.isPending && voteType !== 2}
+            isLoading={sendTx.isPending && voteType === 2}
           >
             Abstain
           </TransactionButton>
         </Flex>
       ) : (
-        canExecute && (
+        canExecuteQuery.data && (
           <Button
             colorScheme="primary"
             size="sm"
             leftIcon={<Icon as={FiCheck} />}
-            onClick={executeProposal}
-            isLoading={isExecuting}
+            onClick={() => {
+              const executeTx = VoteExt.executeProposal({
+                contract,
+                proposalId: proposal.proposalId,
+              });
+              toast.promise(sendTx.mutateAsync(executeTx), {
+                loading: "Executing proposal...",
+                success: "Proposal executed successfully",
+                error: "Error executing proposal",
+              });
+            }}
+            isLoading={sendTx.isPending}
             mt="24px"
           >
             Execute

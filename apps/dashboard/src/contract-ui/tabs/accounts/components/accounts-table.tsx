@@ -1,26 +1,21 @@
-import { useDashboardEVMChainId } from "@3rdweb-sdk/react";
-import {
-  Center,
-  Flex,
-  Icon,
-  IconButton,
-  Select,
-  Skeleton,
-} from "@chakra-ui/react";
+"use client";
+
+import { useDashboardRouter } from "@/lib/DashboardRouter";
+import { Flex, IconButton, Select, Skeleton } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { TWTable } from "components/shared/TWTable";
-import { useRouter } from "next/router";
-import { useMemo, useState } from "react";
 import {
-  MdFirstPage,
-  MdLastPage,
-  MdNavigateBefore,
-  MdNavigateNext,
-} from "react-icons/md";
+  ChevronFirstIcon,
+  ChevronLastIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import type { ThirdwebContract } from "thirdweb";
 import { getAccounts, totalAccounts } from "thirdweb/extensions/erc4337";
 import { useReadContract } from "thirdweb/react";
 import { Text, TrackedCopyButton } from "tw-components";
+import { useChainSlug } from "../../../../hooks/chains/chainSlug";
 
 const columnHelper = createColumnHelper<{ account: string }>();
 
@@ -46,8 +41,8 @@ type AccountsTableProps = {
 };
 
 export const AccountsTable: React.FC<AccountsTableProps> = ({ contract }) => {
-  const router = useRouter();
-  const network = useDashboardEVMChainId();
+  const router = useDashboardRouter();
+  const chainSlug = useChainSlug(contract.chain.id);
 
   const [currentPage, setCurrentPage] = useState(0);
   // default page size of 25
@@ -94,25 +89,25 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({ contract }) => {
         title="account"
         columns={columns}
         data={data.map((account) => ({ account }))}
-        isLoading={accountsQuery.isLoading}
+        isPending={accountsQuery.isPending}
         isFetched={accountsQuery.isFetched}
         onRowClick={(row) => {
-          router.push(`/${network}/${row.account}`);
+          router.push(`/${chainSlug}/${row.account}`);
         }}
       />
       {/* pagination */}
-      <Center w="100%">
+      <div className="flex w-full items-center justify-center">
         <Flex gap={2} direction="row" align="center">
           <IconButton
-            isDisabled={totalAccountsQuery.isLoading}
+            isDisabled={totalAccountsQuery.isPending}
             aria-label="first page"
-            icon={<Icon as={MdFirstPage} />}
+            icon={<ChevronFirstIcon className="size-4" />}
             onClick={() => setCurrentPage(0)}
           />
           <IconButton
-            isDisabled={totalAccountsQuery.isLoading || !canPreviousPage}
+            isDisabled={totalAccountsQuery.isPending || !canPreviousPage}
             aria-label="previous page"
-            icon={<Icon as={MdNavigateBefore} />}
+            icon={<ChevronLeftIcon className="size-4" />}
             onClick={() => {
               setCurrentPage((curr) => {
                 if (curr > 0) {
@@ -133,9 +128,9 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({ contract }) => {
             </Skeleton>
           </Text>
           <IconButton
-            isDisabled={totalAccountsQuery.isLoading || !canNextPage}
+            isDisabled={totalAccountsQuery.isPending || !canNextPage}
             aria-label="next page"
-            icon={<Icon as={MdNavigateNext} />}
+            icon={<ChevronRightIcon className="size-4" />}
             onClick={() =>
               setCurrentPage((curr) => {
                 if (curr < totalPages - 1) {
@@ -146,9 +141,9 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({ contract }) => {
             }
           />
           <IconButton
-            isDisabled={totalAccountsQuery.isLoading || !canNextPage}
+            isDisabled={totalAccountsQuery.isPending || !canNextPage}
             aria-label="last page"
-            icon={<Icon as={MdLastPage} />}
+            icon={<ChevronLastIcon className="size-4" />}
             onClick={() => setCurrentPage(totalPages - 1)}
           />
 
@@ -163,7 +158,7 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({ contract }) => {
               setPageSize(newPageSize);
             }}
             value={pageSize}
-            isDisabled={totalAccountsQuery.isLoading}
+            isDisabled={totalAccountsQuery.isPending}
           >
             <option value="25">25</option>
             <option value="50">50</option>
@@ -172,7 +167,7 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({ contract }) => {
             <option value="500">500</option>
           </Select>
         </Flex>
-      </Center>
+      </div>
     </Flex>
   );
 };

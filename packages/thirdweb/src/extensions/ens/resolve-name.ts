@@ -9,6 +9,9 @@ import { withCache } from "../../utils/promise/withCache.js";
 import { reverse } from "./__generated__/UniversalResolver/read/reverse.js";
 import { UNIVERSAL_RESOLVER_ADDRESS } from "./constants.js";
 
+/**
+ * @extension ENS
+ */
 export type ResolveNameOptions = {
   client: ThirdwebClient;
   address: Address;
@@ -62,7 +65,7 @@ export async function resolveName(options: ResolveNameOptions) {
       return name;
     },
     {
-      cacheKey: `ens:name:${address}`,
+      cacheKey: `ens:name:${resolverChain?.id || 1}:${address}`,
       // 1min cache
       cacheTime: 60 * 1000,
     },

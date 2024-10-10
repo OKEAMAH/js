@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -27,21 +26,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `getSenderAddress` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `getSenderAddress` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `getSenderAddress` method is supported.
  * @extension ERC4337
  * @example
  * ```ts
  * import { isGetSenderAddressSupported } from "thirdweb/extensions/erc4337";
  *
- * const supported = await isGetSenderAddressSupported(contract);
+ * const supported = isGetSenderAddressSupported(["0x..."]);
  * ```
  */
-export async function isGetSenderAddressSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isGetSenderAddressSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -53,7 +50,7 @@ export async function isGetSenderAddressSupported(
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeGetSenderAddressParams } "thirdweb/extensions/erc4337";
+ * import { encodeGetSenderAddressParams } from "thirdweb/extensions/erc4337";
  * const result = encodeGetSenderAddressParams({
  *  initCode: ...,
  * });
@@ -70,7 +67,7 @@ export function encodeGetSenderAddressParams(options: GetSenderAddressParams) {
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeGetSenderAddress } "thirdweb/extensions/erc4337";
+ * import { encodeGetSenderAddress } from "thirdweb/extensions/erc4337";
  * const result = encodeGetSenderAddress({
  *  initCode: ...,
  * });
@@ -92,6 +89,7 @@ export function encodeGetSenderAddress(options: GetSenderAddressParams) {
  * @extension ERC4337
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { getSenderAddress } from "thirdweb/extensions/erc4337";
  *
  * const transaction = getSenderAddress({
@@ -103,8 +101,7 @@ export function encodeGetSenderAddress(options: GetSenderAddressParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function getSenderAddress(

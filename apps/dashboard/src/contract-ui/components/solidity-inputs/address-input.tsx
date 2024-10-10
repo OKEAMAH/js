@@ -1,9 +1,11 @@
-import { Box, Flex, Icon, Input, Spinner } from "@chakra-ui/react";
+"use client";
+
+import { Box, Flex, Input, Spinner } from "@chakra-ui/react";
 import { useEns } from "components/contract-components/hooks";
-import { utils } from "ethers";
+import { CheckIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { FiCheck } from "react-icons/fi";
 import { useActiveAccount } from "thirdweb/react";
+import { isAddress } from "thirdweb/utils";
 import { FormHelperText } from "tw-components";
 import type { SolidityInputProps } from ".";
 import { validateAddress } from "./helpers";
@@ -14,8 +16,9 @@ export const SolidityAddressInput: React.FC<SolidityInputProps> = ({
 }) => {
   const { name, ...restOfInputProps } = inputProps;
   const inputName = name as string;
+  const [_localInput, setLocalInput] = useState<string | undefined>();
   const inputNameWatch = form.watch(inputName);
-  const [localInput, setLocalInput] = useState(inputNameWatch);
+  const localInput = _localInput === undefined ? inputNameWatch : _localInput;
   const address = useActiveAccount()?.address;
 
   const ensQuery = useEns(localInput);
@@ -25,7 +28,7 @@ export const SolidityAddressInput: React.FC<SolidityInputProps> = ({
   const handleChange = (value: string) => {
     setLocalInput(value);
     // if it's an address we can set it immediately
-    if (utils.isAddress(value)) {
+    if (isAddress(value)) {
       setValue(inputName, value, { shouldDirty: true });
       clearErrors(inputName);
     } else {
@@ -86,7 +89,7 @@ export const SolidityAddressInput: React.FC<SolidityInputProps> = ({
   );
 
   const ensFound = useMemo(
-    () => utils.isAddress(localInput) && !hasError && ensQuery?.data?.ensName,
+    () => isAddress(localInput) && !hasError && ensQuery?.data?.ensName,
     [ensQuery?.data?.ensName, hasError, localInput],
   );
 
@@ -98,6 +101,24 @@ export const SolidityAddressInput: React.FC<SolidityInputProps> = ({
       setLocalInput(inputNameWatch);
     }
   }, [inputNameWatch, localInput, address]);
+
+  const helperTextLeft = resolvingEns ? (
+    <Spinner boxSize={3} mr={1} size="xs" speed="0.6s" />
+  ) : resolvedAddress || ensFound ? (
+    <CheckIcon className="size-3 text-green-500" />
+  ) : null;
+
+  const helperTextRight = resolvingEns ? (
+    "Resolving ENS..."
+  ) : resolvedAddress ? (
+    <Box as="span" fontFamily="mono">
+      {ensQuery?.data?.address}
+    </Box>
+  ) : ensFound ? (
+    <Box as="span" fontFamily="mono">
+      {ensQuery?.data?.ensName}
+    </Box>
+  ) : null;
 
   return (
     <>
@@ -111,25 +132,11 @@ export const SolidityAddressInput: React.FC<SolidityInputProps> = ({
         value={(localInput ?? inputNameWatch) || ""}
       />
 
-      {hasError ? null : (
+      {!hasError && (helperTextLeft || helperTextRight) && (
         <FormHelperText>
           <Flex gap={1} align="center">
-            {resolvingEns ? (
-              <Spinner boxSize={3} mr={1} size="xs" speed="0.6s" />
-            ) : resolvedAddress || ensFound ? (
-              <Icon boxSize={3} as={FiCheck} color="green.500" />
-            ) : null}
-            {resolvingEns ? (
-              "Resolving ENS..."
-            ) : resolvedAddress ? (
-              <Box as="span" fontFamily="mono">
-                {ensQuery?.data?.address}
-              </Box>
-            ) : ensFound ? (
-              <Box as="span" fontFamily="mono">
-                {ensQuery?.data?.ensName}
-              </Box>
-            ) : null}
+            {helperTextLeft}
+            {helperTextRight}
           </Flex>
         </FormHelperText>
       )}

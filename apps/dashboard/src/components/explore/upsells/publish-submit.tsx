@@ -1,97 +1,83 @@
-import { ButtonGroup, Flex, useColorMode } from "@chakra-ui/react";
-import { ChakraNextImage } from "components/Image";
-import { Heading, LinkButton, Text, TrackedLink } from "tw-components";
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { TrackedLinkTW } from "@/components/ui/tracked-link";
+import Image from "next/image";
 
 export const PublishUpsellCard: React.FC = () => {
-  const { colorMode } = useColorMode();
-
   return (
-    <Flex
-      borderRadius="3xl"
-      border="1px solid rgba(255, 255, 255, 0.1);"
-      p={{ base: 8, md: 10 }}
-      gap={12}
-      bg="linear-gradient(158.84deg, rgba(255, 255, 255, 0.05) 13.95%, rgba(255, 255, 255, 0) 38.68%)"
-      bgColor={colorMode === "dark" ? "transparent" : "backgroundHighlight"}
-    >
-      <Flex flexDir="column" gap={6}>
-        <Heading>Accelerate your protocol&apos;s growth.</Heading>
-        <Text>
+    <div className="flex gap-10 rounded-xl border border-border bg-muted/50 p-8 shadow-lg md:p-10">
+      <div className="flex flex-col gap-6">
+        <h2 className="font-bold text-3xl tracking-tigher">
+          Accelerate your protocol's growth
+        </h2>
+
+        <p className="text-muted-foreground">
           Publishing your contract is the best way to get your contracts in
           front of our 70k+ community of web3 developers.
-        </Text>
-        <Flex gap={2}>
-          <ChakraNextImage
-            boxSize={6}
-            src={require("/public/assets/product-pages/publish/hero-icon-1.png")}
+        </p>
+
+        <div className="flex gap-2">
+          <Image
+            className="hidden size-6 md:block"
+            src={require("../../../../public/assets/product-pages/publish/hero-icon-1.png")}
             alt=""
           />
 
-          <Text>
-            <Text fontWeight="bold" as="span">
+          <p className="text-muted-foreground">
+            <span className="font-semibold text-foreground">
               Save development time.{" "}
-            </Text>
+            </span>
             Focus on protocol development and save time by not having to build
             middleware layer yourself.
-          </Text>
-        </Flex>
-        <Flex gap={2}>
-          <ChakraNextImage
-            boxSize={6}
-            src={require("/public/assets/product-pages/publish/hero-icon-2.png")}
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <Image
+            className="hidden size-6 md:block"
+            src={require("../../../../public/assets/product-pages/publish/hero-icon-2.png")}
             alt=""
           />
-          <Text>
-            <Text fontWeight="bold" as="span">
+          <p className="text-muted-foreground">
+            <span className="font-semibold text-foreground">
               Shareable landing page.{" "}
-            </Text>
+            </span>
             By publishing your contract, your contracts become easily shareable
             with a landing page for your contract.
-          </Text>
-        </Flex>
-        <ButtonGroup size="size" spacing={4}>
-          <LinkButton
-            as={TrackedLink}
-            {...{
-              category: "publish_upsell",
-              label: "contact_us",
-            }}
-            bg="accent.900"
-            color="accent.100"
-            borderColor="accent.900"
-            borderWidth="1px"
-            href="/contact-us"
-            noIcon
-            _hover={{
-              bg: "transparent",
-              color: "accent.900",
-            }}
-          >
-            Get In Touch
-          </LinkButton>
-          <LinkButton
-            as={TrackedLink}
-            {...{
-              category: "publish_upsell",
-              label: "learn_more",
-            }}
-            variant="ghost"
-            href="https://portal.thirdweb.com/contracts/publish/overview"
-            isExternal
-            noIcon
-            borderColor="borderColor"
-            borderWidth="1px"
-          >
-            Learn More
-          </LinkButton>
-        </ButtonGroup>
-      </Flex>
-      <ChakraNextImage
-        display={{ base: "none", md: colorMode === "dark" ? "block" : "none" }}
-        w="40%"
+          </p>
+        </div>
+
+        <div className="mt-auto flex gap-2 pt-4">
+          <Button asChild>
+            <TrackedLinkTW
+              category="publish_upsell"
+              label="contact_us"
+              href="/contact-us"
+              target="_blank"
+            >
+              Get In Touch
+            </TrackedLinkTW>
+          </Button>
+
+          <Button asChild variant="outline">
+            <TrackedLinkTW
+              category="publish_upsell"
+              label="learn_more"
+              target="_blank"
+              href="https://portal.thirdweb.com/contracts/publish/overview"
+            >
+              Learn More
+            </TrackedLinkTW>
+          </Button>
+        </div>
+      </div>
+      <Image
+        className="hidden w-[40%] grayscale invert md:block dark:filter-none"
+        draggable={false}
         src={require("../../../../public/assets/landingpage/explore-featured.png")}
         alt=""
       />
-    </Flex>
+    </div>
   );
 };

@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -14,37 +13,35 @@ import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
  */
 export type InitializeParams = WithOverrides<{
   defaultAdmin: AbiParameterToPrimitiveType<{
-    name: "_defaultAdmin";
     type: "address";
-    internalType: "address";
+    name: "_defaultAdmin";
   }>;
 }>;
 
 export const FN_SELECTOR = "0xc4d66de8" as const;
 const FN_INPUTS = [
   {
-    name: "_defaultAdmin",
     type: "address",
-    internalType: "address",
+    name: "_defaultAdmin",
   },
 ] as const;
 const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `initialize` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `initialize` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `initialize` method is supported.
  * @extension AIRDROP
  * @example
  * ```ts
  * import { isInitializeSupported } from "thirdweb/extensions/airdrop";
  *
- * const supported = await isInitializeSupported(contract);
+ * const supported = isInitializeSupported(["0x..."]);
  * ```
  */
-export async function isInitializeSupported(contract: ThirdwebContract<any>) {
+export function isInitializeSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -56,7 +53,7 @@ export async function isInitializeSupported(contract: ThirdwebContract<any>) {
  * @extension AIRDROP
  * @example
  * ```ts
- * import { encodeInitializeParams } "thirdweb/extensions/airdrop";
+ * import { encodeInitializeParams } from "thirdweb/extensions/airdrop";
  * const result = encodeInitializeParams({
  *  defaultAdmin: ...,
  * });
@@ -73,7 +70,7 @@ export function encodeInitializeParams(options: InitializeParams) {
  * @extension AIRDROP
  * @example
  * ```ts
- * import { encodeInitialize } "thirdweb/extensions/airdrop";
+ * import { encodeInitialize } from "thirdweb/extensions/airdrop";
  * const result = encodeInitialize({
  *  defaultAdmin: ...,
  * });
@@ -95,6 +92,7 @@ export function encodeInitialize(options: InitializeParams) {
  * @extension AIRDROP
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { initialize } from "thirdweb/extensions/airdrop";
  *
  * const transaction = initialize({
@@ -106,8 +104,7 @@ export function encodeInitialize(options: InitializeParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function initialize(

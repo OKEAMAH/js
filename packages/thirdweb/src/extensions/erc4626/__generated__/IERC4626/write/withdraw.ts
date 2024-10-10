@@ -6,71 +6,54 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
  * Represents the parameters for the "withdraw" function.
  */
 export type WithdrawParams = WithOverrides<{
-  assets: AbiParameterToPrimitiveType<{
-    name: "assets";
-    type: "uint256";
-    internalType: "uint256";
-  }>;
-  receiver: AbiParameterToPrimitiveType<{
-    name: "receiver";
-    type: "address";
-    internalType: "address";
-  }>;
-  owner: AbiParameterToPrimitiveType<{
-    name: "owner";
-    type: "address";
-    internalType: "address";
-  }>;
+  assets: AbiParameterToPrimitiveType<{ type: "uint256"; name: "assets" }>;
+  receiver: AbiParameterToPrimitiveType<{ type: "address"; name: "receiver" }>;
+  owner: AbiParameterToPrimitiveType<{ type: "address"; name: "owner" }>;
 }>;
 
 export const FN_SELECTOR = "0xb460af94" as const;
 const FN_INPUTS = [
   {
-    name: "assets",
     type: "uint256",
-    internalType: "uint256",
+    name: "assets",
   },
   {
+    type: "address",
     name: "receiver",
-    type: "address",
-    internalType: "address",
   },
   {
-    name: "owner",
     type: "address",
-    internalType: "address",
+    name: "owner",
   },
 ] as const;
 const FN_OUTPUTS = [
   {
-    name: "shares",
     type: "uint256",
-    internalType: "uint256",
+    name: "shares",
   },
 ] as const;
 
 /**
  * Checks if the `withdraw` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `withdraw` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `withdraw` method is supported.
  * @extension ERC4626
  * @example
  * ```ts
  * import { isWithdrawSupported } from "thirdweb/extensions/erc4626";
  *
- * const supported = await isWithdrawSupported(contract);
+ * const supported = isWithdrawSupported(["0x..."]);
  * ```
  */
-export async function isWithdrawSupported(contract: ThirdwebContract<any>) {
+export function isWithdrawSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -82,7 +65,7 @@ export async function isWithdrawSupported(contract: ThirdwebContract<any>) {
  * @extension ERC4626
  * @example
  * ```ts
- * import { encodeWithdrawParams } "thirdweb/extensions/erc4626";
+ * import { encodeWithdrawParams } from "thirdweb/extensions/erc4626";
  * const result = encodeWithdrawParams({
  *  assets: ...,
  *  receiver: ...,
@@ -105,7 +88,7 @@ export function encodeWithdrawParams(options: WithdrawParams) {
  * @extension ERC4626
  * @example
  * ```ts
- * import { encodeWithdraw } "thirdweb/extensions/erc4626";
+ * import { encodeWithdraw } from "thirdweb/extensions/erc4626";
  * const result = encodeWithdraw({
  *  assets: ...,
  *  receiver: ...,
@@ -127,6 +110,7 @@ export function encodeWithdraw(options: WithdrawParams) {
  * @extension ERC4626
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { withdraw } from "thirdweb/extensions/erc4626";
  *
  * const transaction = withdraw({
@@ -140,8 +124,7 @@ export function encodeWithdraw(options: WithdrawParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function withdraw(

@@ -2,11 +2,15 @@ import type { Chain } from "../../../chains/types.js";
 import type { ThirdwebClient } from "../../../client/client.js";
 import { hexToBigInt } from "../../../utils/encoding/hex.js";
 import { getClientFetch } from "../../../utils/fetch.js";
-import type { PaymasterResult, UserOperation } from "../types.js";
+import type {
+  PaymasterResult,
+  UserOperationV06,
+  UserOperationV07,
+} from "../types.js";
 import {
   DEBUG,
   ENTRYPOINT_ADDRESS_v0_6,
-  getDefaultPaymasterUrl,
+  getDefaultBundlerUrl,
 } from "./constants.js";
 import { hexlifyUserOp } from "./utils.js";
 
@@ -29,11 +33,13 @@ import { hexlifyUserOp } from "./utils.js";
  * @walletUtils
  */
 export async function getPaymasterAndData(args: {
-  userOp: UserOperation;
+  userOp: UserOperationV06 | UserOperationV07;
   client: ThirdwebClient;
   chain: Chain;
   entrypointAddress?: string;
-  paymasterOverride?: (userOp: UserOperation) => Promise<PaymasterResult>;
+  paymasterOverride?: (
+    userOp: UserOperationV06 | UserOperationV07,
+  ) => Promise<PaymasterResult>;
 }): Promise<PaymasterResult> {
   const { userOp, paymasterOverride, client, chain, entrypointAddress } = args;
 
@@ -45,8 +51,8 @@ export async function getPaymasterAndData(args: {
     "Content-Type": "application/json",
   };
 
-  const paymasterUrl = getDefaultPaymasterUrl(chain);
   const entrypoint = entrypointAddress ?? ENTRYPOINT_ADDRESS_v0_6;
+  const paymasterUrl = getDefaultBundlerUrl(chain);
 
   // Ask the paymaster to sign the transaction and return a valid paymasterAndData value.
   const fetchWithHeaders = getClientFetch(client);
@@ -94,6 +100,14 @@ Code: ${code}`,
         : undefined,
       callGasLimit: res.result.callGasLimit
         ? hexToBigInt(res.result.callGasLimit)
+        : undefined,
+      paymaster: res.result.paymaster,
+      paymasterData: res.result.paymasterData,
+      paymasterVerificationGasLimit: res.result.paymasterVerificationGasLimit
+        ? hexToBigInt(res.result.paymasterVerificationGasLimit)
+        : undefined,
+      paymasterPostOpGasLimit: res.result.paymasterPostOpGasLimit
+        ? hexToBigInt(res.result.paymasterPostOpGasLimit)
         : undefined,
     };
   }

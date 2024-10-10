@@ -1,8 +1,7 @@
-import { Flex, Icon, VStack } from "@chakra-ui/react";
-import { ImMagicWand } from "@react-icons/all-files/im/ImMagicWand";
+import { Flex } from "@chakra-ui/react";
 import { ChakraNextImage } from "components/Image";
 import { useTrack } from "hooks/analytics/useTrack";
-import { FiSearch } from "react-icons/fi";
+import { SearchIcon, WandIcon } from "lucide-react";
 import { Heading, LinkButton } from "tw-components";
 
 interface HackathonFooterProps {
@@ -15,17 +14,7 @@ export const HackathonFooter = ({
   const trackEvent = useTrack();
 
   return (
-    <VStack
-      bg='url("/assets/hackathon/footer-bg.png")'
-      bgSize="cover"
-      bgRepeat="no-repeat"
-      bgPosition="center"
-      w="100%"
-      py={20}
-      gap={10}
-      borderTopRadius="50px"
-      px={6}
-    >
+    <div className="flex w-full flex-col items-center gap-10 rounded-t-[50px] bg-[url('/assets/hackathon/footer-bg.png')] bg-center bg-cover bg-no-repeat px-6 py-20">
       <ChakraNextImage
         src={require("../../../public/assets/landingpage/thirdwebw.svg")}
         alt="hackathon-partner"
@@ -66,7 +55,7 @@ export const HackathonFooter = ({
           h="68px"
           w={{ base: "90%", md: 80 }}
           fontSize="20px"
-          leftIcon={<Icon as={ImMagicWand} />}
+          leftIcon={<WandIcon className="size-6" />}
           color="black"
           flexShrink={0}
           background="rgba(255,255,255,1)"
@@ -91,7 +80,7 @@ export const HackathonFooter = ({
           h="68px"
           w={{ base: "90%", md: 80 }}
           fontSize="20px"
-          leftIcon={<Icon as={FiSearch} />}
+          leftIcon={<SearchIcon className="size-5" />}
           color="black"
           flexShrink={0}
           background="rgba(255,255,255,1)"
@@ -104,6 +93,6 @@ export const HackathonFooter = ({
           Submission
         </LinkButton>
       </Flex>
-    </VStack>
+    </div>
   );
 };

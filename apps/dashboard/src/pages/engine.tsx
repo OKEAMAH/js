@@ -1,4 +1,4 @@
-import { Box, Center, Container, Flex } from "@chakra-ui/react";
+import { Box, Container, Flex } from "@chakra-ui/react";
 import { PricingEngineHomepage } from "components/homepage/sections/PricingEngine";
 import { LandingCardWithImage } from "components/landing-pages/card-with-image";
 import LandingCardWithMetrics from "components/landing-pages/card-with-metrics";
@@ -94,17 +94,17 @@ export const metrics = [
 const GUIDES = [
   {
     title: "The Quick-Start Guide to thirdweb Engine",
-    image: require("/public/assets/product-pages/engine/guide-get-started.png"),
+    image: require("../../public/assets/product-pages/engine/guide-get-started.png"),
     link: "https://portal.thirdweb.com/engine/get-started",
   },
   {
     title: "Airdrop Tokens and NFTs to Users",
-    image: require("/public/assets/product-pages/engine/guide-airdrop.png"),
+    image: require("../../public/assets/product-pages/engine/guide-airdrop.png"),
     link: "https://portal.thirdweb.com/engine/guides/airdrop-nfts",
   },
   {
     title: "Create a Gasless NFT Mint Farcaster Frame",
-    image: require("/public/assets/product-pages/engine/guide-farcaster-frame.png"),
+    image: require("../../public/assets/product-pages/engine/guide-farcaster-frame.png"),
     link: "https://blog.thirdweb.com/guides/create-an-nft-mint-farcaster-frame/",
   },
 ];
@@ -325,7 +325,7 @@ const EngineLanding: ThirdwebNextPage = () => {
 
           <LandingCardWithMetrics
             title={
-              <Center flexDir="column" textAlign="center">
+              <div className="flex flex-col items-center justify-center text-center">
                 <Heading size="display.sm" color="white">
                   Trusted by the best
                 </Heading>
@@ -334,7 +334,7 @@ const EngineLanding: ThirdwebNextPage = () => {
                   thirdweb Engine powers the best onchain apps, integrating into
                   any backend at scale.
                 </Text>
-              </Center>
+              </div>
             }
             desktopColumns={3}
             TRACKING_CATEGORY={TRACKING_CATEGORY}

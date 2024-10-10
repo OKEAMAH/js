@@ -3,17 +3,14 @@ import {
   Code,
   type CodeProps,
   Flex,
-  Icon,
   IconButton,
-  useClipboard,
   useColorModeValue,
   useTheme,
 } from "@chakra-ui/react";
-import { IoMdCheckmark } from "@react-icons/all-files/io/IoMdCheckmark";
+import { useClipboard } from "hooks/useClipboard";
+import { CheckIcon, CopyIcon, ZapIcon } from "lucide-react";
 import { Highlight, themes } from "prism-react-renderer";
 import { useEffect, useRef, useState } from "react";
-import { BsLightning } from "react-icons/bs";
-import { FiCopy } from "react-icons/fi";
 import { useInView } from "react-intersection-observer";
 import { Text } from "tw-components";
 
@@ -134,7 +131,7 @@ export const HomePageCodeBlock: React.FC<CodeBlockProps> = ({
               variant="ghost"
               colorScheme="gray"
               size="sm"
-              icon={<Icon as={BsLightning} />}
+              icon={<ZapIcon className="size-4" />}
             />
           ) : (
             <Box w="32px" />
@@ -142,7 +139,7 @@ export const HomePageCodeBlock: React.FC<CodeBlockProps> = ({
           {title && (
             <Text
               fontSize="large"
-              fontWeight={"bold"}
+              fontWeight="bold"
               position="static"
               color={titleColor ? titleColor : "white"}
               px={4}
@@ -162,10 +159,11 @@ export const HomePageCodeBlock: React.FC<CodeBlockProps> = ({
               colorScheme="gray"
               size="sm"
               icon={
-                <Icon
-                  as={hasCopied ? IoMdCheckmark : FiCopy}
-                  fill={hasCopied ? "green.500" : undefined}
-                />
+                hasCopied ? (
+                  <CheckIcon className="size-4 text-green-500" />
+                ) : (
+                  <CopyIcon className="size-4" />
+                )
               }
             />
           )}
@@ -209,26 +207,24 @@ export const HomePageCodeBlock: React.FC<CodeBlockProps> = ({
               as={Code}
               h="full"
             >
-              <Box>
-                <Box>
-                  <Box as="span" display="block" my={1} color="heading">
-                    {tokens.map((line, i) => (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: FIXME
-                      <Box key={i} {...getLineProps({ line })}>
-                        <LineNumbers
-                          lineNumber={i + 1}
-                          lineHeight={chakraTheme.sizes["5"]}
-                          totalLines={tokens.length}
-                        />
-                        {line.map((token, key) => (
-                          // biome-ignore lint/suspicious/noArrayIndexKey: FIXME
-                          <span key={key} {...getTokenProps({ token })} />
-                        ))}
-                      </Box>
-                    ))}
-                  </Box>
+              <div>
+                <Box as="span" display="block" my={1} color="heading">
+                  {tokens.map((line, i) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: FIXME
+                    <Box key={i} {...getLineProps({ line })}>
+                      <LineNumbers
+                        lineNumber={i + 1}
+                        lineHeight={chakraTheme.sizes["5"]}
+                        totalLines={tokens.length}
+                      />
+                      {line.map((token, key) => (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: FIXME
+                        <span key={key} {...getTokenProps({ token })} />
+                      ))}
+                    </Box>
+                  ))}
                 </Box>
-              </Box>
+              </div>
             </Box>
           )}
         </Highlight>

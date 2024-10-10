@@ -1,3 +1,4 @@
+import { ToolTipLabel } from "@/components/ui/tooltip";
 import {
   AdminOnly,
   AdminOrSelfOnly,
@@ -5,29 +6,30 @@ import {
 import {
   Flex,
   FormControl,
-  Icon,
   IconButton,
   Input,
   InputGroup,
   InputLeftAddon,
   InputRightAddon,
-  Stack,
-  Tooltip,
-  useClipboard,
-  useToast,
 } from "@chakra-ui/react";
-import type { ValidContractInstance } from "@thirdweb-dev/sdk";
 import { DelayedDisplay } from "components/delayed-display/delayed-display";
-import { constants, utils } from "ethers";
+import { useClipboard } from "hooks/useClipboard";
+import {
+  ClipboardPasteIcon,
+  CopyIcon,
+  InfoIcon,
+  PlusIcon,
+  TrashIcon,
+} from "lucide-react";
 import { useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
-import { BiPaste } from "react-icons/bi";
-import { FiCopy, FiInfo, FiPlus, FiTrash } from "react-icons/fi";
+import { toast } from "sonner";
+import { type ThirdwebContract, ZERO_ADDRESS, isAddress } from "thirdweb";
 import { Button, FormErrorMessage, Text } from "tw-components";
 
 interface PermissionEditorProps {
   role: string;
-  contract: ValidContractInstance;
+  contract: ThirdwebContract;
 }
 
 export const PermissionEditor: React.FC<PermissionEditorProps> = ({
@@ -46,7 +48,7 @@ export const PermissionEditor: React.FC<PermissionEditorProps> = ({
   const [address, setAddress] = useState("");
 
   const members = watch(role) || [];
-  const isDisabled = !utils.isAddress(address) || members.includes(address);
+  const isDisabled = !isAddress(address) || members.includes(address);
 
   const addAddress = () => {
     if (isDisabled) {
@@ -58,26 +60,17 @@ export const PermissionEditor: React.FC<PermissionEditorProps> = ({
   };
 
   return (
-    <Stack spacing={2}>
+    <div className="flex flex-col gap-2">
       {!fields?.length && (
         <DelayedDisplay delay={100}>
-          <Stack
-            direction="row"
-            bg="orange.50"
-            borderRadius="md"
-            borderWidth="1px"
-            borderColor="orange.100"
-            align="center"
-            padding="10px"
-            spacing={3}
-          >
-            <Icon as={FiInfo} color="orange.400" boxSize={6} />
+          <div className="flex flex-row items-center gap-3 rounded-md border border-border border-orange-100 bg-orange-50 p-[10px]">
+            <InfoIcon className="size-6 text-orange-400" />
             <Text color="orange.800">
               {role === "asset"
                 ? "No asset contracts are permitted to be listed on this marketplace."
                 : "Nobody has this permission for this contract."}
             </Text>
-          </Stack>
+          </div>
         </DelayedDisplay>
       )}
       {fields?.map((field, index) => (
@@ -90,20 +83,19 @@ export const PermissionEditor: React.FC<PermissionEditorProps> = ({
           contract={contract}
         />
       ))}
-      <AdminOnly contract={contract as ValidContractInstance}>
+      <AdminOnly contract={contract}>
         <FormControl
           isDisabled={isSubmitting}
           isInvalid={address && isDisabled}
         >
           <InputGroup>
             <InputLeftAddon p={0} border="none">
-              <Tooltip label="Paste address from clipboard">
+              <ToolTipLabel label="Paste address from clipboard">
                 <IconButton
                   borderRadius="sm"
                   borderLeftRadius="md"
                   aria-label="paste address"
-                  icon={<BiPaste />}
-                  _hover={{ bgColor: "gray.300" }}
+                  icon={<ClipboardPasteIcon className="size-4" />}
                   width="100%"
                   height="100%"
                   onClick={() => {
@@ -113,24 +105,25 @@ export const PermissionEditor: React.FC<PermissionEditorProps> = ({
                         setAddress(text);
                         return void 0;
                       })
-                      .catch((err) => {
-                        console.error("failed to paste from clipboard", err);
+                      .catch((error) => {
+                        console.error(error);
+                        toast.error("Failed to paste from clipboard");
                       });
                   }}
                 />
-              </Tooltip>
+              </ToolTipLabel>
             </InputLeftAddon>
             <Input
               variant="filled"
               fontFamily="mono"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder={constants.AddressZero}
+              placeholder={ZERO_ADDRESS}
               px={2}
             />
             <InputRightAddon p={0} border="none">
               <Button
-                leftIcon={<Icon as={FiPlus} boxSize={4} />}
+                leftIcon={<PlusIcon className="size-4" />}
                 size="sm"
                 borderLeftRadius="none"
                 borderRightRadius="md"
@@ -149,13 +142,13 @@ export const PermissionEditor: React.FC<PermissionEditorProps> = ({
           <FormErrorMessage>
             {members.includes(address)
               ? "Address already has this role"
-              : !utils.isAddress(address)
+              : !isAddress(address)
                 ? "Not a valid address"
                 : ""}
           </FormErrorMessage>
         </FormControl>
       </AdminOnly>
-    </Stack>
+    </div>
   );
 };
 
@@ -164,7 +157,7 @@ interface PermissionAddressProps {
   member: string;
   removeAddress: () => void;
   isSubmitting: boolean;
-  contract: ValidContractInstance;
+  contract: ThirdwebContract;
 }
 
 const PermissionAddress: React.FC<PermissionAddressProps> = ({
@@ -173,38 +166,28 @@ const PermissionAddress: React.FC<PermissionAddressProps> = ({
   isSubmitting,
   contract,
 }) => {
-  const toast = useToast();
-
   const { onCopy } = useClipboard(member);
 
   return (
     <Flex gap={0} align="center">
       <InputGroup>
         <InputLeftAddon p={0} border="none">
-          <Tooltip label="Copy address to clipboard">
+          <ToolTipLabel label="Copy address to clipboard">
             <IconButton
               borderRadius="sm"
               borderLeftRadius="md"
               aria-label="copy address"
-              icon={<FiCopy />}
-              _hover={{ bgColor: "gray.300" }}
+              icon={<CopyIcon className="size-4" />}
               width="100%"
               height="100%"
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
                 onCopy();
-                toast({
-                  position: "bottom",
-                  variant: "solid",
-                  title: "Address copied.",
-                  status: "success",
-                  duration: 5000,
-                  isClosable: true,
-                });
+                toast.info("Address copied.");
               }}
             />
-          </Tooltip>
+          </ToolTipLabel>
         </InputLeftAddon>
         <Input
           variant="filled"
@@ -212,13 +195,10 @@ const PermissionAddress: React.FC<PermissionAddressProps> = ({
           defaultValue={member}
           px={2}
         />
-        <AdminOrSelfOnly
-          contract={contract as ValidContractInstance}
-          self={member}
-        >
+        <AdminOrSelfOnly contract={contract} self={member}>
           <InputRightAddon p={0} border="none">
             <Button
-              leftIcon={<Icon as={FiTrash} boxSize={3} />}
+              leftIcon={<TrashIcon className="size-3" />}
               size="sm"
               borderLeftRadius="none"
               borderRightRadius="md"

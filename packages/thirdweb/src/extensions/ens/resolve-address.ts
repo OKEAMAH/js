@@ -11,6 +11,9 @@ import { encodeAddr } from "./__generated__/AddressResolver/read/addr.js";
 import { resolve } from "./__generated__/UniversalResolver/read/resolve.js";
 import { UNIVERSAL_RESOLVER_ADDRESS } from "./constants.js";
 
+/**
+ * @extension ENS
+ */
 export type ResolveAddressOptions = {
   client: ThirdwebClient;
   name: string;
@@ -27,6 +30,18 @@ export type ResolveAddressOptions = {
  * const address = await resolveAddress({
  *    client,
  *    name: "vitalik.eth",
+ * });
+ * ```
+ *
+ * Resolve an address to a Basename.
+ * ```ts
+ * import { resolveAddress, BASENAME_RESOLVER_ADDRESS } from "thirdweb/extensions/ens";
+ * import { base } from "thirdweb/chains";
+ * const address = await resolveAddress({
+ *    client,
+ *    name: "myk.base.eth",
+ *    resolverAddress: BASENAME_RESOLVER_ADDRESS,
+ *    resolverChain: base,
  * });
  * ```
  * @extension ENS
@@ -55,7 +70,7 @@ export async function resolveAddress(options: ResolveAddressOptions) {
       return resolvedAddress;
     },
     {
-      cacheKey: `ens:addr:${name}`,
+      cacheKey: `ens:addr:${resolverChain?.id || 1}:${name}`,
       // 1min cache
       cacheTime: 60 * 1000,
     },

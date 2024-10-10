@@ -1,31 +1,23 @@
-import { Flex, Stack } from "@chakra-ui/react";
-import type { DropContract, TokenContract } from "@thirdweb-dev/react";
-import { detectFeatures } from "components/contract-components/utils";
-import { UpdateNotice } from "core-ui/update-notice/update-notice";
-import { hasNewClaimConditions } from "lib/claimcondition-utils";
-import { useMemo } from "react";
-import { Heading, Text } from "tw-components";
+"use client";
+
+import { Flex } from "@chakra-ui/react";
+import type { ThirdwebContract } from "thirdweb";
 import { ClaimConditionsForm } from "./claim-conditions-form/index";
 
 interface ClaimConditionsProps {
-  contract?: DropContract;
+  contract: ThirdwebContract;
   tokenId?: string;
   isColumn?: true;
+  isERC20: boolean;
 }
 export const ClaimConditions: React.FC<ClaimConditionsProps> = ({
   contract,
   tokenId,
   isColumn,
+  isERC20,
 }) => {
-  const contractInfo = useMemo(() => {
-    return {
-      hasNewClaimConditions: hasNewClaimConditions(contract),
-      isErc20: detectFeatures<TokenContract>(contract, ["ERC20"]),
-    };
-  }, [contract]);
-
   return (
-    <Stack spacing={8}>
+    <div className="flex flex-col gap-8">
       <Flex p={0} position="relative">
         <Flex
           pt={{ base: isColumn ? 0 : 6, md: 6 }}
@@ -34,39 +26,27 @@ export const ClaimConditions: React.FC<ClaimConditionsProps> = ({
           w="full"
         >
           {/* Info */}
-          <Flex as="section" direction="column" gap={4}>
-            <Flex direction="column">
-              <Heading size="title.md">Set Claim Conditions</Heading>
-              <Text size="body.md" fontStyle="italic" mt={2}>
-                Control when the {contractInfo.isErc20 ? "tokens" : "NFTs"} get
-                dropped, how much they cost, and more.
-              </Text>
-            </Flex>
-            {contractInfo.hasNewClaimConditions && (
-              <UpdateNotice
-                learnMoreHref="https://blog.thirdweb.com/announcing-improved-claim-conditions"
-                trackingLabel="claim_conditions"
-                versions={[
-                  { version: "3.6.0", sdk: "react" },
-                  { version: "3.6.0", sdk: "typescript" },
-                ]}
-              >
-                Define claim conditions on a per-wallet basis and rename your
-                claim phases.
-              </UpdateNotice>
-            )}
-          </Flex>
+          <section>
+            <h2 className="mb-1 font-semibold text-xl tracking-tight">
+              Set Claim Conditions
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Control when the {isERC20 ? "tokens" : "NFTs"} get dropped, how
+              much they cost, and more.
+            </p>
+          </section>
 
           {/* Set Claim Conditions */}
-          {contract && (
-            <ClaimConditionsForm
-              contract={contract}
-              tokenId={tokenId}
-              isColumn={isColumn}
-            />
-          )}
+          <ClaimConditionsForm
+            isErc20={isERC20}
+            contract={contract}
+            tokenId={tokenId}
+            isColumn={isColumn}
+            // always multi phase!
+            isMultiPhase={true}
+          />
         </Flex>
       </Flex>
-    </Stack>
+    </div>
   );
 };

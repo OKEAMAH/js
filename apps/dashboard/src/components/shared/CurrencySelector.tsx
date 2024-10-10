@@ -1,11 +1,9 @@
 import { Flex, Input, Select, type SelectProps } from "@chakra-ui/react";
-import { useSDKChainId } from "@thirdweb-dev/react";
 import { CURRENCIES, type CurrencyMetadata } from "constants/currencies";
-import { constants, utils } from "ethers";
-import { useSupportedChainsRecord } from "hooks/chains/configureChains";
 import { useMemo, useState } from "react";
+import { NATIVE_TOKEN_ADDRESS, ZERO_ADDRESS, isAddress } from "thirdweb";
 import { Button } from "tw-components";
-import { OtherAddressZero } from "utils/zeroAddress";
+import { useAllChainsData } from "../../hooks/chains/allChains";
 
 interface CurrencySelectorProps extends SelectProps {
   value: string;
@@ -14,6 +12,7 @@ interface CurrencySelectorProps extends SelectProps {
   showCustomCurrency?: boolean;
   isPaymentsSelector?: boolean;
   defaultCurrencies?: CurrencyMetadata[];
+  contractChainId: number;
 }
 
 export const CurrencySelector: React.FC<CurrencySelectorProps> = ({
@@ -24,11 +23,11 @@ export const CurrencySelector: React.FC<CurrencySelectorProps> = ({
   showCustomCurrency = true,
   isPaymentsSelector = false,
   defaultCurrencies = [],
+  contractChainId: chainId,
   ...props
 }) => {
-  const chainId = useSDKChainId();
-  const configuredChainsRecord = useSupportedChainsRecord();
-  const chain = chainId ? configuredChainsRecord[chainId] : undefined;
+  const { idToChain } = useAllChainsData();
+  const chain = chainId ? idToChain.get(chainId) : undefined;
 
   const helperCurrencies =
     defaultCurrencies.length > 0
@@ -58,22 +57,21 @@ export const CurrencySelector: React.FC<CurrencySelectorProps> = ({
     return false;
   }, [chainId, customCurrency, initialValue]);
 
-  const currencyOptions: CurrencyMetadata[] =
-    [
-      ...(isPaymentsSelector
-        ? []
-        : [
-            {
-              address: OtherAddressZero.toLowerCase(),
-              name: chain?.nativeCurrency.name || "Native Token",
-              symbol: chain?.nativeCurrency.symbol || "",
-            },
-          ]),
-      ...(hideDefaultCurrencies ? [] : helperCurrencies),
-    ] || [];
+  const currencyOptions: CurrencyMetadata[] = [
+    ...(isPaymentsSelector
+      ? []
+      : [
+          {
+            address: NATIVE_TOKEN_ADDRESS.toLowerCase(),
+            name: chain?.nativeCurrency.name || "Native Token",
+            symbol: chain?.nativeCurrency.symbol || "",
+          },
+        ]),
+    ...(hideDefaultCurrencies ? [] : helperCurrencies),
+  ];
 
   const addCustomCurrency = () => {
-    if (!utils.isAddress(editCustomCurrency)) {
+    if (!isAddress(editCustomCurrency)) {
       return;
     }
     if (editCustomCurrency) {
@@ -94,14 +92,14 @@ export const CurrencySelector: React.FC<CurrencySelectorProps> = ({
 
   if (isAddingCurrency && !hideDefaultCurrencies) {
     return (
-      <Flex direction="column">
+      <div className="flex flex-col">
         <Flex align="center">
           <Button
             borderRadius="4px 0px 0px 4px"
             colorScheme="primary"
             onClick={() => setIsAddingCurrency(false)}
           >
-            {"<-"}
+            &lt;-
           </Button>
           <Input
             w="auto"
@@ -115,12 +113,12 @@ export const CurrencySelector: React.FC<CurrencySelectorProps> = ({
             borderRadius="0px 4px 4px 0px"
             colorScheme="primary"
             onClick={addCustomCurrency}
-            isDisabled={!utils.isAddress(editCustomCurrency)}
+            isDisabled={!isAddress(editCustomCurrency)}
           >
             Save
           </Button>
         </Flex>
-      </Flex>
+      </div>
     );
   }
 
@@ -131,8 +129,8 @@ export const CurrencySelector: React.FC<CurrencySelectorProps> = ({
         value={
           isPaymentsSelector
             ? value
-            : value?.toLowerCase() === constants.AddressZero.toLowerCase()
-              ? OtherAddressZero.toLowerCase()
+            : value?.toLowerCase() === ZERO_ADDRESS.toLowerCase()
+              ? NATIVE_TOKEN_ADDRESS.toLowerCase()
               : value?.toLowerCase()
         }
         onChange={(e) => {
@@ -161,7 +159,7 @@ export const CurrencySelector: React.FC<CurrencySelectorProps> = ({
           ))}
         {isCustomCurrency &&
           !isPaymentsSelector &&
-          initialValue !== OtherAddressZero.toLowerCase() && (
+          initialValue !== NATIVE_TOKEN_ADDRESS.toLowerCase() && (
             <option key={initialValue} value={initialValue}>
               {initialValue}
             </option>

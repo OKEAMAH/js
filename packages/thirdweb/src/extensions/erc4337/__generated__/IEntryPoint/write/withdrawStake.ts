@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -30,21 +29,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `withdrawStake` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `withdrawStake` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `withdrawStake` method is supported.
  * @extension ERC4337
  * @example
  * ```ts
  * import { isWithdrawStakeSupported } from "thirdweb/extensions/erc4337";
  *
- * const supported = await isWithdrawStakeSupported(contract);
+ * const supported = isWithdrawStakeSupported(["0x..."]);
  * ```
  */
-export async function isWithdrawStakeSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isWithdrawStakeSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -56,7 +53,7 @@ export async function isWithdrawStakeSupported(
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeWithdrawStakeParams } "thirdweb/extensions/erc4337";
+ * import { encodeWithdrawStakeParams } from "thirdweb/extensions/erc4337";
  * const result = encodeWithdrawStakeParams({
  *  withdrawAddress: ...,
  * });
@@ -73,7 +70,7 @@ export function encodeWithdrawStakeParams(options: WithdrawStakeParams) {
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeWithdrawStake } "thirdweb/extensions/erc4337";
+ * import { encodeWithdrawStake } from "thirdweb/extensions/erc4337";
  * const result = encodeWithdrawStake({
  *  withdrawAddress: ...,
  * });
@@ -95,6 +92,7 @@ export function encodeWithdrawStake(options: WithdrawStakeParams) {
  * @extension ERC4337
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { withdrawStake } from "thirdweb/extensions/erc4337";
  *
  * const transaction = withdrawStake({
@@ -106,8 +104,7 @@ export function encodeWithdrawStake(options: WithdrawStakeParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function withdrawStake(

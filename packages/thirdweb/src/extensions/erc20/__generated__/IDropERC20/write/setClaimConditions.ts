@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -21,10 +20,10 @@ export type SetClaimConditionsParams = WithOverrides<{
       { type: "uint256"; name: "maxClaimableSupply" },
       { type: "uint256"; name: "supplyClaimed" },
       { type: "uint256"; name: "quantityLimitPerWallet" },
-      { type: "uint256"; name: "waitTimeInSecondsBetweenClaims" },
       { type: "bytes32"; name: "merkleRoot" },
       { type: "uint256"; name: "pricePerToken" },
       { type: "address"; name: "currency" },
+      { type: "string"; name: "metadata" },
     ];
   }>;
   resetClaimEligibility: AbiParameterToPrimitiveType<{
@@ -33,7 +32,7 @@ export type SetClaimConditionsParams = WithOverrides<{
   }>;
 }>;
 
-export const FN_SELECTOR = "0xe23b8164" as const;
+export const FN_SELECTOR = "0x74bc7db7" as const;
 const FN_INPUTS = [
   {
     type: "tuple[]",
@@ -56,10 +55,6 @@ const FN_INPUTS = [
         name: "quantityLimitPerWallet",
       },
       {
-        type: "uint256",
-        name: "waitTimeInSecondsBetweenClaims",
-      },
-      {
         type: "bytes32",
         name: "merkleRoot",
       },
@@ -70,6 +65,10 @@ const FN_INPUTS = [
       {
         type: "address",
         name: "currency",
+      },
+      {
+        type: "string",
+        name: "metadata",
       },
     ],
   },
@@ -82,21 +81,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `setClaimConditions` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `setClaimConditions` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `setClaimConditions` method is supported.
  * @extension ERC20
  * @example
  * ```ts
  * import { isSetClaimConditionsSupported } from "thirdweb/extensions/erc20";
  *
- * const supported = await isSetClaimConditionsSupported(contract);
+ * const supported = isSetClaimConditionsSupported(["0x..."]);
  * ```
  */
-export async function isSetClaimConditionsSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isSetClaimConditionsSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -108,7 +105,7 @@ export async function isSetClaimConditionsSupported(
  * @extension ERC20
  * @example
  * ```ts
- * import { encodeSetClaimConditionsParams } "thirdweb/extensions/erc20";
+ * import { encodeSetClaimConditionsParams } from "thirdweb/extensions/erc20";
  * const result = encodeSetClaimConditionsParams({
  *  phases: ...,
  *  resetClaimEligibility: ...,
@@ -131,7 +128,7 @@ export function encodeSetClaimConditionsParams(
  * @extension ERC20
  * @example
  * ```ts
- * import { encodeSetClaimConditions } "thirdweb/extensions/erc20";
+ * import { encodeSetClaimConditions } from "thirdweb/extensions/erc20";
  * const result = encodeSetClaimConditions({
  *  phases: ...,
  *  resetClaimEligibility: ...,
@@ -154,6 +151,7 @@ export function encodeSetClaimConditions(options: SetClaimConditionsParams) {
  * @extension ERC20
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { setClaimConditions } from "thirdweb/extensions/erc20";
  *
  * const transaction = setClaimConditions({
@@ -166,8 +164,7 @@ export function encodeSetClaimConditions(options: SetClaimConditionsParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function setClaimConditions(

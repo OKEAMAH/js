@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -40,21 +39,21 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `approveBuyerForListing` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `approveBuyerForListing` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `approveBuyerForListing` method is supported.
  * @extension MARKETPLACE
  * @example
  * ```ts
  * import { isApproveBuyerForListingSupported } from "thirdweb/extensions/marketplace";
  *
- * const supported = await isApproveBuyerForListingSupported(contract);
+ * const supported = isApproveBuyerForListingSupported(["0x..."]);
  * ```
  */
-export async function isApproveBuyerForListingSupported(
-  contract: ThirdwebContract<any>,
+export function isApproveBuyerForListingSupported(
+  availableSelectors: string[],
 ) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -66,7 +65,7 @@ export async function isApproveBuyerForListingSupported(
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeApproveBuyerForListingParams } "thirdweb/extensions/marketplace";
+ * import { encodeApproveBuyerForListingParams } from "thirdweb/extensions/marketplace";
  * const result = encodeApproveBuyerForListingParams({
  *  listingId: ...,
  *  buyer: ...,
@@ -91,7 +90,7 @@ export function encodeApproveBuyerForListingParams(
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeApproveBuyerForListing } "thirdweb/extensions/marketplace";
+ * import { encodeApproveBuyerForListing } from "thirdweb/extensions/marketplace";
  * const result = encodeApproveBuyerForListing({
  *  listingId: ...,
  *  buyer: ...,
@@ -117,6 +116,7 @@ export function encodeApproveBuyerForListing(
  * @extension MARKETPLACE
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { approveBuyerForListing } from "thirdweb/extensions/marketplace";
  *
  * const transaction = approveBuyerForListing({
@@ -130,8 +130,7 @@ export function encodeApproveBuyerForListing(
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function approveBuyerForListing(

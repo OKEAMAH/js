@@ -4,11 +4,9 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import type { Chain } from "@thirdweb-dev/chains";
+import { THIRDWEB_ANALYTICS_API_HOST, THIRDWEB_API_HOST } from "constants/urls";
 import invariant from "tiny-invariant";
-import { THIRDWEB_API_HOST } from "../../../constants/urls";
 import { accountKeys, apiKeys, authorizedWallets } from "../cache-keys";
-import { useMutationWithInvalidate } from "./query/useQueryWithNetwork";
 import { useLoggedInUser } from "./useLoggedInUser";
 
 // FIXME: We keep repeating types, API server should provide them
@@ -68,12 +66,12 @@ export type Account = {
     paymentFailureCode: string;
     serviceCutoffDate: string;
   }[];
+  // TODO - add image URL
 };
 
 interface UpdateAccountInput {
   name?: string;
   email?: string;
-  plan?: AccountPlan;
   linkWallet?: boolean;
   subscribeToUpdates?: boolean;
   onboardSkipped?: boolean;
@@ -173,7 +171,7 @@ interface UpdateKeyServiceInput {
   actions?: string[];
 }
 
-interface CreateKeyInput {
+export interface CreateKeyInput {
   name?: string;
   domains?: string[];
   bundleIds?: string[];
@@ -181,13 +179,14 @@ interface CreateKeyInput {
   services?: UpdateKeyServiceInput[];
 }
 
-interface UpdateKeyInput {
+export interface UpdateKeyInput {
   id: string;
   name: string;
   domains: string[];
   bundleIds: string[];
   walletAddresses?: string[];
   services?: UpdateKeyServiceInput[];
+  redirectUrls: string[];
 }
 
 interface UsageBundler {
@@ -228,14 +227,11 @@ export interface UsageBillableByService {
   };
 }
 
-interface WalletStats {
-  timeSeries: {
-    dayTime: string;
-    clientId: string;
-    walletType: string;
-    totalWallets: number;
-    uniqueWallets: number;
-  }[];
+export interface WalletStats {
+  date: string;
+  uniqueWalletsConnected: number;
+  totalConnections: number;
+  walletType: string;
 }
 
 interface BillingProduct {
@@ -257,23 +253,24 @@ export interface BillingCredit {
 interface UseAccountInput {
   refetchInterval?:
     | number
+    | false
     | ((
-        data: Account | undefined,
         query: Query<
           Account,
-          unknown,
+          Error,
           Account,
           readonly ["account", string, "me"]
         >,
-      ) => number | false);
+      ) => number | false | undefined)
+    | undefined;
 }
 
 export function useAccount({ refetchInterval }: UseAccountInput = {}) {
   const { user, isLoggedIn } = useLoggedInUser();
 
-  return useQuery(
-    accountKeys.me(user?.address as string),
-    async () => {
+  return useQuery({
+    queryKey: accountKeys.me(user?.address as string),
+    queryFn: async () => {
       const res = await fetch(`${THIRDWEB_API_HOST}/v1/account/me`, {
         method: "GET",
         headers: {
@@ -288,19 +285,17 @@ export function useAccount({ refetchInterval }: UseAccountInput = {}) {
 
       return json.data as Account;
     },
-    {
-      enabled: !!user?.address && isLoggedIn,
-      refetchInterval: refetchInterval ?? false,
-    },
-  );
+    enabled: !!user?.address && isLoggedIn,
+    refetchInterval,
+  });
 }
 
 export function useAccountUsage() {
   const { user, isLoggedIn } = useLoggedInUser();
 
-  return useQuery(
-    accountKeys.usage(user?.address as string),
-    async () => {
+  return useQuery({
+    queryKey: accountKeys.usage(user?.address as string),
+    queryFn: async () => {
       const res = await fetch(`${THIRDWEB_API_HOST}/v1/account/usage`, {
         method: "GET",
         headers: {
@@ -315,16 +310,16 @@ export function useAccountUsage() {
 
       return json.data as UsageBillableByService;
     },
-    { enabled: !!user?.address && isLoggedIn },
-  );
+    enabled: !!user?.address && isLoggedIn,
+  });
 }
 
 export function useAccountCredits() {
   const { user, isLoggedIn } = useLoggedInUser();
 
-  return useQuery(
-    accountKeys.credits(user?.address as string),
-    async () => {
+  return useQuery({
+    queryKey: accountKeys.credits(user?.address as string),
+    queryFn: async () => {
       const res = await fetch(`${THIRDWEB_API_HOST}/v1/account/credits`, {
         method: "GET",
 
@@ -341,50 +336,116 @@ export function useAccountCredits() {
       const credits = (json.data as BillingCredit[]).filter(
         (credit) =>
           credit.remainingValueUsdCents > 0 &&
-          credit.expiresAt > new Date().toISOString() &&
+          (!credit.expiresAt || credit.expiresAt > new Date().toISOString()) &&
           credit.isActive,
       );
 
       return credits;
     },
-    { enabled: !!user?.address && isLoggedIn },
-  );
+    enabled: !!user?.address && isLoggedIn,
+  });
 }
 
-export function useWalletStats(clientId: string | undefined) {
+async function getWalletUsage(args: {
+  clientId: string;
+  from?: Date;
+  to?: Date;
+  period?: "day" | "week" | "month" | "year" | "all";
+}) {
+  const { clientId, from, to, period } = args;
+
+  const searchParams = new URLSearchParams();
+  searchParams.append("clientId", clientId);
+  if (from) {
+    searchParams.append("from", from.toISOString());
+  }
+  if (to) {
+    searchParams.append("to", to.toISOString());
+  }
+  if (period) {
+    searchParams.append("period", period);
+  }
+  const res = await fetch(
+    `${THIRDWEB_ANALYTICS_API_HOST}/v1/wallets?${searchParams.toString()}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    },
+  );
+  const json = await res.json();
+
+  if (res.status !== 200) {
+    throw new Error(json.message);
+  }
+
+  return json.data;
+}
+
+export function useWalletUsageAggregate(args: {
+  clientId: string;
+  from?: Date;
+  to?: Date;
+}) {
+  const { clientId, from, to } = args;
   const { user, isLoggedIn } = useLoggedInUser();
 
-  return useQuery(
-    accountKeys.walletStats(user?.address as string, clientId as string),
-    async () => {
-      const res = await fetch(
-        `${THIRDWEB_API_HOST}/v1/account/wallets?clientId=${clientId}`,
-        {
-          method: "GET",
-
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      );
-      const json = await res.json();
-
-      if (json.error) {
-        throw new Error(json.error.message);
-      }
-
-      return json.data as WalletStats;
+  return useQuery({
+    queryKey: accountKeys.walletStats(
+      user?.address as string,
+      clientId as string,
+      from?.toISOString() || "",
+      to?.toISOString() || "",
+      "all",
+    ),
+    queryFn: async () => {
+      return getWalletUsage({
+        clientId,
+        from,
+        to,
+        period: "all",
+      });
     },
-    { enabled: !!clientId && !!user?.address && isLoggedIn },
-  );
+    enabled: !!clientId && !!user?.address && isLoggedIn,
+  });
+}
+
+export function useWalletUsagePeriod(args: {
+  clientId: string;
+  from?: Date;
+  to?: Date;
+  period: "day" | "week" | "month" | "year";
+}) {
+  const { clientId, from, to, period } = args;
+  const { user, isLoggedIn } = useLoggedInUser();
+
+  return useQuery({
+    queryKey: accountKeys.walletStats(
+      user?.address as string,
+      clientId as string,
+      from?.toISOString() || "",
+      to?.toISOString() || "",
+      period,
+    ),
+    queryFn: async () => {
+      return getWalletUsage({
+        clientId,
+        from,
+        to,
+        period,
+      });
+    },
+    enabled: !!clientId && !!user?.address && isLoggedIn,
+  });
 }
 
 export function useUpdateAccount() {
   const { user } = useLoggedInUser();
   const queryClient = useQueryClient();
 
-  return useMutationWithInvalidate(
-    async (input: UpdateAccountInput) => {
+  return useMutation({
+    mutationFn: async (input: UpdateAccountInput) => {
       invariant(user?.address, "walletAddress is required");
 
       const res = await fetch(`${THIRDWEB_API_HOST}/v1/account`, {
@@ -404,22 +465,21 @@ export function useUpdateAccount() {
 
       return json.data;
     },
-    {
-      onSuccess: () => {
-        return queryClient.invalidateQueries(
-          accountKeys.me(user?.address as string),
-        );
-      },
+
+    onSuccess: () => {
+      return queryClient.invalidateQueries({
+        queryKey: accountKeys.me(user?.address as string),
+      });
     },
-  );
+  });
 }
 
 export function useUpdateAccountPlan(waitForWebhook?: boolean) {
   const { user } = useLoggedInUser();
   const queryClient = useQueryClient();
 
-  return useMutationWithInvalidate(
-    async (input: { plan: string; feedback?: string; useTrial?: boolean }) => {
+  return useMutation({
+    mutationFn: async (input: { plan: string; feedback?: string }) => {
       invariant(user?.address, "walletAddress is required");
 
       const res = await fetch(`${THIRDWEB_API_HOST}/v1/account/plan`, {
@@ -445,25 +505,26 @@ export function useUpdateAccountPlan(waitForWebhook?: boolean) {
 
       return json.data;
     },
-    {
-      onSuccess: () => {
+    onSuccess: async () => {
+      return Promise.all([
         // invalidate usage data as limits are different
-        queryClient.invalidateQueries(accountKeys.me(user?.address as string));
-
-        return queryClient.invalidateQueries(
-          accountKeys.usage(user?.address as string),
-        );
-      },
+        queryClient.invalidateQueries({
+          queryKey: accountKeys.me(user?.address as string),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: accountKeys.usage(user?.address as string),
+        }),
+      ]);
     },
-  );
+  });
 }
 
 export function useUpdateNotifications() {
   const { user } = useLoggedInUser();
   const queryClient = useQueryClient();
 
-  return useMutationWithInvalidate(
-    async (input: UpdateAccountNotificationsInput) => {
+  return useMutation({
+    mutationFn: async (input: UpdateAccountNotificationsInput) => {
       invariant(user?.address, "walletAddress is required");
 
       const res = await fetch(`${THIRDWEB_API_HOST}/v1/account/notifications`, {
@@ -482,22 +543,20 @@ export function useUpdateNotifications() {
 
       return json.data;
     },
-    {
-      onSuccess: () => {
-        return queryClient.invalidateQueries(
-          accountKeys.me(user?.address as string),
-        );
-      },
+    onSuccess: () => {
+      return queryClient.invalidateQueries({
+        queryKey: accountKeys.me(user?.address as string),
+      });
     },
-  );
+  });
 }
 
 export function useCreateBillingSession(enabled = false) {
   const { user } = useLoggedInUser();
 
-  return useQuery(
-    accountKeys.billingSession(user?.address as string),
-    async () => {
+  return useQuery({
+    queryKey: accountKeys.billingSession(user?.address as string),
+    queryFn: async () => {
       invariant(user?.address, "walletAddress is required");
 
       const res = await fetch(
@@ -518,16 +577,16 @@ export function useCreateBillingSession(enabled = false) {
 
       return json.data;
     },
-    { enabled },
-  );
+    enabled,
+  });
 }
 
 export function useConfirmEmail() {
   const { user } = useLoggedInUser();
   const queryClient = useQueryClient();
 
-  return useMutationWithInvalidate(
-    async (input: ConfirmEmailInput) => {
+  return useMutation({
+    mutationFn: async (input: ConfirmEmailInput) => {
       invariant(user?.address, "walletAddress is required");
 
       const res = await fetch(`${THIRDWEB_API_HOST}/v1/account/confirmEmail`, {
@@ -546,28 +605,29 @@ export function useConfirmEmail() {
 
       return json.data;
     },
-    {
-      onSuccess: () => {
-        // invalidate related cache, since could be relinking account
-        queryClient.invalidateQueries(apiKeys.keys(user?.address as string));
-        queryClient.invalidateQueries(
-          accountKeys.usage(user?.address as string),
-        );
-
-        return queryClient.invalidateQueries(
-          accountKeys.me(user?.address as string),
-        );
-      },
+    onSuccess: async () => {
+      // invalidate related cache, since could be relinking account
+      return Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: apiKeys.keys(user?.address as string),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: accountKeys.usage(user?.address as string),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: accountKeys.me(user?.address as string),
+        }),
+      ]);
     },
-  );
+  });
 }
 
 export function useResendEmailConfirmation() {
   const { user } = useLoggedInUser();
   const queryClient = useQueryClient();
 
-  return useMutationWithInvalidate(
-    async () => {
+  return useMutation({
+    mutationFn: async () => {
       invariant(user?.address, "walletAddress is required");
 
       const res = await fetch(
@@ -589,22 +649,20 @@ export function useResendEmailConfirmation() {
 
       return json.data;
     },
-    {
-      onSuccess: () => {
-        return queryClient.invalidateQueries(
-          accountKeys.me(user?.address as string),
-        );
-      },
+    onSuccess: () => {
+      return queryClient.invalidateQueries({
+        queryKey: accountKeys.me(user?.address as string),
+      });
     },
-  );
+  });
 }
 
 export function useCreatePaymentMethod() {
   const { user } = useLoggedInUser();
   const queryClient = useQueryClient();
 
-  return useMutationWithInvalidate(
-    async (paymentMethodId: string) => {
+  return useMutation({
+    mutationFn: async (paymentMethodId: string) => {
       invariant(user?.address, "walletAddress is required");
 
       const res = await fetch(`${THIRDWEB_API_HOST}/v1/account/paymentMethod`, {
@@ -625,21 +683,19 @@ export function useCreatePaymentMethod() {
 
       return json.data;
     },
-    {
-      onSuccess: () => {
-        return queryClient.invalidateQueries(
-          accountKeys.me(user?.address as string),
-        );
-      },
+    onSuccess: () => {
+      return queryClient.invalidateQueries({
+        queryKey: accountKeys.me(user?.address as string),
+      });
     },
-  );
+  });
 }
 
 export function useApiKeys() {
   const { user, isLoggedIn } = useLoggedInUser();
-  return useQuery(
-    apiKeys.keys(user?.address as string),
-    async () => {
+  return useQuery({
+    queryKey: apiKeys.keys(user?.address as string),
+    queryFn: async () => {
       const res = await fetch(`${THIRDWEB_API_HOST}/v1/keys`, {
         method: "GET",
 
@@ -654,16 +710,16 @@ export function useApiKeys() {
       }
       return json.data as ApiKey[];
     },
-    { enabled: !!user?.address && isLoggedIn },
-  );
+    enabled: !!user?.address && isLoggedIn,
+  });
 }
 
 export function useCreateApiKey() {
   const { user } = useLoggedInUser();
   const queryClient = useQueryClient();
 
-  return useMutation(
-    async (input: CreateKeyInput) => {
+  return useMutation({
+    mutationFn: async (input: CreateKeyInput) => {
       invariant(user?.address, "walletAddress is required");
 
       const res = await fetch(`${THIRDWEB_API_HOST}/v1/keys`, {
@@ -682,22 +738,21 @@ export function useCreateApiKey() {
 
       return json.data as ApiKey;
     },
-    {
-      onSuccess: () => {
-        return queryClient.invalidateQueries(
-          apiKeys.keys(user?.address as string),
-        );
-      },
+
+    onSuccess: () => {
+      return queryClient.invalidateQueries({
+        queryKey: apiKeys.keys(user?.address as string),
+      });
     },
-  );
+  });
 }
 
 export function useUpdateApiKey() {
   const { user } = useLoggedInUser();
   const queryClient = useQueryClient();
 
-  return useMutationWithInvalidate(
-    async (input: UpdateKeyInput) => {
+  return useMutation({
+    mutationFn: async (input: UpdateKeyInput) => {
       invariant(user?.address, "walletAddress is required");
 
       const res = await fetch(`${THIRDWEB_API_HOST}/v1/keys/${input.id}`, {
@@ -717,22 +772,20 @@ export function useUpdateApiKey() {
 
       return json.data;
     },
-    {
-      onSuccess: () => {
-        return queryClient.invalidateQueries(
-          apiKeys.keys(user?.address as string),
-        );
-      },
+    onSuccess: () => {
+      return queryClient.invalidateQueries({
+        queryKey: apiKeys.keys(user?.address as string),
+      });
     },
-  );
+  });
 }
 
 export function useRevokeApiKey() {
   const { user } = useLoggedInUser();
   const queryClient = useQueryClient();
 
-  return useMutationWithInvalidate(
-    async (id: string) => {
+  return useMutation({
+    mutationFn: async (id: string) => {
       invariant(user?.address, "walletAddress is required");
 
       const res = await fetch(`${THIRDWEB_API_HOST}/v1/keys/${id}/revoke`, {
@@ -751,14 +804,12 @@ export function useRevokeApiKey() {
 
       return json.data;
     },
-    {
-      onSuccess: () => {
-        return queryClient.invalidateQueries(
-          apiKeys.keys(user?.address as string),
-        );
-      },
+    onSuccess: () => {
+      return queryClient.invalidateQueries({
+        queryKey: apiKeys.keys(user?.address as string),
+      });
     },
-  );
+  });
 }
 
 export const usePolicies = (serviceId?: string) => {
@@ -787,8 +838,11 @@ export const usePolicies = (serviceId?: string) => {
 
 export const useUpdatePolicies = () => {
   const queryClient = useQueryClient();
-  return useMutationWithInvalidate(
-    async (input: { serviceId: string; data: ApiKeyServicePolicy }) => {
+  return useMutation({
+    mutationFn: async (input: {
+      serviceId: string;
+      data: ApiKeyServicePolicy;
+    }) => {
       const res = await fetch(`${THIRDWEB_API_HOST}/v1/policies`, {
         method: "POST",
 
@@ -806,49 +860,20 @@ export const useUpdatePolicies = () => {
       }
       return json.data as ApiKeyServicePolicy;
     },
-    {
-      onSuccess: (_, variables) => {
-        return queryClient.invalidateQueries(["policies", variables.serviceId]);
-      },
-    },
-  );
-};
-
-export function useAuthorizeWalletWithAccount() {
-  const { user } = useLoggedInUser();
-
-  return useMutationWithInvalidate(
-    async (variables: { token: string; deviceName?: string }) => {
-      invariant(user?.address, "walletAddress is required");
-
-      const res = await fetch(`${THIRDWEB_API_HOST}/v1/jwt/authorize-wallet`, {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${variables.token}`,
-        },
-        body: JSON.stringify({
-          deviceName: variables.deviceName,
-        }),
+    onSuccess: (_, variables) => {
+      return queryClient.invalidateQueries({
+        queryKey: ["policies", variables.serviceId],
       });
-      const json = await res.json();
-
-      if (json.error) {
-        throw new Error(json.error.message);
-      }
-
-      return json.data;
     },
-  );
-}
+  });
+};
 
 export function useRevokeAuthorizedWallet() {
   const { user } = useLoggedInUser();
   const queryClient = useQueryClient();
 
-  return useMutationWithInvalidate(
-    async (variables: { authorizedWalletId: string }) => {
+  return useMutation({
+    mutationFn: async (variables: { authorizedWalletId: string }) => {
       invariant(user?.address, "walletAddress is required");
 
       const { authorizedWalletId } = variables;
@@ -872,22 +897,20 @@ export function useRevokeAuthorizedWallet() {
 
       return json.data;
     },
-    {
-      onSuccess: () => {
-        return queryClient.invalidateQueries(
-          authorizedWallets.authorizedWallets(user?.address as string),
-        );
-      },
+    onSuccess: () => {
+      return queryClient.invalidateQueries({
+        queryKey: authorizedWallets.authorizedWallets(user?.address as string),
+      });
     },
-  );
+  });
 }
 
 export function useAuthorizedWallets() {
   const { user, isLoggedIn } = useLoggedInUser();
 
-  return useQuery(
-    authorizedWallets.authorizedWallets(user?.address as string),
-    async () => {
+  return useQuery({
+    queryKey: authorizedWallets.authorizedWallets(user?.address as string),
+    queryFn: async () => {
       const res = await fetch(`${THIRDWEB_API_HOST}/v1/authorized-wallets`, {
         method: "GET",
 
@@ -903,33 +926,7 @@ export function useAuthorizedWallets() {
 
       return json.data as AuthorizedWallet[];
     },
-    { enabled: !!user?.address && isLoggedIn, cacheTime: 0 },
-  );
-}
-
-/**
- *
- */
-export async function fetchChainsFromApi() {
-  // always fetch from prod for chains for now
-  // TODO: re-visit this
-  const res = await fetch("https://api.thirdweb.com/v1/chains", {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-  const json = await res.json();
-
-  if (json.error) {
-    throw new Error(json.error.message);
-  }
-
-  return json.data as Chain[];
-}
-
-export function useApiChains() {
-  return useQuery(["all-chains"], async () => {
-    return fetchChainsFromApi();
+    enabled: !!user?.address && isLoggedIn,
+    gcTime: 0,
   });
 }

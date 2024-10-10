@@ -42,7 +42,7 @@ async function removeChainFromFavorites(chainId: number) {
   return result?.data?.favorite;
 }
 
-export function useFavouriteChainIds() {
+export function useFavoriteChainIds() {
   const loggedInUser = useLoggedInUser();
   return useQuery({
     queryKey: ["favoriteChains", loggedInUser.user?.address],
@@ -59,7 +59,7 @@ export function StarButton(props: {
 }) {
   const loggedInUser = useLoggedInUser();
   const queryClient = useQueryClient();
-  const favChainsQuery = useFavouriteChainIds();
+  const favChainsQuery = useFavoriteChainIds();
 
   const mutation = useMutation({
     mutationFn: (preferred: boolean) => {
@@ -91,8 +91,8 @@ export function StarButton(props: {
       }}
       disabled={
         !loggedInUser.user?.address ||
-        mutation.isLoading ||
-        favChainsQuery.isLoading
+        mutation.isPending ||
+        favChainsQuery.isPending
       }
     >
       <ToolTipLabel label={label}>

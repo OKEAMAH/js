@@ -4,7 +4,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -30,19 +29,18 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `count` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `count` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `count` method is supported.
  * @extension THIRDWEB
  * @example
  * ```ts
  * import { isCountSupported } from "thirdweb/extensions/thirdweb";
- *
- * const supported = await isCountSupported(contract);
+ * const supported = isCountSupported(["0x..."]);
  * ```
  */
-export async function isCountSupported(contract: ThirdwebContract<any>) {
+export function isCountSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -54,7 +52,7 @@ export async function isCountSupported(contract: ThirdwebContract<any>) {
  * @extension THIRDWEB
  * @example
  * ```ts
- * import { encodeCountParams } "thirdweb/extensions/thirdweb";
+ * import { encodeCountParams } from "thirdweb/extensions/thirdweb";
  * const result = encodeCountParams({
  *  deployer: ...,
  * });
@@ -71,7 +69,7 @@ export function encodeCountParams(options: CountParams) {
  * @extension THIRDWEB
  * @example
  * ```ts
- * import { encodeCount } "thirdweb/extensions/thirdweb";
+ * import { encodeCount } from "thirdweb/extensions/thirdweb";
  * const result = encodeCount({
  *  deployer: ...,
  * });
@@ -92,7 +90,7 @@ export function encodeCount(options: CountParams) {
  * @example
  * ```ts
  * import { decodeCountResult } from "thirdweb/extensions/thirdweb";
- * const result = decodeCountResult("...");
+ * const result = decodeCountResultResult("...");
  * ```
  */
 export function decodeCountResult(result: Hex) {

@@ -1,84 +1,89 @@
-import { Flex, Icon, SimpleGrid } from "@chakra-ui/react";
 import type { ExploreCategory } from "data/explore";
-import { FiArrowRight } from "react-icons/fi";
-import { Heading, Link, LinkButton } from "tw-components";
+import { ArrowRightIcon } from "lucide-react";
+import Link from "next/link";
 import { ContractCard } from "../contract-card";
 
 interface ContractRowProps {
   category: ExploreCategory;
 }
 
-export const ContractRow: React.FC<ContractRowProps> = ({ category }) => {
+export function ContractRow({ category }: ContractRowProps) {
   return (
-    <Flex gap={5} direction="column" as="section">
-      <Flex align="center" justify="space-between" gap={4}>
-        <Flex gap={2} direction="column" as="header">
+    <section>
+      {/* Title, Description + View all link */}
+      <div className="flex items-center justify-between gap-4">
+        <header className="flex flex-col gap-1.5">
           <Link href={`/explore/${category.id}`}>
-            <Heading as="h2" size="label.xl">
+            <h2 className="font-semibold text-2xl tracking-tight">
               {category.displayName || category.name}
-            </Heading>
+            </h2>
           </Link>
-          <Flex align="center" gap={1}>
-            <Heading as="h3" size="label.md" fontWeight={400}>
-              {category.description}{" "}
-              {category.learnMore && (
-                <Link
-                  _light={{
-                    color: "blue.500",
-                    _hover: { color: "blue.500" },
-                  }}
-                  _dark={{ color: "blue.400", _hover: { color: "blue.500" } }}
-                  isExternal
-                  href={category.learnMore}
-                >
-                  Learn more
-                </Link>
-              )}
-            </Heading>
-          </Flex>
-        </Flex>
+
+          <p className="text-muted-foreground">
+            {category.description}{" "}
+            {category.learnMore && (
+              <Link
+                target="_blank"
+                href={category.learnMore}
+                className="inline text-link-foreground"
+              >
+                Learn more
+              </Link>
+            )}
+          </p>
+        </header>
+
         {category.contracts.length > 6 && (
-          <LinkButton
-            flexShrink={0}
-            size="sm"
-            rightIcon={<Icon as={FiArrowRight} />}
-            variant="link"
+          <Link
             href={`/explore/${category.id}`}
-            fontWeight={500}
-            _dark={{
-              color: "blue.400",
-              _hover: {
-                color: "blue.500",
-              },
-            }}
-            _light={{
-              color: "blue.500",
-              _hover: {
-                color: "blue.500",
-              },
-            }}
+            className="flex shrink-0 items-center gap-1 text-base text-link-foreground hover:text-foreground"
           >
             View all
-          </LinkButton>
+            <ArrowRightIcon className="size-4" />
+          </Link>
         )}
-      </Flex>
+      </div>
 
-      <SimpleGrid columns={{ base: 1, md: 3 }} gap={5}>
+      <div className="h-5" />
+
+      <div className="relative z-0 grid grid-cols-1 gap-4 md:grid-cols-3">
         {category.contracts.slice(0, 6).map((publishedContractId, idx) => {
-          const [publisher, contractId] = publishedContractId.split("/");
+          const publisher: string = Array.isArray(publishedContractId)
+            ? publishedContractId[0].split("/")[0]
+            : publishedContractId.split("/")[0];
+          const contractId: string = Array.isArray(publishedContractId)
+            ? publishedContractId[0].split("/")[1]
+            : publishedContractId.split("/")[1];
+          const modules = Array.isArray(publishedContractId)
+            ? publishedContractId[1]
+            : undefined;
+          const overrides = Array.isArray(publishedContractId)
+            ? publishedContractId[2]
+            : undefined;
           return (
             <ContractCard
-              key={publishedContractId}
+              key={publisher + contractId + overrides?.title}
               publisher={publisher}
               contractId={contractId}
+              titleOverride={overrides?.title}
+              descriptionOverride={overrides?.description}
               tracking={{
                 source: category.id,
                 itemIndex: `${idx}`,
               }}
+              isBeta={category.isBeta}
+              modules={
+                modules?.length
+                  ? modules.map((m) => ({
+                      publisher: m.split("/")[0],
+                      moduleId: m.split("/")[1],
+                    }))
+                  : undefined
+              }
             />
           );
         })}
-      </SimpleGrid>
-    </Flex>
+      </div>
+    </section>
   );
-};
+}

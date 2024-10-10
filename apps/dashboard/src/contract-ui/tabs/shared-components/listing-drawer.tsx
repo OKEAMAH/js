@@ -1,3 +1,4 @@
+import { WalletAddress } from "@/components/blocks/wallet-address";
 import {
   Flex,
   GridItem,
@@ -9,9 +10,8 @@ import {
   Tabs,
   usePrevious,
 } from "@chakra-ui/react";
-import type { MarketplaceV3 } from "@thirdweb-dev/sdk";
-import { BigNumber } from "ethers";
 import { useMemo } from "react";
+import type { ThirdwebContract } from "thirdweb";
 import type {
   DirectListing,
   EnglishAuction,
@@ -25,7 +25,7 @@ import { CancelEnglishAuction } from "../english-auctions/components/cancel";
 import { LISTING_STATUS } from "./types";
 
 interface NFTDrawerProps {
-  contract: MarketplaceV3;
+  contract: ThirdwebContract;
   isOpen: boolean;
   onClose: () => void;
   data: DirectListing | EnglishAuction | null;
@@ -83,10 +83,25 @@ export const ListingDrawer: React.FC<NFTDrawerProps> = ({
                   <Heading size="label.md">Seller</Heading>
                 </GridItem>
                 <GridItem colSpan={9}>
+                  <WalletAddress address={renderData.creatorAddress} />
+                </GridItem>
+                <GridItem colSpan={3}>
+                  <Heading size="label.md">Listing ID</Heading>
+                </GridItem>
+                <GridItem colSpan={9}>
                   <AddressCopyButton
                     size="xs"
-                    address={renderData.creatorAddress}
+                    title="listing ID"
+                    address={renderData.id.toString()}
                   />
+                </GridItem>
+                <GridItem colSpan={3}>
+                  <Heading size="label.md">Type</Heading>
+                </GridItem>
+                <GridItem colSpan={9}>
+                  <Text fontFamily="mono" size="body.md">
+                    {renderData.asset.type}
+                  </Text>
                 </GridItem>
                 <GridItem colSpan={3}>
                   <Heading size="label.md">Status</Heading>
@@ -105,9 +120,33 @@ export const ListingDrawer: React.FC<NFTDrawerProps> = ({
                 </GridItem>
                 <GridItem colSpan={9}>
                   <Text fontFamily="mono" size="body.md">
-                    {BigNumber.from(renderData.quantity || "0").toString()}
+                    {(renderData.quantity || 0n).toString()}{" "}
+                    {/* For listings that are completed, the `quantity` would be `0`
+                    So we show this text to make it clear */}
+                    {LISTING_STATUS[renderData.status] === "Completed"
+                      ? "(Sold out)"
+                      : ""}
                   </Text>
                 </GridItem>
+
+                {renderData.type === "direct-listing" && (
+                  <>
+                    <GridItem colSpan={3}>
+                      <Heading size="label.md">Price</Heading>
+                    </GridItem>
+                    <GridItem colSpan={9}>
+                      <Text fontFamily="mono" size="body.md">
+                        {renderData.currencyValuePerToken.displayValue}{" "}
+                        {renderData.currencyValuePerToken.symbol}
+                      </Text>
+                    </GridItem>
+                  </>
+                )}
+
+                {/*
+                  Todo: Add a Buy button somewhere in this section once the Dashboard is fully migrated to v5 (?)
+                  Kien already shipped a prebuilt component for the Marketplace Buy Button in SDK v5
+                */}
               </SimpleGrid>
             </Card>
             {data?.asset.metadata.properties ? (

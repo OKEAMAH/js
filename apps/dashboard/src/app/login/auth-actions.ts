@@ -1,56 +1,72 @@
 "use server";
 import "server-only";
 
+import { COOKIE_ACTIVE_ACCOUNT, COOKIE_PREFIX_TOKEN } from "@/constants/cookie";
+import { API_SERVER_URL } from "@/constants/env";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { getAddress } from "thirdweb";
 import type {
   GenerateLoginPayloadParams,
   LoginPayload,
   VerifyLoginPayloadParams,
 } from "thirdweb/auth";
-import {
-  COOKIE_ACTIVE_ACCOUNT,
-  COOKIE_PREFIX_TOKEN,
-} from "../../@/constants/cookie";
 
-const THIRDWEB_API_HOST =
-  process.env.NEXT_PUBLIC_THIRDWEB_API_HOST || "https://api.thirdweb.com";
+const THIRDWEB_API_SECRET = process.env.API_SERVER_SECRET || "";
 
 export async function getLoginPayload(
   params: GenerateLoginPayloadParams,
 ): Promise<LoginPayload> {
-  const res = await fetch(`${THIRDWEB_API_HOST}/v1/auth/payload`, {
+  if (!THIRDWEB_API_SECRET) {
+    throw new Error("API_SERVER_SECRET is not set");
+  }
+  const res = await fetch(`${API_SERVER_URL}/v2/siwe/payload`, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-service-api-key": THIRDWEB_API_SECRET,
+    },
     body: JSON.stringify({
       address: params.address,
       chainId: params.chainId?.toString(),
     }),
-    headers: {
-      "Content-Type": "application/json",
-    },
   });
+
   if (!res.ok) {
     console.error("Failed to fetch login payload", res.status, res.statusText);
     throw new Error("Failed to fetch login payload");
   }
-  return (await res.json()).payload;
+  return (await res.json()).data.payload;
 }
 
-export async function doLogin(
-  payload: VerifyLoginPayloadParams,
-  nextPath?: string | null,
-) {
+export async function doLogin(payload: VerifyLoginPayloadParams) {
+  if (!THIRDWEB_API_SECRET) {
+    throw new Error("API_SERVER_SECRET is not set");
+  }
+
+  const cookieStore = cookies();
+
   // forward the request to the API server
-  const res = await fetch(`${THIRDWEB_API_HOST}/v1/auth/login`, {
+  const res = await fetch(`${API_SERVER_URL}/v2/siwe/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "x-service-api-key": THIRDWEB_API_SECRET,
     },
-    body: JSON.stringify({ payload }),
+    // set the createAccount flag to true to create a new account if it does not exist
+    body: JSON.stringify({ ...payload, createAccount: true }),
   });
 
+  // if the request failed, log the error and throw an error
   if (!res.ok) {
+    try {
+      // clear the cookies to prevent any weird issues
+      cookieStore.delete(
+        COOKIE_PREFIX_TOKEN + getAddress(payload.payload.address),
+      );
+      cookieStore.delete(COOKIE_ACTIVE_ACCOUNT);
+    } catch {
+      // ignore any errors on this
+    }
     try {
       const response = await res.text();
       // try to log the rich error message
@@ -74,44 +90,17 @@ export async function doLogin(
 
   const json = await res.json();
 
-  if (!json.token) {
+  const jwt = json.data.jwt;
+
+  if (!jwt) {
     console.error("Failed to login - invalid json", json);
     throw new Error("Failed to login - invalid json");
   }
 
-  // check if we have a thirdweb account for the token
-  const userRes = await fetch(`${THIRDWEB_API_HOST}/v1/account/me`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${json.token}`,
-    },
-  });
-  // if we do not have a user, create one
-  if (userRes.status === 404) {
-    const newUserRes = await fetch(`${THIRDWEB_API_HOST}/v1/account/create`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${json.token}`,
-      },
-    });
-
-    if (newUserRes.status !== 200) {
-      console.error(
-        "Failed to create new user",
-        newUserRes.status,
-        newUserRes.statusText,
-      );
-      throw new Error("Failed to create new user");
-    }
-  }
-
-  const cookieStore = cookies();
-
   // set the token cookie
   cookieStore.set(
     COOKIE_PREFIX_TOKEN + getAddress(payload.payload.address),
-    json.token,
+    jwt,
     {
       httpOnly: true,
       secure: true,
@@ -129,13 +118,6 @@ export async function doLogin(
     // 3 days
     maxAge: 3 * 24 * 60 * 60,
   });
-
-  // redirect to the nextPath (if set)
-  if (nextPath) {
-    return redirect(nextPath);
-  }
-  // if we do not have a next path, redirect to dashboard home
-  return redirect("/dashboard");
 }
 
 export async function doLogout() {
@@ -160,7 +142,7 @@ export async function isLoggedIn(address: string) {
     return false;
   }
 
-  const res = await fetch(`${THIRDWEB_API_HOST}/v1/account/me`, {
+  const res = await fetch(`${API_SERVER_URL}/v1/account/me`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -187,21 +169,14 @@ export async function isLoggedIn(address: string) {
     cookieStore.delete(cookieName);
     return false;
   }
-  // if the address matches what we expect, we're logged in
-  if (getAddress(json.address) === getAddress(address)) {
-    // set the active account cookie again
-    cookieStore.set(COOKIE_ACTIVE_ACCOUNT, getAddress(address), {
-      httpOnly: false,
-      secure: true,
-      sameSite: "strict",
-      // 3 days
-      maxAge: 3 * 24 * 60 * 60,
-    });
-    return true;
-  }
 
-  // not logged in
-  // clear the cookie
-  cookieStore.delete(cookieName);
-  return false;
+  // set the active account cookie again
+  cookieStore.set(COOKIE_ACTIVE_ACCOUNT, getAddress(address), {
+    httpOnly: false,
+    secure: true,
+    sameSite: "strict",
+    // 3 days
+    maxAge: 3 * 24 * 60 * 60,
+  });
+  return true;
 }

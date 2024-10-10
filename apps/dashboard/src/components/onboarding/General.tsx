@@ -1,10 +1,9 @@
 import type { Account } from "@3rdweb-sdk/react/hooks/useApi";
-import { Flex, FocusLock, VStack } from "@chakra-ui/react";
 import { AccountForm } from "components/settings/Account/AccountForm";
 import { useState } from "react";
 import { useActiveWallet, useDisconnect } from "thirdweb/react";
 import { Button } from "tw-components";
-import { OnboardingTitle } from "./Title";
+import { TitleAndDescription } from "./Title";
 
 type OnboardingGeneralProps = {
   account: Account;
@@ -12,7 +11,7 @@ type OnboardingGeneralProps = {
   onDuplicate: (email: string) => void;
 };
 
-export const OnboardingGeneral: React.FC<OnboardingGeneralProps> = ({
+const OnboardingGeneral: React.FC<OnboardingGeneralProps> = ({
   account,
   onSave,
   onDuplicate,
@@ -33,8 +32,8 @@ export const OnboardingGeneral: React.FC<OnboardingGeneralProps> = ({
   }
 
   return (
-    <FocusLock>
-      <OnboardingTitle
+    <div>
+      <TitleAndDescription
         heading={
           !existing
             ? "Create your thirdweb account"
@@ -43,7 +42,9 @@ export const OnboardingGeneral: React.FC<OnboardingGeneralProps> = ({
         description="Start building web3 apps and games, faster."
       />
 
-      <Flex flexDir="column" gap={4}>
+      <div className="h-6" />
+
+      <div className="flex flex-col gap-4">
         <AccountForm
           showSubscription={!existing}
           hideName={existing}
@@ -60,7 +61,7 @@ export const OnboardingGeneral: React.FC<OnboardingGeneralProps> = ({
           onDuplicateError={onDuplicate}
         />
 
-        <VStack justifyContent="center" w="full" gap={2}>
+        <div className="flex w-full flex-col justify-center gap-2">
           {!existing ? (
             <>
               <Button
@@ -94,8 +95,10 @@ export const OnboardingGeneral: React.FC<OnboardingGeneralProps> = ({
               I don&apos;t have an account
             </Button>
           )}
-        </VStack>
-      </Flex>
-    </FocusLock>
+        </div>
+      </div>
+    </div>
   );
 };
+
+export default OnboardingGeneral;

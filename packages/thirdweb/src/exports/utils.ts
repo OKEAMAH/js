@@ -21,6 +21,8 @@ export { getSaltHash } from "../utils/any-evm/get-salt-hash.js";
 export { isEIP155Enforced } from "../utils/any-evm/is-eip155-enforced.js";
 export { keccakId } from "../utils/any-evm/keccak-id.js";
 export { getKeylessTransaction } from "../utils/any-evm/keyless-transaction.js";
+export type { ExtendedMetadata } from "../utils/any-evm/deploy-metadata.js";
+export { isZkSyncChain } from "../utils/any-evm/zksync/isZkSyncChain.js";
 
 //signatures
 export {
@@ -130,10 +132,16 @@ export {
   type AddressInput,
 } from "../utils/address.js";
 
+export { isBytes } from "viem";
+
 // ------------------------------------------------
 // abi
 // ------------------------------------------------
 export { encodeAbiParameters } from "../utils/abi/encodeAbiParameters.js";
+
+/**
+ * @utils
+ */
 export { encodePacked } from "viem";
 
 // Useful helpers
@@ -165,3 +173,23 @@ export {
   getClaimParams,
   type GetClaimParamsOptions,
 } from "../utils/extensions/drops/get-claim-params.js";
+
+export type { NFTMetadata, NFTInput } from "../utils/nft/parseNft.js";
+
+export { parseAbiParams } from "../utils/contract/parse-abi-params.js";
+
+// ------------------------------------------------
+// bigint
+// ------------------------------------------------
+export { max, min } from "../utils/bigint.js";
+
+export { toFunctionSelector } from "viem";
+export type {
+  Abi,
+  AbiFunction,
+  AbiReceive,
+  AbiError,
+  AbiEvent,
+  AbiConstructor,
+  AbiFallback,
+} from "abitype";

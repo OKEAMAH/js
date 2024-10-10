@@ -24,10 +24,23 @@ export const socialAuthOptions = [
   "apple",
   "facebook",
   "discord",
+  "line",
+  "x",
+  "coinbase",
+  "farcaster",
+  "telegram",
 ] as const;
 export type SocialAuthOption = (typeof socialAuthOptions)[number];
+export type OAuthOption = SocialAuthOption | "guest";
 
-export type AuthOption = "email" | "phone" | "passkey" | SocialAuthOption;
+export const authOptions = [
+  ...socialAuthOptions,
+  "guest",
+  "email",
+  "phone",
+  "passkey",
+] as const;
+export type AuthOption = (typeof authOptions)[number];
 
 export type DisconnectFn = () => Promise<void>;
 export type SwitchChainFn = (chain: Chain) => Promise<void>;

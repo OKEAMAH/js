@@ -1,3 +1,8 @@
+"use client";
+
+import { Input } from "@/components/ui/input";
+import { useDashboardRouter } from "@/lib/DashboardRouter";
+import { cn } from "@/lib/utils";
 import {
   Box,
   Divider,
@@ -5,7 +10,6 @@ import {
   GridItem,
   Image,
   List,
-  ListItem,
   SimpleGrid,
   Tab,
   TabList,
@@ -19,19 +23,20 @@ import {
   Thead,
   Tr,
 } from "@chakra-ui/react";
-import {
-  type AbiEvent,
-  type AbiFunction,
-  type SmartContract,
-  extractFunctionsFromAbi,
-  joinABIs,
-} from "@thirdweb-dev/sdk";
-import { useContractEnabledExtensions } from "components/contract-components/hooks";
-import { MarkdownRenderer } from "components/contract-components/published-contract/markdown-renderer";
+import type { AbiEvent, AbiFunction } from "abitype";
 import { camelToTitle } from "contract-ui/components/solidity-inputs/helpers";
-import { useRouter } from "next/router";
+import { SearchIcon } from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
+import type { ThirdwebContract } from "thirdweb";
+import * as ERC20Ext from "thirdweb/extensions/erc20";
+import * as ERC721Ext from "thirdweb/extensions/erc721";
+import * as ERC1155Ext from "thirdweb/extensions/erc1155";
+import { useReadContract } from "thirdweb/react";
+import { toFunctionSelector } from "thirdweb/utils";
 import { Badge, Button, Card, Heading, Text } from "tw-components";
+import { useDebounce } from "use-debounce";
+import { useContractFunctionSelectors } from "../../contract-ui/hooks/useContractFunctionSelectors";
 import {
   COMMANDS,
   formatSnippet,
@@ -41,30 +46,44 @@ import type { CodeEnvironment } from "../contract-tabs/code/types";
 import { InteractiveAbiFunction } from "./interactive-abi-function";
 
 interface ContractFunctionProps {
-  fn?: AbiFunction | AbiEvent;
-  contract?: SmartContract;
+  fn: AbiFunction | AbiEvent;
+  contract: ThirdwebContract;
 }
 
-const ContractFunction: React.FC<ContractFunctionProps> = ({
-  fn,
-  contract,
-}) => {
-  const [environment, setEnvironment] = useState<CodeEnvironment>("javascript");
+const ContractFunction: React.FC<{
+  fn: AbiFunction | AbiEvent;
+  contract?: ThirdwebContract;
+}> = ({ fn, contract }) => {
+  if (!contract) {
+    return <ContractFunctionInputs fn={fn} />;
+  }
 
-  const enabledExtensions = useContractEnabledExtensions(contract?.abi);
+  return <ContractFunctionInner contract={contract} fn={fn} />;
+};
+
+function ContractFunctionInner({ contract, fn }: ContractFunctionProps) {
+  const [environment, setEnvironment] = useState<CodeEnvironment>("javascript");
+  const functionSelectorQuery = useContractFunctionSelectors(contract);
+  const functionSelectors = functionSelectorQuery.data || [];
+  const isERC721Query = useReadContract(ERC721Ext.isERC721, { contract });
+  const isERC1155Query = useReadContract(ERC1155Ext.isERC1155, { contract });
+  const isERC20 = useMemo(
+    () => ERC20Ext.isERC20(functionSelectors),
+    [functionSelectors],
+  );
 
   const extensionNamespace = useMemo(() => {
-    if (enabledExtensions.some((e) => e.name === "ERC20")) {
+    if (isERC20) {
       return "erc20";
     }
-    if (enabledExtensions.some((e) => e.name === "ERC721")) {
+    if (isERC721Query.data) {
       return "erc721";
     }
-    if (enabledExtensions.some((e) => e.name === "ERC1155")) {
+    if (isERC1155Query.data) {
       return "erc1155";
     }
     return undefined;
-  }, [enabledExtensions]);
+  }, [isERC20, isERC721Query.data, isERC1155Query.data]);
 
   if (!fn) {
     return null;
@@ -76,6 +95,20 @@ const ContractFunction: React.FC<ContractFunctionProps> = ({
     isFunction &&
     (fn.stateMutability === "view" || fn.stateMutability === "pure");
 
+  const commandsKey = isFunction
+    ? isRead
+      ? "read"
+      : "write"
+    : ("events" as const);
+
+  const codeSnippet = formatSnippet(COMMANDS[commandsKey], {
+    contractAddress: contract.address,
+    fn,
+    args: fn.inputs?.map((i) => i.name || ""),
+    chainId: contract.chain.id,
+    extensionNamespace,
+  });
+
   return (
     <Flex direction="column" gap={1.5}>
       <Flex
@@ -85,8 +118,8 @@ const ContractFunction: React.FC<ContractFunctionProps> = ({
       >
         <Flex alignItems="baseline" gap={1} flexWrap="wrap">
           <Heading size="subtitle.md">{camelToTitle(fn.name)}</Heading>
-          <Heading size="subtitle.sm" color="gray.600">
-            ({fn.name}){" "}
+          <Heading size="subtitle.sm" className="text-muted-foreground">
+            ({fn.name})
           </Heading>
         </Flex>
         {isFunction && (
@@ -95,16 +128,59 @@ const ContractFunction: React.FC<ContractFunctionProps> = ({
           </Badge>
         )}
       </Flex>
-      {fn.comment && (
-        <MarkdownRenderer
-          markdownText={fn.comment
-            ?.replaceAll(/See \{(.+)\}(\.)?/gm, "")
-            .replaceAll("{", '"')
-            .replaceAll("}", '"')
-            .replaceAll("'", '"')}
+
+      {isFunction && (
+        <InteractiveAbiFunction
+          key={JSON.stringify(fn)}
+          contract={contract}
+          abiFunction={fn}
         />
       )}
-      {fn.inputs?.length && !contract ? (
+
+      {codeSnippet && (
+        <>
+          <Heading size="subtitle.md" mt={6}>
+            Use this function in your app
+          </Heading>
+          <Divider mb={2} />
+          <CodeSegment
+            environment={environment}
+            setEnvironment={setEnvironment}
+            snippet={codeSnippet}
+          />
+        </>
+      )}
+    </Flex>
+  );
+}
+
+function ContractFunctionInputs(props: {
+  fn: AbiFunction | AbiEvent;
+}) {
+  const { fn } = props;
+  const isFunction = "stateMutability" in fn;
+
+  return (
+    <Flex direction="column" gap={1.5}>
+      <Flex
+        alignItems={{ base: "start", md: "center" }}
+        gap={2}
+        direction={{ base: "column", md: "row" }}
+      >
+        <Flex alignItems="baseline" gap={1} flexWrap="wrap">
+          <Heading size="subtitle.md">{camelToTitle(fn.name)}</Heading>
+          <Heading size="subtitle.sm" className="text-muted-foreground">
+            ({fn.name})
+          </Heading>
+        </Flex>
+        {isFunction && (
+          <Badge size="label.sm" variant="subtle" colorScheme="green">
+            {fn.stateMutability}
+          </Badge>
+        )}
+      </Flex>
+
+      {fn.inputs?.length ? (
         <>
           <Divider my={2} />
           <Flex flexDir="column" gap={3}>
@@ -144,7 +220,10 @@ const ContractFunction: React.FC<ContractFunctionProps> = ({
                         {input?.name ? (
                           <Text fontFamily="mono">{input.name}</Text>
                         ) : (
-                          <Text fontStyle="italic" color="gray.500">
+                          <Text
+                            fontStyle="italic"
+                            className="text-muted-foreground"
+                          >
                             No name defined
                           </Text>
                         )}
@@ -163,41 +242,13 @@ const ContractFunction: React.FC<ContractFunctionProps> = ({
           </Flex>
         </>
       ) : null}
-
-      {contract && isFunction && (
-        <InteractiveAbiFunction
-          key={JSON.stringify(fn)}
-          contract={contract}
-          abiFunction={fn}
-        />
-      )}
-
-      <Heading size="subtitle.md" mt={6}>
-        Use this function in your app
-      </Heading>
-      <Divider mb={2} />
-      <CodeSegment
-        environment={environment}
-        setEnvironment={setEnvironment}
-        snippet={formatSnippet(
-          // biome-ignore lint/suspicious/noExplicitAny: FIXME
-          COMMANDS[isFunction ? (isRead ? "read" : "write") : "events"] as any,
-          {
-            contractAddress: contract?.getAddress(),
-            fn,
-            args: fn.inputs?.map((i) => i.name),
-            chainId: contract?.chainId,
-            extensionNamespace,
-          },
-        )}
-      />
     </Flex>
   );
-};
+}
 
 interface ContractFunctionsPanelProps {
   fnsOrEvents: (AbiFunction | AbiEvent)[];
-  contract?: SmartContract;
+  contract?: ThirdwebContract;
 }
 
 type ExtensionFunctions = {
@@ -209,41 +260,22 @@ export const ContractFunctionsPanel: React.FC<ContractFunctionsPanelProps> = ({
   fnsOrEvents,
   contract,
 }) => {
-  const extensions = useContractEnabledExtensions(contract?.abi);
-  const isFunction = "stateMutability" in fnsOrEvents[0];
+  // TODO: clean this up
   const functionsWithExtension = useMemo(() => {
-    let allFunctions = fnsOrEvents as AbiFunction[];
+    const allFunctions = fnsOrEvents.filter((f) => f.type === "function");
     const results: ExtensionFunctions[] = [];
-    const processedFunctions: string[] = [];
-    // biome-ignore lint/complexity/noForEach: FIXME
-    extensions.forEach((ext) => {
-      // biome-ignore lint/suspicious/noExplicitAny: FIXME
-      let functions = extractFunctionsFromAbi(joinABIs(ext.abis as any));
-      allFunctions = allFunctions.filter(
-        (fn) => !functions.map((f) => f.name).includes(fn.name),
-      );
-      functions = functions.filter(
-        (fn) => !processedFunctions.includes(fn.name),
-      );
-      processedFunctions.push(...functions.map((fn) => fn.name));
-      results.push({
-        extension: ext.name as string,
-        functions,
-      });
-    });
     results.push({
       extension: "",
       functions: allFunctions,
     });
     return results;
-  }, [fnsOrEvents, extensions]);
+  }, [fnsOrEvents]);
   const writeFunctions: ExtensionFunctions[] = useMemo(() => {
     return functionsWithExtension
       .map((e) => {
         const filteredFunctions = e.functions.filter(
           (fn) =>
-            (fn as AbiFunction).stateMutability !== "pure" &&
-            (fn as AbiFunction).stateMutability !== "view",
+            fn.stateMutability !== "pure" && fn.stateMutability !== "view",
         );
         if (filteredFunctions.length === 0) {
           return undefined;
@@ -279,13 +311,21 @@ export const ContractFunctionsPanel: React.FC<ContractFunctionsPanelProps> = ({
   }, [fnsOrEvents]);
 
   // Load state from the URL
-  const router = useRouter();
-  const _itemName = router.query.name;
-  const _item = fnsOrEvents.find((o) => o.name === _itemName);
+  const searchParams = useSearchParams();
+  const _selector = searchParams?.get("selector");
+  const _item = _selector
+    ? fnsOrEvents.find((o) => {
+        if (o.type === "function") {
+          const selector = toFunctionSelector(o as AbiFunction);
+          return selector === _selector;
+        }
+        return null;
+      })
+    : undefined;
+
   const [selectedFunction, setSelectedFunction] = useState<
     AbiFunction | AbiEvent
   >(_item ?? fnsOrEvents[0]);
-
   // Set the active tab to Write or Read depends on the `_item`
   const _defaultTabIndex =
     _item &&
@@ -294,47 +334,56 @@ export const ContractFunctionsPanel: React.FC<ContractFunctionsPanelProps> = ({
       ? 1
       : 0;
 
-  const functionSection = (e: ExtensionFunctions) => (
-    <Flex key={e.extension} flexDir={"column"} mb={6}>
-      {e.extension ? (
-        <>
-          <Flex alignItems="center" alignContent={"center"} gap={2}>
-            <Image
-              src="/assets/dashboard/extension-check.svg"
-              alt="Extension detected"
-              objectFit="contain"
-              mb="2px"
-            />
-            <Heading as="label" size="label.md">
-              {e.extension}
-            </Heading>
-          </Flex>
-          <Divider my={2} />
-        </>
-      ) : (
-        <>
-          <Flex alignItems="center" alignContent={"center"} gap={2}>
-            <Heading as="label" size="label.md">
-              Other Functions
-            </Heading>
-          </Flex>
-          <Divider my={2} />
-        </>
-      )}
-      {e.functions.map((fn) => (
-        <FunctionsOrEventsListItem
-          key={fn.signature}
-          fn={fn}
-          isFunction={isFunction}
-          selectedFunction={selectedFunction}
-          setSelectedFunction={setSelectedFunction}
-        />
-      ))}
-    </Flex>
-  );
+  const [_keywordSearch, setKeywordSearch] = useState<string>("");
+  const [keywordSearch] = useDebounce(_keywordSearch, 150);
+
+  const functionSection = (e: ExtensionFunctions) => {
+    const filteredFunctions = keywordSearch
+      ? e.functions.filter((o) =>
+          o.name.toLowerCase().includes(keywordSearch.toLowerCase()),
+        )
+      : e.functions;
+    return (
+      <Flex key={e.extension} flexDir="column" mb={6}>
+        {e.extension ? (
+          <>
+            <Flex alignItems="center" alignContent="center" gap={2}>
+              <Image
+                src="/assets/dashboard/extension-check.svg"
+                alt="Extension detected"
+                objectFit="contain"
+                mb="2px"
+              />
+              <Heading as="label" size="label.md">
+                {e.extension}
+              </Heading>
+            </Flex>
+            <Divider my={2} />
+          </>
+        ) : (
+          <>
+            <Flex alignItems="center" alignContent="center" gap={2}>
+              <Heading as="label" size="label.md">
+                Other Functions
+              </Heading>
+            </Flex>
+            <Divider my={2} />
+          </>
+        )}
+        {filteredFunctions.map((fn) => (
+          <FunctionsOrEventsListItem
+            key={`${fn.name}_${fn.type}_${fn.inputs.length}`}
+            fn={fn}
+            selectedFunction={selectedFunction}
+            setSelectedFunction={setSelectedFunction}
+          />
+        ))}
+      </Flex>
+    );
+  };
 
   return (
-    <SimpleGrid height="100%" columns={12} gap={3}>
+    <SimpleGrid height="100%" columns={12} gap={5}>
       <GridItem
         as={Card}
         px={0}
@@ -356,20 +405,33 @@ export const ContractFunctionsPanel: React.FC<ContractFunctionsPanelProps> = ({
             >
               <TabList as={Flex}>
                 {writeFunctions.length > 0 && (
-                  <Tab gap={2} flex={"1 1 0"}>
+                  <Tab gap={2} flex="1 1 0">
                     <Heading color="inherit" my={1} size="label.md">
                       Write
                     </Heading>
                   </Tab>
                 )}
                 {viewFunctions.length > 0 && (
-                  <Tab gap={2} flex={"1 1 0"}>
+                  <Tab gap={2} flex="1 1 0">
                     <Heading color="inherit" my={1} size="label.md">
                       Read
                     </Heading>
                   </Tab>
                 )}
               </TabList>
+
+              <div className="sticky top-0 z-[1]">
+                <div className="relative w-full">
+                  <SearchIcon className="-translate-y-1/2 absolute top-[50%] left-3 size-4 text-muted-foreground" />
+                  <Input
+                    value={_keywordSearch}
+                    placeholder="Search"
+                    className="h-auto rounded-none border-x-0 py-3 pl-9 focus-visible:ring-0 focus-visible:ring-offset-0"
+                    onChange={(e) => setKeywordSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+
               <TabPanels h="auto" overflow="auto">
                 {writeFunctions.length > 0 && (
                   <TabPanel>
@@ -389,9 +451,8 @@ export const ContractFunctionsPanel: React.FC<ContractFunctionsPanelProps> = ({
             <Box px={4} pt={2} overflowX="hidden">
               {events.map((fn) => (
                 <FunctionsOrEventsListItem
-                  key={isFunction ? (fn as AbiFunction).signature : fn.name}
+                  key={`${fn.name}_${fn.type}_${fn.inputs.length}`}
                   fn={fn}
-                  isFunction={isFunction}
                   selectedFunction={selectedFunction}
                   setSelectedFunction={setSelectedFunction}
                 />
@@ -414,58 +475,43 @@ export const ContractFunctionsPanel: React.FC<ContractFunctionsPanelProps> = ({
 
 interface FunctionsOrEventsListItemProps {
   fn: AbiFunction | AbiEvent;
-  isFunction: boolean;
   selectedFunction: AbiFunction | AbiEvent;
   setSelectedFunction: Dispatch<SetStateAction<AbiFunction | AbiEvent>>;
 }
 
 const FunctionsOrEventsListItem: React.FC<FunctionsOrEventsListItemProps> = ({
   fn,
-  isFunction,
   selectedFunction,
   setSelectedFunction,
 }) => {
-  const router = useRouter();
+  const isActive =
+    selectedFunction?.name === fn.name &&
+    selectedFunction.inputs?.length === fn.inputs?.length;
+  const pathname = usePathname();
+  const router = useDashboardRouter();
   return (
-    <ListItem my={0.5}>
+    <li className="my-1">
       <Button
         size="sm"
-        fontWeight={
-          (isFunction &&
-            (selectedFunction as AbiFunction).signature ===
-              (fn as AbiFunction).signature) ||
-          (!isFunction &&
-            (selectedFunction as AbiEvent).name === (fn as AbiEvent).name)
-            ? 600
-            : 400
-        }
-        opacity={
-          (isFunction &&
-            (selectedFunction as AbiFunction).signature ===
-              (fn as AbiFunction).signature) ||
-          (!isFunction &&
-            (selectedFunction as AbiEvent).name === (fn as AbiEvent).name)
-            ? 1
-            : 0.65
-        }
+        className={cn(
+          "!font-medium !text-muted-foreground hover:!text-foreground font-mono",
+          {
+            "!text-foreground": isActive,
+          },
+        )}
         onClick={() => {
           setSelectedFunction(fn);
-          const { name } = fn;
-          const path = router.asPath.split("?")[0];
+
           // Only apply to the Explorer page
-          if (path.endsWith("/explorer")) {
-            router.push({ pathname: path, query: { name } }, undefined, {
-              shallow: true,
-            });
+          if (pathname?.endsWith("/explorer") && fn.type === "function") {
+            const selector = toFunctionSelector(fn);
+            router.push(`${pathname}?selector=${selector}`);
           }
         }}
-        color="heading"
-        _hover={{ opacity: 1, textDecor: "underline" }}
         variant="link"
-        fontFamily="mono"
       >
         {fn.name}
       </Button>
-    </ListItem>
+    </li>
   );
 };

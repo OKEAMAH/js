@@ -100,7 +100,9 @@ export function SwapTxDetailsTable(
 ) {
   let uiData: SwapTxDetailsData;
   let showStatusRow = true;
+  let isTransfer = false;
   if (props.type === "status") {
+    isTransfer = props.status.swapType === "TRANSFER";
     const status = props.status;
     if (props.hideStatusRow) {
       showStatusRow = false;
@@ -189,6 +191,30 @@ export function SwapTxDetailsTable(
     </>
   );
 
+  if (isTransfer) {
+    return (
+      <div>
+        {/* source chain Tx hash link */}
+        {fromChainExplorers.explorers?.[0]?.url && sourceTxHash && (
+          <ButtonLink
+            fullWidth
+            variant="outline"
+            href={`${fromChainExplorers.explorers[0].url}/tx/${sourceTxHash}`}
+            target="_blank"
+            gap="xs"
+            style={{
+              fontSize: fontSize.sm,
+              padding: spacing.sm,
+            }}
+          >
+            View on {fromChainName.name} Explorer
+            <ExternalLinkIcon width={iconSize.sm} height={iconSize.sm} />
+          </ButtonLink>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
       {isPartialSuccess && gotToken ? (
@@ -221,7 +247,7 @@ export function SwapTxDetailsTable(
         <TokenInfoRow
           chainId={toToken.chainId}
           client={client}
-          label={"Receive"}
+          label="Receive"
           tokenAmount={toToken.amount}
           tokenSymbol={toToken.symbol || ""}
           tokenAddress={toToken.address}
@@ -289,7 +315,7 @@ export function SwapTxDetailsTable(
           >
             <Text>Send to</Text>
             <Container flex="row" gap="xs" center="y">
-              <Text color="primaryText">
+              <Text color="primaryText" size="sm">
                 {shortenAddress(uiData.toAddress)}
               </Text>
             </Container>

@@ -1,15 +1,15 @@
+"use client";
+
 import {
   Box,
   Code,
   type CodeProps,
-  Icon,
   IconButton,
-  useClipboard,
   useColorModeValue,
 } from "@chakra-ui/react";
-import { IoMdCheckmark } from "@react-icons/all-files/io/IoMdCheckmark";
+import { useClipboard } from "hooks/useClipboard";
+import { CheckIcon, CopyIcon } from "lucide-react";
 import { Highlight, Prism, themes } from "prism-react-renderer";
-import { FiCopy } from "react-icons/fi";
 import { Text } from "./text";
 
 const darkThemeDefault = themes.vsDark;
@@ -22,7 +22,7 @@ type PrismTheme = typeof darkThemeDefault;
 require("prismjs/components/prism-solidity");
 // end add solidity support
 
-export interface CodeBlockProps extends Omit<CodeProps, "size"> {
+interface CodeBlockProps extends Omit<CodeProps, "size"> {
   code: string;
   codeValue?: string;
   language?: string;
@@ -56,6 +56,10 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
     darkTheme || darkThemeDefault,
   );
   const { onCopy, hasCopied } = useClipboard(codeValue || code);
+
+  if (!code) {
+    return null;
+  }
 
   return (
     <Highlight
@@ -97,14 +101,22 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
               colorScheme="gray"
               size="sm"
               icon={
-                <Icon
-                  as={hasCopied ? IoMdCheckmark : FiCopy}
-                  fill={hasCopied ? "green.500" : undefined}
-                />
+                hasCopied ? (
+                  <CheckIcon className="size-4 text-green-500" />
+                ) : (
+                  <CopyIcon className="size-4" />
+                )
               }
             />
           )}
-          <Box as="span" display="block" my={1} color="heading" h="full">
+          <Box
+            as="span"
+            display="block"
+            my={1}
+            color="heading"
+            h="full"
+            className="text-sm"
+          >
             {tokens.map((line, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: index IS the key here
               <Box {...getLineProps({ line, key: i })} key={i}>

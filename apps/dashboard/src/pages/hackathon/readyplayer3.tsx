@@ -1,4 +1,5 @@
-import { Box, DarkMode, Flex, Image, List, ListItem } from "@chakra-ui/react";
+import { useForceDarkTheme } from "@/components/theme-provider";
+import { Box, Flex, Image } from "@chakra-ui/react";
 import { ClientOnly } from "components/ClientOnly/ClientOnly";
 import { ChakraNextImage } from "components/Image";
 import { HomepageFooter } from "components/footer/Footer";
@@ -193,9 +194,10 @@ const scheduleItems = [
 
 const ReadyPlayer3Landing: ThirdwebNextPage = () => {
   const trackEvent = useTrack();
+  useForceDarkTheme();
 
   return (
-    <DarkMode>
+    <>
       <NextSeo
         title={metadata.title}
         description={metadata.description}
@@ -215,7 +217,7 @@ const ReadyPlayer3Landing: ThirdwebNextPage = () => {
       />
 
       <Flex
-        overflow={"hidden"}
+        overflow="hidden"
         sx={{
           // overwrite the theme colors because the home page is *always* in "dark mode"
           "--chakra-colors-heading": "#F2F2F7",
@@ -232,7 +234,7 @@ const ReadyPlayer3Landing: ThirdwebNextPage = () => {
 
         {/* Hero Auroras */}
         <Box
-          pointerEvents={"none"}
+          pointerEvents="none"
           width={{ base: "1000px", md: "2000px" }}
           height={{ base: "1000px", md: "2000px" }}
           position="absolute"
@@ -240,13 +242,11 @@ const ReadyPlayer3Landing: ThirdwebNextPage = () => {
           top="300px"
           left="30%"
           transform="translate(-50%, -50%)"
-          backgroundImage={
-            "radial-gradient(ellipse at center, hsl(300deg 100% 50% / 20%), transparent 60%)"
-          }
+          backgroundImage="radial-gradient(ellipse at center, hsl(300deg 100% 50% / 20%), transparent 60%)"
         />
 
         <Box
-          pointerEvents={"none"}
+          pointerEvents="none"
           width="2000px"
           height="2000px"
           position="absolute"
@@ -254,9 +254,7 @@ const ReadyPlayer3Landing: ThirdwebNextPage = () => {
           top="300px"
           left="70%"
           transform="translate(-50%, -50%)"
-          backgroundImage={
-            "radial-gradient(ellipse at center, hsl(276deg 100% 50% / 20%), transparent 60%)"
-          }
+          backgroundImage="radial-gradient(ellipse at center, hsl(276deg 100% 50% / 20%), transparent 60%)"
         />
 
         <Box maxW="100vw" overflowX="hidden">
@@ -314,7 +312,7 @@ const ReadyPlayer3Landing: ThirdwebNextPage = () => {
               </Text>
 
               <ClientOnly fadeInDuration={400} ssr={<Box height="220px" />}>
-                <Flex alignItems={"center"} flexDirection="column">
+                <Flex alignItems="center" flexDirection="column">
                   {isAfter(new Date(), new Date("2021-01-16T00:00:00.000Z")) ? (
                     <>
                       <Timer date="2023-02-13T23:59:59-05:00" />
@@ -420,18 +418,18 @@ const ReadyPlayer3Landing: ThirdwebNextPage = () => {
                   opportunity to receive:
                 </Text>
                 <Box fontSize="body.lg" color="white">
-                  <List spacing={4}>
-                    <ListItem>
+                  <ul className="space-y-4">
+                    <li>
                       Top 3 teams of {`"`}Main Build Track{`"`} will receive Pro
                       Tickets ($1,700 value each) to Consensus 2023 Presented by
                       CoinDesk
-                    </ListItem>
-                    <ListItem>
+                    </li>
+                    <li>
                       Top 3 teams receive a complimentary 1-Year Subscription to{" "}
                       <Link
                         href="https://www.scenario.gg/"
                         isExternal
-                        textDecor={"underline"}
+                        textDecor="underline"
                         pb={1}
                         textDecorationThickness="1px"
                         textUnderlineOffset="4px"
@@ -441,23 +439,23 @@ const ReadyPlayer3Landing: ThirdwebNextPage = () => {
                       >
                         Scenario.gg
                       </Link>
-                    </ListItem>
-                    <ListItem>
+                    </li>
+                    <li>
                       All participating teams with a submitted project are
                       eligible for up to $5,000 in AWS credits (as long as
                       they&apos;ve not previously been an AWS credit recipient)
-                    </ListItem>
-                    <ListItem>
+                    </li>
+                    <li>
                       All participating teams with a project submitted will
                       receive 1-month free of Scenario.gg
-                    </ListItem>
-                  </List>
+                    </li>
+                  </ul>
                 </Box>
               </Flex>
             </Flex>
 
             <Box
-              pointerEvents={"none"}
+              pointerEvents="none"
               width="2400px"
               height="2400px"
               position="absolute"
@@ -465,9 +463,7 @@ const ReadyPlayer3Landing: ThirdwebNextPage = () => {
               top="50%"
               left="50%"
               transform="translate(-50%, -50%)"
-              backgroundImage={
-                "radial-gradient(ellipse at center, hsl(300deg 100% 50% / 12%), transparent 60%)"
-              }
+              backgroundImage="radial-gradient(ellipse at center, hsl(300deg 100% 50% / 12%), transparent 60%)"
             />
           </HomepageSection>
 
@@ -497,7 +493,7 @@ const ReadyPlayer3Landing: ThirdwebNextPage = () => {
             />
 
             <Box
-              pointerEvents={"none"}
+              pointerEvents="none"
               width={{ base: "1000px", md: "2200px" }}
               height={{ base: "1400px", md: "2200px" }}
               position="absolute"
@@ -505,9 +501,7 @@ const ReadyPlayer3Landing: ThirdwebNextPage = () => {
               top="55%"
               left="50%"
               transform="translate(-50%, -50%)"
-              backgroundImage={
-                "radial-gradient(ellipse at center, hsl(300deg 90% 50% / 15%), transparent 60%)"
-              }
+              backgroundImage="radial-gradient(ellipse at center, hsl(300deg 90% 50% / 15%), transparent 60%)"
             />
           </HomepageSection>
 
@@ -515,7 +509,7 @@ const ReadyPlayer3Landing: ThirdwebNextPage = () => {
           <HomepageSection my={40}>
             <GameShowcase />
             <Box
-              pointerEvents={"none"}
+              pointerEvents="none"
               width={{ base: "1400px", md: "2200px" }}
               height={{ base: "2200px", md: "1200px" }}
               position="absolute"
@@ -549,7 +543,7 @@ const ReadyPlayer3Landing: ThirdwebNextPage = () => {
           </Box>
         </Box>
       </Flex>
-    </DarkMode>
+    </>
   );
 };
 

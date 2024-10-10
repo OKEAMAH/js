@@ -1,34 +1,28 @@
-import { ButtonGroup, Code, Divider, Flex } from "@chakra-ui/react";
-import { useContract } from "@thirdweb-dev/react";
-import { detectFeatures } from "components/contract-components/utils";
-import { useTabHref } from "contract-ui/utils";
-import { useLayoutEffect } from "react";
+"use client";
+
+import { InlineCode } from "@/components/ui/inline-code";
+import { useIsomorphicLayoutEffect } from "@/lib/useIsomorphicLayoutEffect";
+import { ButtonGroup, Divider, Flex } from "@chakra-ui/react";
+import type { ThirdwebContract } from "thirdweb";
 import { Card, Heading, Link, LinkButton, Text } from "tw-components";
 import { Permissions } from "./components";
 
 interface ContractPermissionsPageProps {
-  contractAddress?: string;
+  contract: ThirdwebContract;
+  detectedPermissionEnumerable: boolean;
+  chainSlug: string;
 }
 
 export const ContractPermissionsPage: React.FC<
   ContractPermissionsPageProps
-> = ({ contractAddress }) => {
-  useLayoutEffect(() => {
+> = ({ contract, detectedPermissionEnumerable, chainSlug }) => {
+  useIsomorphicLayoutEffect(() => {
     window?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const contractQuery = useContract(contractAddress);
-  const explorerHref = useTabHref("explorer");
+  const explorerHref = `/${chainSlug}/${contract.address}/explorer`;
 
-  const detectedEnumerable = detectFeatures(contractQuery.contract, [
-    "PermissionsEnumerable",
-  ]);
-  if (contractQuery.isLoading) {
-    // TODO build a skeleton for this
-    return <div>Loading...</div>;
-  }
-
-  if (!detectedEnumerable) {
+  if (!detectedPermissionEnumerable) {
     return (
       <Card as={Flex} flexDir="column" gap={3}>
         {/* TODO  extract this out into it's own component and make it better */}
@@ -36,7 +30,8 @@ export const ContractPermissionsPage: React.FC<
           Missing PermissionsEnumerable Extension
         </Heading>
         <Text>
-          This contract does not support the <Code>PermissionsEnumerable</Code>{" "}
+          This contract does not support the{" "}
+          <InlineCode code="PermissionsEnumerable" />
           extension.
           <br />
           As a result, you can only view and manage basic permissions via the{" "}
@@ -61,13 +56,10 @@ export const ContractPermissionsPage: React.FC<
       </Card>
     );
   }
-  if (!contractQuery.contract) {
-    return null;
-  }
 
   return (
     <Flex direction="column" gap={6}>
-      <Permissions contract={contractQuery.contract} />
+      <Permissions contract={contract} />
     </Flex>
   );
 };

@@ -1,4 +1,4 @@
-import { Center, Container, Flex, Spacer } from "@chakra-ui/react";
+import { Container, Flex, Spacer } from "@chakra-ui/react";
 import Carousel from "components/connect/Carousel";
 import CodePlayground from "components/connect/CodePlayground";
 import { LandingCardWithImage } from "components/landing-pages/card-with-image";
@@ -83,17 +83,32 @@ export const metrics = [
 const GUIDES = [
   {
     title: "The Quick-Start Guide to thirdweb Connect",
-    image: require("/public/assets/product-pages/connect/get-started.png"),
+    image: require("../../public/assets/product-pages/connect/get-started.png"),
     link: "https://portal.thirdweb.com/connect",
   },
   {
     title: "Add a Connect Wallet Button to Your App or Website",
-    image: require("/public/assets/product-pages/connect/connect-wallet.png"),
+    image: require("../../public/assets/product-pages/connect/connect-wallet.png"),
     link: "https://portal.thirdweb.com/typescript/v5/react/components/ConnectButton",
   },
 ];
 
 const ConnectLanding: ThirdwebNextPage = () => {
+  const platforms = [
+    {
+      platform: "React",
+      href: "https://portal.thirdweb.com/typescript/v5/react/components/ConnectButton",
+    },
+    {
+      platform: "React Native",
+      href: "https://portal.thirdweb.com/react-native/latest/components/ConnectWallet",
+    },
+    {
+      platform: "Unity",
+      href: "https://portal.thirdweb.com/unity/wallets/prefab",
+    },
+  ] as const;
+
   return (
     <LandingLayout
       bgColor="#0F0F0F"
@@ -172,7 +187,7 @@ const ConnectLanding: ThirdwebNextPage = () => {
             titleWithGradient="connect users to web3"
             subtitle="Onboard every user, connect to any wallet, and build apps that anyone can use — with in-app wallets, account abstraction, and fiat & crypto payments."
             trackingCategory={TRACKING_CATEGORY}
-            ctaLink="/dashboard/connect/playground"
+            ctaLink="https://playground.thirdweb.com/connect/sign-in/button"
             contactUsTitle="Book Demo"
             gradient="linear(to-r, #4490FF, #4490FF)"
             lottie={connectLottie}
@@ -219,7 +234,7 @@ const ConnectLanding: ThirdwebNextPage = () => {
             </Text>
 
             {/* Supported platforms */}
-            <Flex alignItems="center" gap={2} justifyContent={"center"}>
+            <Flex alignItems="center" gap={2} justifyContent="center">
               <Text
                 mr={2}
                 display={["none", "block"]}
@@ -228,27 +243,15 @@ const ConnectLanding: ThirdwebNextPage = () => {
               >
                 Supports
               </Text>
-              <SupportedPlatformLink
-                trackingCategory={TRACKING_CATEGORY}
-                size="sm"
-                platform="React"
-                href="https://portal.thirdweb.com/typescript/v5/react/components/ConnectButton"
-                bg="#0E0E0E"
-              />
-              <SupportedPlatformLink
-                trackingCategory={TRACKING_CATEGORY}
-                size="sm"
-                platform="React Native"
-                href="https://portal.thirdweb.com/react-native/latest/components/ConnectWallet"
-                bg="#0E0E0E"
-              />
-              <SupportedPlatformLink
-                trackingCategory={TRACKING_CATEGORY}
-                size="sm"
-                platform="Unity"
-                href="https://portal.thirdweb.com/unity/wallets/prefab"
-                bg="#0E0E0E"
-              />
+              {platforms.map(({ platform, href }) => (
+                <SupportedPlatformLink
+                  key={platform}
+                  trackingCategory={TRACKING_CATEGORY}
+                  platform={platform}
+                  href={href}
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-foreground text-xs hover:border-link-foreground hover:text-link-foreground"
+                />
+              ))}
             </Flex>
 
             <MiniPlayground trackingCategory={TRACKING_CATEGORY} />
@@ -299,7 +302,7 @@ const ConnectLanding: ThirdwebNextPage = () => {
           <Flex flexDir="column" gap={6}>
             <LandingGridSection
               title={
-                <Center>
+                <div className="flex items-center justify-center">
                   <Heading
                     size="display.sm"
                     color="white"
@@ -308,7 +311,7 @@ const ConnectLanding: ThirdwebNextPage = () => {
                   >
                     Everything you need to build seamless web3 apps
                   </Heading>
-                </Center>
+                </div>
               }
               desktopColumns={4}
             >
@@ -361,7 +364,7 @@ const ConnectLanding: ThirdwebNextPage = () => {
                 mobileImage={require("../../public/assets/product-pages/connect/mobile-connection.png")}
                 TRACKING_CATEGORY={TRACKING_CATEGORY}
                 direction="horizontal"
-                href="/dashboard/connect/playground"
+                href="https://playground.thirdweb.com/connect/sign-in/button"
               />
               <LandingCardWithImage
                 title="Production-grade infrastructure"
@@ -369,7 +372,7 @@ const ConnectLanding: ThirdwebNextPage = () => {
                 image={require("../../public/assets/product-pages/connect/desktop-scale.png")}
                 mobileImage={require("../../public/assets/product-pages/connect/mobile-scale.png")}
                 TRACKING_CATEGORY={TRACKING_CATEGORY}
-                href="/dashboard/connect/playground"
+                href="https://playground.thirdweb.com/connect/sign-in/button"
               />
             </LandingGridSection>
           </Flex>
@@ -404,7 +407,7 @@ const ConnectLanding: ThirdwebNextPage = () => {
 
           <LandingCardWithMetrics
             title={
-              <Center flexDir="column" textAlign="center">
+              <div className="flex flex-col items-center justify-center text-center">
                 <Heading size="display.sm" color="white">
                   Trusted by the best
                 </Heading>
@@ -413,7 +416,7 @@ const ConnectLanding: ThirdwebNextPage = () => {
                   thirdweb Connect powers the best web3 projects — from
                   marketplaces, to collectibles, to games.
                 </Text>
-              </Center>
+              </div>
             }
             desktopColumns={3}
             TRACKING_CATEGORY={TRACKING_CATEGORY}

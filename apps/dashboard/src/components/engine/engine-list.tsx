@@ -1,164 +1,207 @@
+"use client";
+
+import { UnorderedList } from "@/components/ui/List/List";
 import { Spinner } from "@/components/ui/Spinner/Spinner";
-import { useAccount } from "@3rdweb-sdk/react/hooks/useApi";
-import {
-  type EngineInstance,
-  useEngineInstances,
-} from "@3rdweb-sdk/react/hooks/useEngine";
-import {
-  Center,
-  Divider,
-  Flex,
-  Icon,
-  ListItem,
-  Stack,
-  UnorderedList,
-} from "@chakra-ui/react";
-import { ChakraNextImage } from "components/Image";
+import { Button } from "@/components/ui/button";
+import { useEngineInstances } from "@3rdweb-sdk/react/hooks/useEngine";
 import { useTrack } from "hooks/analytics/useTrack";
-import type { Dispatch, SetStateAction } from "react";
-import { VscBook } from "react-icons/vsc";
-import invariant from "tiny-invariant";
-import { Button, Card, Heading, Link, Text } from "tw-components";
-import { CreateEngineInstanceButton } from "./create-engine-instance";
+import {
+  CloudDownloadIcon,
+  ExternalLinkIcon,
+  PlusIcon,
+  RocketIcon,
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 import { EngineInstancesTable } from "./engine-instances-table";
-import { ImportEngineInstanceButton } from "./import-engine-instance";
 
-interface EngineInstancesListProps {
-  setConnectedInstance: Dispatch<SetStateAction<EngineInstance | undefined>>;
-}
-
-export const EngineInstancesList = ({
-  setConnectedInstance,
-}: EngineInstancesListProps) => {
-  invariant(
-    process.env.NEXT_PUBLIC_DEMO_ENGINE_URL,
-    "missing NEXT_PUBLIC_DEMO_ENGINE_URL",
-  );
-  const NEXT_PUBLIC_DEMO_ENGINE_URL = process.env.NEXT_PUBLIC_DEMO_ENGINE_URL;
-
-  const { data } = useAccount();
+export const EngineInstancesList = (props: {
+  engineLinkPrefix: string;
+}) => {
   const instancesQuery = useEngineInstances();
   const instances = instancesQuery.data ?? [];
   const trackEvent = useTrack();
 
-  if (instancesQuery.isLoading) {
+  if (instancesQuery.isPending) {
     return (
-      <div className="grid place-items-center">
+      <div className="flex h-[300px] items-center justify-center">
         <Spinner className="size-14" />
       </div>
     );
   }
-  return (
-    <Stack spacing={8}>
-      {instances.length === 0 ? (
-        <Center>
-          <Stack spacing={8}>
-            <ChakraNextImage
-              alt="Engine hero image"
-              src={require("../../../public/assets/engine/empty-state-header.png")}
-              maxW={650}
-            />
-            <Heading size="title.lg" as="h1">
-              Your scalable web3 backend server
-            </Heading>
 
-            <UnorderedList color="gray.600">
-              <ListItem>
-                Read, write, and deploy contracts at production scale
-              </ListItem>
-              <ListItem>
-                Reliably parallelize and retry transactions with gas &amp; nonce
-                management
-              </ListItem>
-              <ListItem>Securely manage backend wallets</ListItem>
-              <ListItem>
-                Built-in support for account abstraction, relayers, and more
-              </ListItem>
-            </UnorderedList>
+  if (instances.length === 0) {
+    return (
+      <div className="mx-auto max-w-[600px]">
+        <Image
+          alt="Engine hero image"
+          src={require("../../../public/assets/engine/empty-state-header.png")}
+        />
 
-            <Flex gap={4}>
-              <CreateEngineInstanceButton
-                ctaText="Get Started"
-                refetch={instancesQuery.refetch}
-              />
-              <Button
-                onClick={() => {
-                  if (!data) return;
+        <div className="h-6" />
 
-                  trackEvent({
-                    category: "engine",
-                    action: "try-demo",
-                    label: "clicked-try-demo",
-                  });
+        <h1 className="font-bold text-2xl tracking-tighter md:text-3xl">
+          Your scalable web3 backend server
+        </h1>
 
-                  // Need to hardcode the demo engine instance details
-                  // but using the signed-in user account id
-                  setConnectedInstance({
-                    id: "sandbox",
-                    url: NEXT_PUBLIC_DEMO_ENGINE_URL,
-                    name: "Demo Engine",
-                    status: "active",
-                    lastAccessedAt: new Date().toISOString(),
-                    accountId: data.id,
-                  });
-                }}
-                variant="outline"
-                px={6}
-              >
-                🚀 Try Demo
-              </Button>
-            </Flex>
-            <Flex direction="column" gap={2}>
-              <Divider my="2" />
-              <Text>Already have an Engine Instance?</Text>
-              <ImportEngineInstanceButton refetch={instancesQuery.refetch} />
-            </Flex>
-          </Stack>
-        </Center>
-      ) : (
-        <>
-          <div className="flex flex-col md:flex-row gap-4 justify-between md:items-center">
-            <h1 className="text-4xl font-bold">Engine</h1>
-            <div className="flex flex-row gap-2">
-              <ImportEngineInstanceButton refetch={instancesQuery.refetch} />
-              <CreateEngineInstanceButton
-                ctaText="Create Engine Instance"
-                refetch={instancesQuery.refetch}
-              />
-            </div>
-          </div>
+        <div className="h-3" />
 
-          <Stack spacing={4}>
-            <EngineInstancesTable
-              instances={instancesQuery.data ?? ([] as EngineInstance[])}
-              isFetched={instancesQuery.isFetched}
-              isLoading={instancesQuery.isLoading}
-              refetch={instancesQuery.refetch}
-              setConnectedInstance={setConnectedInstance}
-            />
-          </Stack>
-        </>
-      )}
+        <UnorderedList>
+          <li>Read, write, and deploy contracts at production scale</li>
+          <li>
+            Reliably parallelize and retry transactions with gas & nonce
+            management
+          </li>
+          <li>Securely manage backend wallets</li>
+          <li>Built-in support for account abstraction, relayers, and more</li>
+        </UnorderedList>
 
-      <Divider />
+        <div className="h-6" />
 
-      <Card p={8}>
-        <Stack>
-          <Flex gap={2} align="center">
-            <Icon as={VscBook} />
-            <Heading size="title.xs">Learn more about Engine</Heading>
-          </Flex>
-          <Text>Dive into features and integration guides.</Text>
-          <Link
-            href="https://portal.thirdweb.com/engine"
-            isExternal
-            color="blue.500"
-            fontSize="small"
+        <div className="flex gap-3">
+          <CreateEngineLink
+            label="Get Started"
+            engineLinkPrefix={props.engineLinkPrefix}
+          />
+
+          <Button
+            asChild
+            onClick={() => {
+              trackEvent({
+                category: "engine",
+                action: "try-demo",
+                label: "clicked-try-demo",
+              });
+            }}
+            variant="outline"
           >
-            View Docs &rarr;
-          </Link>
-        </Stack>
-      </Card>
-    </Stack>
+            <Link href={`${props.engineLinkPrefix}/sandbox`} className="gap-2">
+              Try Demo
+              <RocketIcon className="size-4 text-muted-foreground" />
+            </Link>
+          </Button>
+        </div>
+
+        <div className="h-10" />
+
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/50 p-6">
+          <p className="font-semibold text-lg tracking-tight">
+            Already have an Engine Instance?
+          </p>
+
+          <ImportEngineLink
+            label="Import"
+            engineLinkPrefix={props.engineLinkPrefix}
+          />
+        </div>
+
+        <div className="h-20" />
+        <LearnMoreCard />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <h1 className="font-bold text-4xl">Engine</h1>
+        <div className="flex flex-row gap-2">
+          <ImportEngineLink
+            label="Import"
+            engineLinkPrefix={props.engineLinkPrefix}
+          />
+          <CreateEngineLink
+            label="Create Engine Instance"
+            engineLinkPrefix={props.engineLinkPrefix}
+          />
+        </div>
+      </div>
+
+      <div className="h-6" />
+
+      <EngineInstancesTable
+        instances={instances}
+        isFetched={instancesQuery.isFetched}
+        isPending={instancesQuery.isPending}
+        refetch={instancesQuery.refetch}
+        engineLinkPrefix={props.engineLinkPrefix}
+      />
+
+      <div className="h-10" />
+      <LearnMoreCard />
+    </div>
   );
 };
+
+function LearnMoreCard() {
+  return (
+    <div className="relative rounded-lg border border-border p-4 hover:bg-muted/50">
+      <h3 className="mb-1 font-semibold tracking-tight">
+        <Link
+          href="https://portal.thirdweb.com/engine"
+          target="_blank"
+          className="before:content before:absolute before:inset-0"
+        >
+          Learn more about Engine
+        </Link>
+      </h3>
+
+      <p className="text-muted-foreground text-sm">
+        Dive into features and integration guides.
+      </p>
+
+      <ExternalLinkIcon className="absolute top-4 right-4 size-4 text-muted-foreground" />
+    </div>
+  );
+}
+
+function CreateEngineLink(props: {
+  label: string;
+  engineLinkPrefix: string;
+}) {
+  const trackEvent = useTrack();
+
+  return (
+    <Button
+      asChild
+      variant="default"
+      onClick={() => {
+        trackEvent({
+          category: "engine",
+          action: "click",
+          label: "add-engine-instance",
+        });
+      }}
+    >
+      <Link href={`${props.engineLinkPrefix}/create`} className="gap-2">
+        <PlusIcon className="size-4" />
+        {props.label}
+      </Link>
+    </Button>
+  );
+}
+
+function ImportEngineLink(props: {
+  label: string;
+  engineLinkPrefix: string;
+}) {
+  const trackEvent = useTrack();
+
+  return (
+    <Button
+      asChild
+      variant="outline"
+      onClick={() => {
+        trackEvent({
+          category: "engine",
+          action: "import",
+        });
+      }}
+    >
+      <Link href={`${props.engineLinkPrefix}/import`} className="gap-2">
+        <CloudDownloadIcon className="size-4" />
+        {props.label}
+      </Link>
+    </Button>
+  );
+}

@@ -1,7 +1,21 @@
-import { useSyncExternalStore } from "react";
-import type { ConnectionManager } from "../../../../wallets/manager/index.js";
+"use client";
 
-export function useConnectedWalletsCore(manager: ConnectionManager) {
+import { useSyncExternalStore } from "react";
+import { useConnectionManagerCtx } from "../../providers/connection-manager.js";
+
+/**
+ * A hook that returns all connected wallets
+ * @returns An array of all connected wallets
+ * @example
+ * ```jsx
+ * import { useConnectedWallets } from "thirdweb/react";
+ *
+ * const wallets = useConnectedWallets();
+ * ```
+ * @walletConnection
+ */
+export function useConnectedWallets() {
+  const manager = useConnectionManagerCtx("useConnectedWallets");
   const store = manager.connectedWallets;
   return useSyncExternalStore(store.subscribe, store.getValue, store.getValue);
 }

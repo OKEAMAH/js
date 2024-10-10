@@ -1,3 +1,5 @@
+import { WalletAddress } from "@/components/blocks/wallet-address";
+import { Badge } from "@/components/ui/badge";
 import {
   type BackendWallet,
   useEngineBackendWalletBalance,
@@ -19,39 +21,35 @@ import {
   ModalHeader,
   ModalOverlay,
   Select,
-  Stack,
   type UseDisclosureReturn,
-  VStack,
   useDisclosure,
 } from "@chakra-ui/react";
 import { useQuery } from "@tanstack/react-query";
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
-import { shortenString } from "@thirdweb-dev/react";
 import { ChainIcon } from "components/icons/ChainIcon";
 import { TWTable } from "components/shared/TWTable";
-import { utils } from "ethers";
 import { useTrack } from "hooks/analytics/useTrack";
 import { useTxNotifications } from "hooks/useTxNotifications";
+import { useActiveChainAsDashboardChain } from "lib/v5-adapter";
 import QRCode from "qrcode";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { BiExport, BiImport, BiPencil } from "react-icons/bi";
+import { getAddress } from "thirdweb";
+import { shortenAddress } from "thirdweb/utils";
 import {
-  Badge,
   Button,
   FormHelperText,
   FormLabel,
   LinkButton,
   Text,
 } from "tw-components";
-import { AddressCopyButton } from "tw-components/AddressCopyButton";
-import { useActiveChainAsDashboardChain } from "../../../lib/v5-adapter";
 import { prettyPrintCurrency } from "../utils";
 
 interface BackendWalletsTableProps {
   wallets: BackendWallet[];
   instanceUrl: string;
-  isLoading: boolean;
+  isPending: boolean;
   isFetched: boolean;
 }
 
@@ -66,13 +64,7 @@ const setColumns = (instanceUrl: string) => [
     header: "Address",
     cell: (cell) => {
       const address = cell.getValue();
-      return (
-        <AddressCopyButton
-          address={utils.getAddress(address)}
-          shortenAddress={false}
-          size="xs"
-        />
-      );
+      return <WalletAddress address={getAddress(address)} />;
     },
   }),
   columnHelper.accessor("label", {
@@ -88,18 +80,7 @@ const setColumns = (instanceUrl: string) => [
   columnHelper.accessor("type", {
     header: "Type",
     cell: (cell) => {
-      return (
-        <Badge
-          borderRadius="full"
-          size="label.sm"
-          variant="subtle"
-          px={3}
-          py={1.5}
-          colorScheme="black"
-        >
-          {cell.getValue()}
-        </Badge>
-      );
+      return <Badge variant="outline">{cell.getValue()}</Badge>;
     },
   }),
   columnHelper.accessor("address", {
@@ -163,7 +144,7 @@ const BackendWalletBalanceCell: React.FC<BackendWalletBalanceCellProps> = ({
 export const BackendWalletsTable: React.FC<BackendWalletsTableProps> = ({
   wallets,
   instanceUrl,
-  isLoading,
+  isPending,
   isFetched,
 }) => {
   const editDisclosure = useDisclosure();
@@ -179,7 +160,7 @@ export const BackendWalletsTable: React.FC<BackendWalletsTableProps> = ({
         title="backend wallets"
         data={wallets}
         columns={columns as ColumnDef<BackendWallet, string>[]}
-        isLoading={isLoading}
+        isPending={isPending}
         isFetched={isFetched}
         onMenuClick={[
           {
@@ -287,11 +268,11 @@ const EditModal = ({
   return (
     <Modal isOpen={disclosure.isOpen} onClose={disclosure.onClose} isCentered>
       <ModalOverlay />
-      <ModalContent>
+      <ModalContent className="!bg-background rounded-lg border border-border">
         <ModalHeader>Update Backend Wallet</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          <Stack spacing={4}>
+          <div className="flex flex-col gap-4">
             <FormControl>
               <FormLabel>Wallet Address</FormLabel>
               <Text>{backendWallet.address}</Text>
@@ -305,7 +286,7 @@ const EditModal = ({
                 placeholder="Enter a description for this backend wallet"
               />
             </FormControl>
-          </Stack>
+          </div>
         </ModalBody>
 
         <ModalFooter as={Flex} gap={3}>
@@ -333,7 +314,7 @@ const ReceiveFundsModal = ({
     // only run this if we have a backendWallet address
     enabled: !!backendWallet.address,
     // start out with empty string
-    initialData: "",
+    placeholderData: "",
     queryFn: async () => {
       return new Promise<string>((resolve, reject) => {
         QRCode.toDataURL(
@@ -354,18 +335,17 @@ const ReceiveFundsModal = ({
   return (
     <Modal isOpen={disclosure.isOpen} onClose={disclosure.onClose} isCentered>
       <ModalOverlay />
-      <ModalContent>
+      <ModalContent className="!bg-background rounded-lg border border-border">
         <ModalHeader>Receive Funds</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          <VStack spacing={4} pb={8}>
+          <div className="flex flex-col gap-4 pb-8">
             <Text w="full" textAlign="left">
               Fund this address or QR code:
             </Text>
-            <AddressCopyButton
+            <WalletAddress
               address={backendWallet.address}
               shortenAddress={false}
-              size="sm"
             />
             <Image
               src={qrCodeBase64Query.data}
@@ -373,7 +353,7 @@ const ReceiveFundsModal = ({
               rounded="lg"
               w={200}
             />
-          </VStack>
+          </div>
         </ModalBody>
       </ModalContent>
     </Modal>
@@ -435,11 +415,15 @@ const SendFundsModal = ({
   return (
     <Modal isOpen={disclosure.isOpen} onClose={disclosure.onClose} isCentered>
       <ModalOverlay />
-      <ModalContent as="form" onSubmit={form.handleSubmit(onSubmit)}>
+      <ModalContent
+        as="form"
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="!bg-background rounded-lg border border-border"
+      >
         <ModalHeader>Send Funds</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          <Stack spacing={4}>
+          <div className="flex flex-col gap-4">
             <FormControl>
               <FormLabel>From</FormLabel>
               <Text fontFamily="mono">{fromWallet.address}</Text>
@@ -460,7 +444,7 @@ const SendFundsModal = ({
                     .filter((wallet) => wallet.address !== fromWallet.address)
                     .map((wallet) => (
                       <option key={wallet.address} value={wallet.address}>
-                        {shortenString(wallet.address, false)}
+                        {shortenAddress(wallet.address)}
                         {wallet.label && ` (${wallet.label})`}
                       </option>
                     ))}
@@ -510,7 +494,7 @@ const SendFundsModal = ({
                 <Text>{chain?.name}</Text>
               </Flex>
             </FormControl>
-          </Stack>
+          </div>
         </ModalBody>
 
         <ModalFooter as={Flex} gap={3}>

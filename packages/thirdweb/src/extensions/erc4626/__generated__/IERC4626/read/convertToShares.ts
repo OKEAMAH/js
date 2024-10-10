@@ -4,53 +4,43 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
  * Represents the parameters for the "convertToShares" function.
  */
 export type ConvertToSharesParams = {
-  assets: AbiParameterToPrimitiveType<{
-    name: "assets";
-    type: "uint256";
-    internalType: "uint256";
-  }>;
+  assets: AbiParameterToPrimitiveType<{ type: "uint256"; name: "assets" }>;
 };
 
 export const FN_SELECTOR = "0xc6e6f592" as const;
 const FN_INPUTS = [
   {
-    name: "assets",
     type: "uint256",
-    internalType: "uint256",
+    name: "assets",
   },
 ] as const;
 const FN_OUTPUTS = [
   {
-    name: "shares",
     type: "uint256",
-    internalType: "uint256",
+    name: "shares",
   },
 ] as const;
 
 /**
  * Checks if the `convertToShares` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `convertToShares` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `convertToShares` method is supported.
  * @extension ERC4626
  * @example
  * ```ts
  * import { isConvertToSharesSupported } from "thirdweb/extensions/erc4626";
- *
- * const supported = await isConvertToSharesSupported(contract);
+ * const supported = isConvertToSharesSupported(["0x..."]);
  * ```
  */
-export async function isConvertToSharesSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isConvertToSharesSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -62,7 +52,7 @@ export async function isConvertToSharesSupported(
  * @extension ERC4626
  * @example
  * ```ts
- * import { encodeConvertToSharesParams } "thirdweb/extensions/erc4626";
+ * import { encodeConvertToSharesParams } from "thirdweb/extensions/erc4626";
  * const result = encodeConvertToSharesParams({
  *  assets: ...,
  * });
@@ -79,7 +69,7 @@ export function encodeConvertToSharesParams(options: ConvertToSharesParams) {
  * @extension ERC4626
  * @example
  * ```ts
- * import { encodeConvertToShares } "thirdweb/extensions/erc4626";
+ * import { encodeConvertToShares } from "thirdweb/extensions/erc4626";
  * const result = encodeConvertToShares({
  *  assets: ...,
  * });
@@ -102,7 +92,7 @@ export function encodeConvertToShares(options: ConvertToSharesParams) {
  * @example
  * ```ts
  * import { decodeConvertToSharesResult } from "thirdweb/extensions/erc4626";
- * const result = decodeConvertToSharesResult("...");
+ * const result = decodeConvertToSharesResultResult("...");
  * ```
  */
 export function decodeConvertToSharesResult(result: Hex) {

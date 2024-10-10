@@ -1,52 +1,48 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { TrackedLinkTW } from "@/components/ui/tracked-link";
+import { useThirdwebClient } from "@/constants/thirdweb.client";
 import { useLoggedInUser } from "@3rdweb-sdk/react/hooks/useLoggedInUser";
-import { Flex, Spinner } from "@chakra-ui/react";
+import { useMultiChainRegContractList } from "@3rdweb-sdk/react/hooks/useRegistry";
 import { useQuery } from "@tanstack/react-query";
-import { Polygon } from "@thirdweb-dev/chains";
-import { useSupportedChains } from "@thirdweb-dev/react";
-import type { BasicContract } from "contract-ui/types/types";
-import { getDashboardChainRpc } from "lib/rpc";
-import { getThirdwebSDK } from "lib/sdk";
-import { FiPlus } from "react-icons/fi";
-import invariant from "tiny-invariant";
-import { Heading, Text, TrackedLinkButton } from "tw-components";
+import { PlusIcon } from "lucide-react";
+import { defineChain, getContract } from "thirdweb";
+import { getCompilerMetadata } from "thirdweb/contract";
 import { FactoryContracts } from "./factory-contracts";
 
-const useFactories = () => {
+function useFactories() {
   const { user, isLoggedIn } = useLoggedInUser();
-  const configuredChains = useSupportedChains();
-  return useQuery(
-    [
+  const client = useThirdwebClient();
+
+  const contractListQuery = useMultiChainRegContractList(user?.address);
+
+  return useQuery({
+    queryKey: [
       "dashboard-registry",
       user?.address,
       "multichain-contract-list",
       "factories",
     ],
-    async () => {
-      invariant(user?.address, "user should be logged in");
-      const polygonSDK = getThirdwebSDK(
-        Polygon.chainId,
-        getDashboardChainRpc(Polygon),
-      );
-      const contractList = await polygonSDK.getMultichainContractList(
-        user.address,
-        configuredChains,
-      );
-
-      const contractWithExtensions = await Promise.all(
-        contractList.map(async (c) => {
-          const extensions =
-            "extensions" in c ? await c.extensions().catch(() => []) : [];
-          return extensions.includes("AccountFactory") ? c : null;
+    queryFn: async () => {
+      const factories = await Promise.all(
+        (contractListQuery.data || []).map(async (c) => {
+          const contract = getContract({
+            // eslint-disable-next-line no-restricted-syntax
+            chain: defineChain(c.chainId),
+            address: c.address,
+            client,
+          });
+          const m = await getCompilerMetadata(contract);
+          return m.name.indexOf("AccountFactory") > -1 ? c : null;
         }),
       );
 
-      return contractWithExtensions.filter((f) => f !== null);
+      return factories.filter((f) => f !== null);
     },
-    {
-      enabled: !!user?.address && isLoggedIn,
-    },
-  );
-};
+    enabled: !!user?.address && isLoggedIn && !!contractListQuery.data?.length,
+  });
+}
 
 interface AccountFactoriesProps {
   trackingCategory: string;
@@ -57,43 +53,31 @@ export const AccountFactories: React.FC<AccountFactoriesProps> = ({
 }) => {
   const factories = useFactories();
   return (
-    <Flex flexDir="column" gap={8}>
-      <Flex
-        flexDir={{ base: "column", lg: "row" }}
-        gap={8}
-        justifyContent={"space-between"}
-        alignItems={"left"}
-      >
-        <Flex flexDir={"column"} gap={4}>
-          <Heading size="title.md" as="h1">
-            Your account factories
-          </Heading>
-          <Text>
-            Click an account factory contract to view analytics and accounts
-            created.
-          </Text>
-        </Flex>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
+        <p className="text-muted-foreground text-sm">
+          Click an account factory contract to view analytics and accounts
+          created.
+        </p>
 
-        <TrackedLinkButton
-          leftIcon={<FiPlus />}
-          category={trackingCategory}
-          label="create-factory"
-          colorScheme="primary"
-          href="/explore/smart-wallet"
-        >
-          Deploy an Account Factory
-        </TrackedLinkButton>
-      </Flex>
+        <Button variant="outline" asChild size="sm">
+          <TrackedLinkTW
+            category={trackingCategory}
+            label="create-factory"
+            href="/explore/smart-wallet"
+            className="gap-2 text-sm"
+          >
+            <PlusIcon className="size-3" />
+            Deploy Account Factory
+          </TrackedLinkTW>
+        </Button>
+      </div>
 
-      {factories.isLoading ? (
-        <Spinner />
-      ) : (
-        <FactoryContracts
-          contracts={(factories.data || []) as BasicContract[]}
-          isLoading={factories.isLoading}
-          isFetched={factories.isFetched}
-        />
-      )}
-    </Flex>
+      <FactoryContracts
+        contracts={factories.data || []}
+        isPending={factories.isPending}
+        isFetched={factories.isFetched}
+      />
+    </div>
   );
 };

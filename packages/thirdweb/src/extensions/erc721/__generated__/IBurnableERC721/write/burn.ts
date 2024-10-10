@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -27,19 +26,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `burn` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `burn` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `burn` method is supported.
  * @extension ERC721
  * @example
  * ```ts
  * import { isBurnSupported } from "thirdweb/extensions/erc721";
  *
- * const supported = await isBurnSupported(contract);
+ * const supported = isBurnSupported(["0x..."]);
  * ```
  */
-export async function isBurnSupported(contract: ThirdwebContract<any>) {
+export function isBurnSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -51,7 +50,7 @@ export async function isBurnSupported(contract: ThirdwebContract<any>) {
  * @extension ERC721
  * @example
  * ```ts
- * import { encodeBurnParams } "thirdweb/extensions/erc721";
+ * import { encodeBurnParams } from "thirdweb/extensions/erc721";
  * const result = encodeBurnParams({
  *  tokenId: ...,
  * });
@@ -68,7 +67,7 @@ export function encodeBurnParams(options: BurnParams) {
  * @extension ERC721
  * @example
  * ```ts
- * import { encodeBurn } "thirdweb/extensions/erc721";
+ * import { encodeBurn } from "thirdweb/extensions/erc721";
  * const result = encodeBurn({
  *  tokenId: ...,
  * });
@@ -88,6 +87,7 @@ export function encodeBurn(options: BurnParams) {
  * @extension ERC721
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { burn } from "thirdweb/extensions/erc721";
  *
  * const transaction = burn({
@@ -99,8 +99,7 @@ export function encodeBurn(options: BurnParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function burn(

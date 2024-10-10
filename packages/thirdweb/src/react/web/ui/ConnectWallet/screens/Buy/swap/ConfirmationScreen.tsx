@@ -1,5 +1,6 @@
 import { CrossCircledIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
+import { trackPayEvent } from "../../../../../../../analytics/track.js";
 import type { Chain } from "../../../../../../../chains/types.js";
 import type { ThirdwebClient } from "../../../../../../../client/client.js";
 import type { BuyWithCryptoQuote } from "../../../../../../../pay/buyWithCrypto/getQuote.js";
@@ -13,6 +14,7 @@ import {
   iconSize,
 } from "../../../../../../core/design-system/index.js";
 import { useChainName } from "../../../../../../core/hooks/others/useChainQuery.js";
+import { useEnsName } from "../../../../../../core/utils/wallet.js";
 import { Skeleton } from "../../../../components/Skeleton.js";
 import { Spacer } from "../../../../components/Spacer.js";
 import { Spinner } from "../../../../components/Spinner.js";
@@ -26,7 +28,6 @@ import type { ERC20OrNativeToken } from "../../nativeToken.js";
 import { PayTokenIcon } from "../PayTokenIcon.js";
 import { Step } from "../Stepper.js";
 import type { PayerInfo } from "../types.js";
-import { SwapFees } from "./Fees.js";
 import { formatSeconds } from "./formatSeconds.js";
 import { addPendingTx } from "./pendingSwapTx.js";
 
@@ -61,6 +62,9 @@ export function SwapConfirmationScreen(props: {
 
   const receiver = props.quote.swapDetails.toAddress;
   const sender = props.quote.swapDetails.fromAddress;
+  const isDifferentRecipient = receiver.toLowerCase() !== sender.toLowerCase();
+
+  const ensName = useEnsName({ client: props.client, address: receiver });
 
   return (
     <Container p="lg">
@@ -93,24 +97,26 @@ export function SwapConfirmationScreen(props: {
       </ConfirmItem>
 
       {/* Receive */}
-      <ConfirmItem label="Receive">
-        <RenderTokenInfo
-          chain={props.toChain}
-          amount={String(formatNumber(Number(props.toAmount), 6))}
-          symbol={props.toTokenSymbol}
-          token={props.toToken}
-          client={props.client}
-        />
-      </ConfirmItem>
+      {!isDifferentRecipient && (
+        <ConfirmItem label="Receive">
+          <RenderTokenInfo
+            chain={props.toChain}
+            amount={String(formatNumber(Number(props.toAmount), 6))}
+            symbol={props.toTokenSymbol}
+            token={props.toToken}
+            client={props.client}
+          />
+        </ConfirmItem>
+      )}
 
       {/* Fees  */}
       <ConfirmItem label="Fees">
-        <SwapFees quote={props.quote} align="right" />
+        <SwapFeesRightAligned quote={props.quote} />
       </ConfirmItem>
 
       {/* Time  */}
       <ConfirmItem label="Time">
-        <Text color="primaryText">
+        <Text size="sm" color="primaryText">
           ~
           {formatSeconds(
             props.quote.swapDetails.estimated.durationSeconds || 0,
@@ -119,9 +125,11 @@ export function SwapConfirmationScreen(props: {
       </ConfirmItem>
 
       {/* Send to  */}
-      {receiver !== sender && (
-        <ConfirmItem label="Send to">
-          <Text color="primaryText">{shortenAddress(receiver)}</Text>
+      {isDifferentRecipient && (
+        <ConfirmItem label="Receiver">
+          <Text color="primaryText" size="sm">
+            {ensName.data || shortenAddress(receiver)}
+          </Text>
         </ConfirmItem>
       )}
 
@@ -183,6 +191,19 @@ export function SwapConfirmationScreen(props: {
               try {
                 setStatus("pending");
 
+                trackPayEvent({
+                  event: "prompt_swap_approval",
+                  client: props.client,
+                  walletAddress: props.payer.account.address,
+                  walletType: props.payer.wallet.id,
+                  fromToken: props.quote.swapDetails.fromToken.tokenAddress,
+                  fromAmount: props.quote.swapDetails.fromAmountWei,
+                  toToken: props.quote.swapDetails.toToken.tokenAddress,
+                  toAmount: props.quote.swapDetails.toAmountWei,
+                  chainId: props.quote.swapDetails.fromToken.chainId,
+                  dstChainId: props.quote.swapDetails.toToken.chainId,
+                });
+
                 const tx = await sendTransaction({
                   account: props.payer.account,
                   transaction: props.quote.approval,
@@ -190,6 +211,19 @@ export function SwapConfirmationScreen(props: {
 
                 await waitForReceipt({ ...tx, maxBlocksWaitTime: 50 });
                 // props.onQuoteFinalized(props.quote);
+
+                trackPayEvent({
+                  event: "swap_approval_success",
+                  client: props.client,
+                  walletAddress: props.payer.account.address,
+                  walletType: props.payer.wallet.id,
+                  fromToken: props.quote.swapDetails.fromToken.tokenAddress,
+                  fromAmount: props.quote.swapDetails.fromAmountWei,
+                  toToken: props.quote.swapDetails.toToken.tokenAddress,
+                  toAmount: props.quote.swapDetails.toAmountWei,
+                  chainId: props.quote.swapDetails.fromToken.chainId,
+                  dstChainId: props.quote.swapDetails.toToken.chainId,
+                });
 
                 setStep("swap");
                 setStatus("idle");
@@ -216,12 +250,38 @@ export function SwapConfirmationScreen(props: {
                   };
                 }
 
+                trackPayEvent({
+                  event: "prompt_swap_execution",
+                  client: props.client,
+                  walletAddress: props.payer.account.address,
+                  walletType: props.payer.wallet.id,
+                  fromToken: props.quote.swapDetails.fromToken.tokenAddress,
+                  fromAmount: props.quote.swapDetails.fromAmountWei,
+                  toToken: props.quote.swapDetails.toToken.tokenAddress,
+                  toAmount: props.quote.swapDetails.toAmountWei,
+                  chainId: props.quote.swapDetails.fromToken.chainId,
+                  dstChainId: props.quote.swapDetails.toToken.chainId,
+                });
+
                 const _swapTx = await sendTransaction({
                   account: props.payer.account,
                   transaction: tx,
                 });
 
                 await waitForReceipt({ ..._swapTx, maxBlocksWaitTime: 50 });
+
+                trackPayEvent({
+                  event: "swap_execution_success",
+                  client: props.client,
+                  walletAddress: props.payer.account.address,
+                  walletType: props.payer.wallet.id,
+                  fromToken: props.quote.swapDetails.fromToken.tokenAddress,
+                  fromAmount: props.quote.swapDetails.fromAmountWei,
+                  toToken: props.quote.swapDetails.toToken.tokenAddress,
+                  toAmount: props.quote.swapDetails.toAmountWei,
+                  chainId: props.quote.swapDetails.toToken.chainId,
+                  dstChainId: props.quote.swapDetails.toToken.chainId,
+                });
 
                 // do not add pending tx if the swap is part of fiat flow
                 if (!props.isFiatFlow) {
@@ -252,7 +312,7 @@ export function SwapConfirmationScreen(props: {
   );
 }
 
-const ConnectorLine = /* @__PURE__ */ StyledDiv(() => {
+export const ConnectorLine = /* @__PURE__ */ StyledDiv(() => {
   const theme = useCustomTheme();
   return {
     height: "4px",
@@ -278,21 +338,21 @@ function RenderTokenInfo(props: {
       }}
     >
       <Container flex="row" center="y" gap="xs">
-        <Text color="primaryText" size="md">
+        <Text color="primaryText" size="sm">
           {props.amount} {props.symbol}
         </Text>
         <PayTokenIcon
           token={props.token}
           chain={props.chain}
-          size="sm"
+          size="xs"
           client={props.client}
         />
       </Container>
 
       {name ? (
-        <Text size="sm">{name}</Text>
+        <Text size="xs">{name}</Text>
       ) : (
-        <Skeleton width={"100px"} height={fontSize.sm} />
+        <Skeleton width="100px" height={fontSize.xs} />
       )}
     </Container>
   );
@@ -312,12 +372,48 @@ function ConfirmItem(props: {
           justifyContent: "space-between",
         }}
       >
-        <Text size="md" color="secondaryText">
+        <Text size="sm" color="secondaryText">
           {props.label}
         </Text>
         {props.children}
       </Container>
       <Line />
     </>
+  );
+}
+
+/**
+ * @internal
+ */
+function SwapFeesRightAligned(props: {
+  quote: BuyWithCryptoQuote;
+}) {
+  return (
+    <Container
+      flex="column"
+      gap="xs"
+      style={{
+        alignItems: "flex-end",
+      }}
+    >
+      {props.quote.processingFees.map((fee) => {
+        const feeAmount = formatNumber(Number(fee.amount), 6);
+        return (
+          <Container
+            key={`${fee.token.chainId}_${fee.token.tokenAddress}_${feeAmount}`}
+            flex="row"
+            gap="xxs"
+          >
+            <Text color="primaryText" size="sm">
+              {feeAmount === 0 ? "~" : ""}
+              {feeAmount} {fee.token.symbol}
+            </Text>
+            <Text color="secondaryText" size="sm">
+              (${(fee.amountUSDCents / 100).toFixed(2)})
+            </Text>
+          </Container>
+        );
+      })}
+    </Container>
   );
 }

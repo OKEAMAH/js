@@ -3,6 +3,9 @@ import { isNativeTokenAddress } from "../../../../constants/addresses.js";
 import type { BaseTransactionOptions } from "../../../../transaction/types.js";
 import { makeOffer as makeOfferGenerated } from "../../__generated__/IOffers/write/makeOffer.js";
 
+/**
+ * @extension MARKETPLACE
+ */
 export type MakeOfferParams = {
   /**
    * The address of the asset contract to offer on.
@@ -100,7 +103,6 @@ export function makeOffer(options: BaseTransactionOptions<MakeOfferParams>) {
           const WETH9 = await getDeployedInfraContract({
             chain: options.contract.chain,
             client: options.contract.client,
-            constructorParams: [],
             contractId: "WETH9",
           });
 

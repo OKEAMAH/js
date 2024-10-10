@@ -2,9 +2,10 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useDashboardRouter } from "@/lib/DashboardRouter";
 import { SearchIcon, XCircleIcon } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useRef } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { useDebouncedCallback } from "use-debounce";
 
 function cleanUrl(url: string) {
@@ -15,16 +16,19 @@ function cleanUrl(url: string) {
 }
 
 export const SearchInput: React.FC = () => {
-  const router = useRouter();
+  const router = useDashboardRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // hah, no need for useEffect here this just works!
-  if (inputRef.current?.value && !searchParams?.get("query")) {
-    inputRef.current.value = "";
-  }
+  // eslint-disable-next-line no-restricted-syntax
+  useEffect(() => {
+    // reset the input if the query param is removed
+    if (inputRef.current?.value && !searchParams?.get("query")) {
+      inputRef.current.value = "";
+    }
+  }, [searchParams]);
 
   const handleSearch = useDebouncedCallback((term: string) => {
     const params = new URLSearchParams(searchParams ?? undefined);
@@ -41,10 +45,10 @@ export const SearchInput: React.FC = () => {
 
   return (
     <div className="relative w-full">
-      <SearchIcon className="absolute size-5 top-[50%] -translate-y-1/2 left-4 text-muted-foreground" />
+      <SearchIcon className="-translate-y-1/2 absolute top-[50%] left-3 size-4 text-muted-foreground" />
       <Input
         placeholder="Search by name or chain ID"
-        className={"pl-12 h-10 py-2 text-base bg-secondary rounded-lg"}
+        className="h-10 rounded-lg py-2 pl-9"
         defaultValue={searchParams?.get("query") || ""}
         onChange={(e) => handleSearch(e.target.value)}
         ref={inputRef}
@@ -52,7 +56,7 @@ export const SearchInput: React.FC = () => {
       {searchParams?.has("query") && (
         <Button
           size="icon"
-          className="absolute top-[50%] -translate-y-1/2 right-2 text-muted-foreground"
+          className="-translate-y-1/2 absolute top-[50%] right-2 text-muted-foreground"
           variant="ghost"
           onClick={() => {
             const params = new URLSearchParams(searchParams ?? undefined);

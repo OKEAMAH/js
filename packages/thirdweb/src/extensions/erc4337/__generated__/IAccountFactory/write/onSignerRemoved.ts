@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -40,21 +39,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `onSignerRemoved` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `onSignerRemoved` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `onSignerRemoved` method is supported.
  * @extension ERC4337
  * @example
  * ```ts
  * import { isOnSignerRemovedSupported } from "thirdweb/extensions/erc4337";
  *
- * const supported = await isOnSignerRemovedSupported(contract);
+ * const supported = isOnSignerRemovedSupported(["0x..."]);
  * ```
  */
-export async function isOnSignerRemovedSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isOnSignerRemovedSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -66,7 +63,7 @@ export async function isOnSignerRemovedSupported(
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeOnSignerRemovedParams } "thirdweb/extensions/erc4337";
+ * import { encodeOnSignerRemovedParams } from "thirdweb/extensions/erc4337";
  * const result = encodeOnSignerRemovedParams({
  *  signer: ...,
  *  creatorAdmin: ...,
@@ -89,7 +86,7 @@ export function encodeOnSignerRemovedParams(options: OnSignerRemovedParams) {
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeOnSignerRemoved } "thirdweb/extensions/erc4337";
+ * import { encodeOnSignerRemoved } from "thirdweb/extensions/erc4337";
  * const result = encodeOnSignerRemoved({
  *  signer: ...,
  *  creatorAdmin: ...,
@@ -113,6 +110,7 @@ export function encodeOnSignerRemoved(options: OnSignerRemovedParams) {
  * @extension ERC4337
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { onSignerRemoved } from "thirdweb/extensions/erc4337";
  *
  * const transaction = onSignerRemoved({
@@ -126,8 +124,7 @@ export function encodeOnSignerRemoved(options: OnSignerRemovedParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function onSignerRemoved(

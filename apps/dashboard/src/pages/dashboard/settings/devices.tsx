@@ -1,8 +1,7 @@
 import { useAuthorizedWallets } from "@3rdweb-sdk/react/hooks/useApi";
-import { Flex } from "@chakra-ui/react";
 import { AppLayout } from "components/app-layouts/app";
 import { AuthorizedWalletsTable } from "components/settings/AuthorizedWallets/AuthorizedWalletsTable";
-import { SettingsSidebar } from "core-ui/sidebar/settings";
+import { SettingsSidebarLayout } from "core-ui/sidebar/settings";
 import { PageId } from "page-id";
 import { Heading, Text } from "tw-components";
 import type { ThirdwebNextPage } from "utils/types";
@@ -11,14 +10,9 @@ const SettingsDevicesPage: ThirdwebNextPage = () => {
   const authorizedWalletsQuery = useAuthorizedWallets();
 
   return (
-    <Flex flexDir="column" gap={8}>
-      <Flex direction="column" gap={2}>
-        <Flex
-          justifyContent="space-between"
-          direction={{ base: "column", md: "row" }}
-          gap={4}
-          flexDirection="column"
-        >
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-col justify-between gap-4">
           <Heading size="title.lg" as="h1">
             Authorized Devices
           </Heading>
@@ -28,20 +22,22 @@ const SettingsDevicesPage: ThirdwebNextPage = () => {
           </Text>
           <AuthorizedWalletsTable
             authorizedWallets={authorizedWalletsQuery.data || []}
-            isLoading={authorizedWalletsQuery.isLoading}
+            isPending={authorizedWalletsQuery.isPending}
             isFetched={authorizedWalletsQuery.isFetched}
           />
-        </Flex>
-      </Flex>
-    </Flex>
+        </div>
+      </div>
+    </div>
   );
 };
 
 SettingsDevicesPage.getLayout = (page, props) => (
-  <AppLayout {...props} hasSidebar={true}>
-    <SettingsSidebar activePage="devices" />
-
-    {page}
+  <AppLayout
+    {...props}
+    pageContainerClassName="!max-w-full !px-0"
+    mainClassName="!pt-0"
+  >
+    <SettingsSidebarLayout>{page}</SettingsSidebarLayout>
   </AppLayout>
 );
 

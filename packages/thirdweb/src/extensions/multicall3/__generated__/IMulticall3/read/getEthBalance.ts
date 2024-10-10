@@ -4,53 +4,43 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
  * Represents the parameters for the "getEthBalance" function.
  */
 export type GetEthBalanceParams = {
-  addr: AbiParameterToPrimitiveType<{
-    internalType: "address";
-    name: "addr";
-    type: "address";
-  }>;
+  addr: AbiParameterToPrimitiveType<{ type: "address"; name: "addr" }>;
 };
 
 export const FN_SELECTOR = "0x4d2301cc" as const;
 const FN_INPUTS = [
   {
-    internalType: "address",
-    name: "addr",
     type: "address",
+    name: "addr",
   },
 ] as const;
 const FN_OUTPUTS = [
   {
-    internalType: "uint256",
-    name: "balance",
     type: "uint256",
+    name: "balance",
   },
 ] as const;
 
 /**
  * Checks if the `getEthBalance` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `getEthBalance` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `getEthBalance` method is supported.
  * @extension MULTICALL3
  * @example
  * ```ts
  * import { isGetEthBalanceSupported } from "thirdweb/extensions/multicall3";
- *
- * const supported = await isGetEthBalanceSupported(contract);
+ * const supported = isGetEthBalanceSupported(["0x..."]);
  * ```
  */
-export async function isGetEthBalanceSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isGetEthBalanceSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -62,7 +52,7 @@ export async function isGetEthBalanceSupported(
  * @extension MULTICALL3
  * @example
  * ```ts
- * import { encodeGetEthBalanceParams } "thirdweb/extensions/multicall3";
+ * import { encodeGetEthBalanceParams } from "thirdweb/extensions/multicall3";
  * const result = encodeGetEthBalanceParams({
  *  addr: ...,
  * });
@@ -79,7 +69,7 @@ export function encodeGetEthBalanceParams(options: GetEthBalanceParams) {
  * @extension MULTICALL3
  * @example
  * ```ts
- * import { encodeGetEthBalance } "thirdweb/extensions/multicall3";
+ * import { encodeGetEthBalance } from "thirdweb/extensions/multicall3";
  * const result = encodeGetEthBalance({
  *  addr: ...,
  * });
@@ -102,7 +92,7 @@ export function encodeGetEthBalance(options: GetEthBalanceParams) {
  * @example
  * ```ts
  * import { decodeGetEthBalanceResult } from "thirdweb/extensions/multicall3";
- * const result = decodeGetEthBalanceResult("...");
+ * const result = decodeGetEthBalanceResultResult("...");
  * ```
  */
 export function decodeGetEthBalanceResult(result: Hex) {

@@ -1,10 +1,12 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { TEST_CLIENT } from "../../../test/src/test-clients.js";
 import { ANVIL_PKEY_B } from "../../../test/src/test-wallets.js";
+import { abstractTestnet } from "../../chains/chain-definitions/abstract-testnet.js";
 import { zkSyncSepolia } from "../../chains/chain-definitions/zksync-sepolia.js";
 import { defineChain } from "../../chains/utils.js";
 import { getContract } from "../../contract/contract.js";
 import { claimTo } from "../../extensions/erc1155/drops/write/claimTo.js";
+import { sendAndConfirmTransaction } from "../../transaction/actions/send-and-confirm-transaction.js";
 import { sendTransaction } from "../../transaction/actions/send-transaction.js";
 import { prepareTransaction } from "../../transaction/prepare-transaction.js";
 import type { Account, Wallet } from "../interfaces/wallet.js";
@@ -25,7 +27,8 @@ const contract = getContract({
   client,
 });
 
-describe.runIf(process.env.TW_SECRET_KEY).skip(
+// TODO run this on every CI run, needs proper zk fork setup
+describe.runIf(process.env.TW_SECRET_KEY).todo(
   "SmartWallet zksync tests",
   {
     retry: 0,
@@ -49,7 +52,7 @@ describe.runIf(process.env.TW_SECRET_KEY).skip(
     });
 
     it("should send a transactions", async () => {
-      const tx = await sendTransaction({
+      const tx = await sendAndConfirmTransaction({
         transaction: claimTo({
           contract,
           quantity: 1n,
@@ -61,7 +64,19 @@ describe.runIf(process.env.TW_SECRET_KEY).skip(
       expect(tx.transactionHash.length).toBe(66);
     });
 
-    it("should send a transaction on zkcandy", async () => {
+    it("should send dummy a transactions", async () => {
+      const tx = await sendAndConfirmTransaction({
+        transaction: prepareTransaction({
+          chain,
+          client,
+          to: "0x611e71B12a2B1C0c884574042414Fe360aF0C5A7",
+        }),
+        account: smartAccount,
+      });
+      expect(tx.transactionHash.length).toBe(66);
+    });
+
+    it.skip("should send a transaction on zkcandy", async () => {
       const zkCandy = defineChain(302);
       const zkCandySmartWallet = smartWallet({
         chain: zkCandy,
@@ -72,7 +87,7 @@ describe.runIf(process.env.TW_SECRET_KEY).skip(
         personalAccount,
       });
       const zkCandySmartWalletAddress = zkCandySmartAccount.address;
-      const preparedTx = await prepareTransaction({
+      const preparedTx = prepareTransaction({
         chain: defineChain(302),
         client: client,
         to: zkCandySmartWalletAddress,
@@ -83,6 +98,54 @@ describe.runIf(process.env.TW_SECRET_KEY).skip(
         transaction: preparedTx,
         account: zkCandySmartAccount,
       });
+      expect(tx.transactionHash.length).toBe(66);
+    });
+
+    it("should send a transaction on abstract", async () => {
+      const abstractSmartWallet = smartWallet({
+        chain: abstractTestnet,
+        gasless: true,
+      });
+      const account = await abstractSmartWallet.connect({
+        client: TEST_CLIENT,
+        personalAccount,
+      });
+      const tx = await sendTransaction({
+        transaction: claimTo({
+          contract: getContract({
+            address: "0x8A24a7Df38fA5fCCcFD1259e90Fb6996fDdfcADa", // edition drop
+            chain: abstractTestnet,
+            client,
+          }),
+          quantity: 1n,
+          to: account.address,
+          tokenId: 0n,
+        }),
+        account: account,
+      });
+      expect(tx.transactionHash.length).toBe(66);
+    });
+
+    it("should send a transaction on Creator Testnet", async () => {
+      const abstractSmartWallet = smartWallet({
+        chain: defineChain(4654),
+        gasless: true,
+      });
+      const account = await abstractSmartWallet.connect({
+        client: TEST_CLIENT,
+        personalAccount,
+      });
+      const tx = await sendTransaction({
+        transaction: prepareTransaction({
+          chain: defineChain(4654),
+          client: TEST_CLIENT,
+          to: account.address,
+          value: BigInt(0),
+          data: "0x",
+        }),
+        account: account,
+      });
+      console.log(tx.transactionHash);
       expect(tx.transactionHash.length).toBe(66);
     });
   },

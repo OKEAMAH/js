@@ -16,7 +16,7 @@ import {
   radius,
   spacing,
 } from "../../../core/design-system/index.js";
-import { genericWalletIcon } from "../../../core/utils/socialIcons.js";
+import { genericWalletIcon } from "../../../core/utils/walletIcon.js";
 import { useSetSelectionData } from "../../providers/wallet-ui-states-provider.js";
 import { sortWallets } from "../../utils/sortWallets.js";
 import { LoadingScreen } from "../../wallets/shared/LoadingScreen.js";
@@ -51,7 +51,7 @@ const InAppWalletSelectionUI = /* @__PURE__ */ lazy(
 // const localWalletId = "local";
 const inAppWalletId: WalletId = "inApp";
 
-export type WalletSelectorProps = {
+type WalletSelectorProps = {
   wallets: Wallet[];
   selectWallet: (wallet: Wallet) => void;
   title: string;
@@ -67,11 +67,12 @@ export type WalletSelectorProps = {
     showThirdwebBranding?: boolean;
     termsOfServiceUrl?: string;
     privacyPolicyUrl?: string;
+    requireApproval?: boolean;
   };
   client: ThirdwebClient;
   connectLocale: ConnectLocale;
   recommendedWallets: Wallet[] | undefined;
-  isEmbed: boolean;
+  hideHeader: boolean;
   chain: Chain | undefined;
   chains: Chain[] | undefined;
   showAllWallets: boolean | undefined;
@@ -87,6 +88,7 @@ export type WalletSelectorProps = {
       }
     | undefined;
   walletIdsToHide: WalletId[] | undefined;
+  disableSelectionDataReset?: boolean;
 };
 
 /**
@@ -135,6 +137,8 @@ const WalletSelectorInner: React.FC<WalletSelectorProps> = (props) => {
   const { walletIdsToHide } = props;
   const isCompact = props.size === "compact";
   const [isWalletGroupExpanded, setIsWalletGroupExpanded] = useState(false);
+  // This is only used if requireApproval is true
+  const [approvedTOS, setApprovedTOS] = useState(false);
 
   const installedWallets = getInstalledWallets();
   const propsWallets = props.wallets;
@@ -252,11 +256,16 @@ const WalletSelectorInner: React.FC<WalletSelectorProps> = (props) => {
   );
 
   const tos =
-    props.meta.termsOfServiceUrl || props.meta.privacyPolicyUrl ? (
+    props.meta.requireApproval ||
+    props.meta.termsOfServiceUrl ||
+    props.meta.privacyPolicyUrl ? (
       <TOS
         termsOfServiceUrl={props.meta.termsOfServiceUrl}
         privacyPolicyUrl={props.meta.privacyPolicyUrl}
         locale={props.connectLocale.agreement}
+        requireApproval={props.meta.requireApproval}
+        isApproved={approvedTOS}
+        onApprove={() => setApprovedTOS(!approvedTOS)}
       />
     ) : undefined;
 
@@ -278,6 +287,8 @@ const WalletSelectorInner: React.FC<WalletSelectorProps> = (props) => {
         recommendedWallets={props.recommendedWallets}
         chain={props.chain}
         showAllWallets={props.showAllWallets}
+        diableSelectionDataReset={props.disableSelectionDataReset}
+        disabled={props.meta.requireApproval && !approvedTOS}
       />
     );
 
@@ -305,6 +316,8 @@ const WalletSelectorInner: React.FC<WalletSelectorProps> = (props) => {
           recommendedWallets={props.recommendedWallets}
           chain={props.chain}
           showAllWallets={props.showAllWallets}
+          diableSelectionDataReset={props.disableSelectionDataReset}
+          disabled={props.meta.requireApproval && !approvedTOS}
         />
       );
 
@@ -348,6 +361,8 @@ const WalletSelectorInner: React.FC<WalletSelectorProps> = (props) => {
               recommendedWallets={props.recommendedWallets}
               chain={props.chain}
               showAllWallets={props.showAllWallets}
+              diableSelectionDataReset={props.disableSelectionDataReset}
+              disabled={props.meta.requireApproval && !approvedTOS}
             />
             {eoaWallets.length > 0 && (
               <>
@@ -418,6 +433,8 @@ const WalletSelectorInner: React.FC<WalletSelectorProps> = (props) => {
                     recommendedWallets={props.recommendedWallets}
                     chain={props.chain}
                     showAllWallets={props.showAllWallets}
+                    diableSelectionDataReset={props.disableSelectionDataReset}
+                    disabled={props.meta.requireApproval && !approvedTOS}
                   />
                 </Container>
 
@@ -456,6 +473,8 @@ const WalletSelectorInner: React.FC<WalletSelectorProps> = (props) => {
             recommendedWallets={props.recommendedWallets}
             chain={props.chain}
             showAllWallets={props.showAllWallets}
+            diableSelectionDataReset={props.disableSelectionDataReset}
+            disabled={props.meta.requireApproval && !approvedTOS}
           />
         );
 
@@ -466,7 +485,8 @@ const WalletSelectorInner: React.FC<WalletSelectorProps> = (props) => {
     }
   }
 
-  const showHeader = !props.isEmbed || props.modalHeader;
+  // hide the header for embed - unless it's customized
+  const showHeader = !props.hideHeader || props.modalHeader;
 
   return (
     <Container
@@ -509,7 +529,7 @@ const WalletSelectorInner: React.FC<WalletSelectorProps> = (props) => {
               }
         }
       >
-        {!props.modalHeader && props.isEmbed && isWalletGroupExpanded && (
+        {!showHeader && isWalletGroupExpanded && (
           <Container
             flex="row"
             center="y"
@@ -578,6 +598,9 @@ const WalletSelection: React.FC<{
   connectLocale: ConnectLocale;
   client: ThirdwebClient;
   chain: Chain | undefined;
+  diableSelectionDataReset?: boolean;
+  // If true, all options will be disabled. Used for things like requiring TOS approval.
+  disabled?: boolean;
 }> = (props) => {
   const wallets = sortWallets(props.wallets, props.recommendedWallets);
   const { screen } = useScreenContext();
@@ -586,6 +609,7 @@ const WalletSelection: React.FC<{
     <WalletList
       style={{
         minHeight: "100%",
+        maxHeight: "370px",
       }}
     >
       {wallets.map((wallet) => {
@@ -609,13 +633,16 @@ const WalletSelection: React.FC<{
                   size={props.size}
                   recommendedWallets={props.recommendedWallets}
                   chain={props.chain}
+                  disabled={props.disabled}
                 />
               </Suspense>
             ) : (
               <WalletEntryButton
                 walletId={wallet.id}
                 selectWallet={() => {
-                  setSelectionData({});
+                  if (!props.diableSelectionDataReset) {
+                    setSelectionData({});
+                  }
                   props.selectWallet(wallet);
                 }}
                 connectLocale={props.connectLocale}

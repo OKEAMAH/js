@@ -1,19 +1,18 @@
 import { createHash } from "node:crypto";
-import { authorize } from "../core/authorize";
-
 import type {
   IncomingHttpHeaders,
   IncomingMessage,
   ServerResponse,
 } from "node:http";
-import type { CoreServiceConfig } from "../core/api";
-import type { AuthorizationInput } from "../core/authorize";
-import type { AuthorizationResult } from "../core/authorize/types";
-import type { CoreAuthInput } from "../core/types";
-
-export * from "../core/rateLimit";
-export * from "../core/services";
-export * from "../core/usageLimit";
+import type { CoreServiceConfig } from "../core/api.js";
+import { authorize } from "../core/authorize/index.js";
+import type { AuthorizationInput } from "../core/authorize/index.js";
+import type { AuthorizationResult } from "../core/authorize/types.js";
+import type { CoreAuthInput } from "../core/types.js";
+export * from "../core/usage.js";
+export * from "../core/rateLimit/index.js";
+export * from "../core/services.js";
+export * from "../core/usageLimit/index.js";
 type NodeServiceConfig = CoreServiceConfig;
 
 export type AuthInput = CoreAuthInput & {
@@ -215,5 +214,5 @@ export function logHttpRequest({
         latencyMs,
       }),
     );
-  } catch (err) {}
+  } catch {}
 }

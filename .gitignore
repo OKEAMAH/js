@@ -10,19 +10,22 @@ dist-ssr
 .cache
 server/dist
 public/dist
-./legacy_packages/contracts-js/abis
 .idea/
 .yalc/
 yalc.lock
-build/
+./build/
 playwright-report/
 .env/
-
-# Artifacts
-legacy_packages/cli/artifacts/
 
 # codecov binary
 codecov
 
 # Remove sitemap files (generated at build time)
 sitemap*.xml
+
+# typedoc
+packages/*/typedoc/*
+
+*storybook.log
+storybook-static
+.aider*

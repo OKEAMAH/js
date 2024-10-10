@@ -1,41 +1,31 @@
-import { Flex } from "@chakra-ui/react";
-import { useContract } from "@thirdweb-dev/react";
+"use client";
+
+import type { ThirdwebContract } from "thirdweb";
 import { Heading } from "tw-components";
 import { CreateListingButton } from "../shared-components/list-button";
 import { EnglishAuctionsTable } from "./components/table";
 
 interface ContractEnglishAuctionsProps {
-  contractAddress?: string;
+  contract: ThirdwebContract;
 }
 
 export const ContractEnglishAuctionsPage: React.FC<
   ContractEnglishAuctionsProps
-> = ({ contractAddress }) => {
-  const contractQuery = useContract(contractAddress, "marketplace-v3");
-
-  if (contractQuery.isLoading) {
-    // TODO build a skeleton for this
-    return <div>Loading...</div>;
-  }
-
-  if (!contractQuery?.contract) {
-    return null;
-  }
-
+> = ({ contract }) => {
   return (
-    <Flex direction="column" gap={6}>
-      <Flex direction="row" justify="space-between" align="center">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-row items-center justify-between">
         <Heading size="title.sm">Contract Auctions</Heading>
-        <Flex gap={4}>
+        <div className="flex flex-row gap-4">
           <CreateListingButton
-            contractQuery={contractQuery}
+            contract={contract}
             type="english-auctions"
             createText="Create English Auction"
           />
-        </Flex>
-      </Flex>
+        </div>
+      </div>
 
-      <EnglishAuctionsTable contract={contractQuery.contract} />
-    </Flex>
+      <EnglishAuctionsTable contract={contract} />
+    </div>
   );
 };

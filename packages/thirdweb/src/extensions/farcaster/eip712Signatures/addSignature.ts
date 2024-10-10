@@ -3,14 +3,14 @@ import type { Hex } from "../../../utils/encoding/hex.js";
 import type { Account } from "../../../wallets/interfaces/wallet.js";
 import { KEY_GATEWAY_ADDRESS } from "../constants.js";
 
-export const KEY_GATEWAY_EIP_712_DOMAIN = {
+const KEY_GATEWAY_EIP_712_DOMAIN = {
   name: "Farcaster KeyGateway",
   version: "1",
   chainId: 10,
   verifyingContract: KEY_GATEWAY_ADDRESS,
 } as const;
 
-export const KEY_GATEWAY_ADD_TYPE = [
+const KEY_GATEWAY_ADD_TYPE = [
   { name: "owner", type: "address" },
   { name: "keyType", type: "uint32" },
   { name: "key", type: "bytes" },
@@ -20,11 +20,14 @@ export const KEY_GATEWAY_ADD_TYPE = [
   { name: "deadline", type: "uint256" },
 ] as const;
 
-export const KEY_GATEWAY_EIP_712_TYPES = {
+const KEY_GATEWAY_EIP_712_TYPES = {
   domain: KEY_GATEWAY_EIP_712_DOMAIN,
   types: { Add: KEY_GATEWAY_ADD_TYPE },
 } as const;
 
+/**
+ * @extension FARCASTER
+ */
 export type AddMessage = {
   /** FID owner address */
   owner: Address;
@@ -42,6 +45,9 @@ export type AddMessage = {
   deadline: bigint;
 };
 
+/**
+ * @extension FARCASTER
+ */
 export type SignAddOptions = {
   account: Account;
   message: AddMessage;

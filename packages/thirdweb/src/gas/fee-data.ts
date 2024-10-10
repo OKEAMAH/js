@@ -30,6 +30,13 @@ type FeeDataParams =
 const FORCE_GAS_PRICE_CHAIN_IDS = [
   78600, // Vanar testnet
   2040, // Vanar mainnet
+  248, // Oasys Mainnet
+  9372, // Oasys Testnet
+  841, // Taraxa Mainnet
+  842, // Taraxa Testnet
+  2016, // MainnetZ Mainnet
+  9768, // MainnetZ Testnet
+  2442, // Polygon zkEVM Cardona Testnet
 ];
 
 /**
@@ -107,7 +114,10 @@ export async function getDefaultGasOverrides(
   // if chain is in the force gas price list, always use gas price
   if (!FORCE_GAS_PRICE_CHAIN_IDS.includes(chain.id)) {
     const feeData = await getDynamicFeeData(client, chain);
-    if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+    if (
+      feeData.maxFeePerGas !== null &&
+      feeData.maxPriorityFeePerGas !== null
+    ) {
       return {
         maxFeePerGas: feeData.maxFeePerGas,
         maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
@@ -129,6 +139,7 @@ export async function getDefaultGasOverrides(
 async function getDynamicFeeData(
   client: ThirdwebClient,
   chain: Chain,
+  percentMultiplier = 10,
 ): Promise<FeeData> {
   let maxFeePerGas: null | bigint = null;
   let maxPriorityFeePerGas_: null | bigint = null;
@@ -140,7 +151,7 @@ async function getDynamicFeeData(
     eth_maxPriorityFeePerGas(rpcRequest).catch(() => null),
   ]);
 
-  const baseBlockFee = block?.baseFeePerGas ? block.baseFeePerGas : 100n;
+  const baseBlockFee = block?.baseFeePerGas ?? 0n;
 
   const chainId = chain.id;
   // flag chain testnet & flag chain
@@ -150,21 +161,24 @@ async function getDynamicFeeData(
     return { maxFeePerGas: null, maxPriorityFeePerGas: null };
     // mumbai & polygon
   }
-  if (chainId === 80001 || chainId === 137) {
+  if (chainId === 80002 || chainId === 137) {
     // for polygon, get fee data from gas station
     maxPriorityFeePerGas_ = await getPolygonGasPriorityFee(chainId);
-  } else if (maxPriorityFeePerGas) {
+  } else if (maxPriorityFeePerGas !== null) {
     // prioritize fee from eth_maxPriorityFeePerGas
     maxPriorityFeePerGas_ = maxPriorityFeePerGas;
   }
 
-  if (!maxPriorityFeePerGas_) {
+  if (maxPriorityFeePerGas_ == null) {
     // chain does not support eip-1559, return null for both
     return { maxFeePerGas: null, maxPriorityFeePerGas: null };
   }
 
   // add 10% tip to maxPriorityFeePerGas for faster processing
-  maxPriorityFeePerGas_ = getPreferredPriorityFee(maxPriorityFeePerGas_);
+  maxPriorityFeePerGas_ = getPreferredPriorityFee(
+    maxPriorityFeePerGas_,
+    percentMultiplier,
+  );
   // eip-1559 formula, doubling the base fee ensures that the tx can be included in the next 6 blocks no matter how busy the network is
   // good article on the subject: https://www.blocknative.com/blog/eip-1559-fees
   maxFeePerGas = baseBlockFee * 2n + maxPriorityFeePerGas_;
@@ -200,37 +214,23 @@ function getPreferredPriorityFee(
 /**
  * @internal
  */
-function getGasStationUrl(chainId: 137 | 80001): string {
+function getGasStationUrl(chainId: 137 | 80002): string {
   switch (chainId) {
     case 137:
       return "https://gasstation.polygon.technology/v2";
-    case 80001:
+    case 80002:
       return "https://gasstation-testnet.polygon.technology/v2";
   }
 }
 
 const MIN_POLYGON_GAS_PRICE = 31n; // 31 gwei
 
-const MIN_MUMBAI_GAS_PRICE = 1n; // 1 gwei
-
-/**
- * @internal
- */
-function getDefaultGasFee(chainId: 137 | 80001): bigint {
-  switch (chainId) {
-    case 137:
-      return MIN_POLYGON_GAS_PRICE;
-    case 80001:
-      return MIN_MUMBAI_GAS_PRICE;
-  }
-}
-
 /**
  *
  * @returns The gas price
  * @internal
  */
-async function getPolygonGasPriorityFee(chainId: 137 | 80001): Promise<bigint> {
+async function getPolygonGasPriorityFee(chainId: 137 | 80002): Promise<bigint> {
   const gasStationUrl = getGasStationUrl(chainId);
   try {
     const data = await (await fetch(gasStationUrl)).json();
@@ -243,5 +243,5 @@ async function getPolygonGasPriorityFee(chainId: 137 | 80001): Promise<bigint> {
   } catch (e) {
     console.error("failed to fetch gas", e);
   }
-  return getDefaultGasFee(chainId);
+  return MIN_POLYGON_GAS_PRICE;
 }

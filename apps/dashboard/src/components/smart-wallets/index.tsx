@@ -1,37 +1,57 @@
-import type { ApiKey } from "@3rdweb-sdk/react/hooks/useApi";
-import { Tab, TabList, TabPanel, TabPanels, Tabs } from "@chakra-ui/react";
+"use client";
+
+import { TabButtons } from "@/components/ui/tabs";
+import type { ApiKeyService } from "@3rdweb-sdk/react/hooks/useApi";
+import { useState } from "react";
 import { AccountFactories } from "./AccountFactories";
-import { SponsorshipPolicies } from "./SponsorshipPolicies";
+import { AccountAbstractionSettingsPage } from "./SponsorshipPolicies";
 
 interface SmartWalletsProps {
-  apiKey: ApiKey;
+  apiKeyServices: ApiKeyService[];
   trackingCategory: string;
-  defaultTabIndex?: number;
+  defaultTab: 0 | 1;
 }
 
 export const SmartWallets: React.FC<SmartWalletsProps> = ({
-  apiKey,
+  apiKeyServices,
   trackingCategory,
-  defaultTabIndex,
+  defaultTab,
 }) => {
-  return (
-    <Tabs defaultIndex={defaultTabIndex || 0}>
-      <TabList px={0} borderBottomColor="borderColor" borderBottomWidth="1px">
-        <Tab>Account Factories</Tab>
-        <Tab>Configuration</Tab>
-      </TabList>
+  const [selectedTab, setSelectedTab] = useState<"factories" | "config">(
+    defaultTab === 0 ? "config" : "factories",
+  );
 
-      <TabPanels pt={6}>
-        <TabPanel px={0}>
-          <AccountFactories trackingCategory={trackingCategory} />
-        </TabPanel>
-        <TabPanel px={0}>
-          <SponsorshipPolicies
-            apiKey={apiKey}
-            trackingCategory={trackingCategory}
-          />
-        </TabPanel>
-      </TabPanels>
-    </Tabs>
+  return (
+    <div>
+      <TabButtons
+        tabs={[
+          {
+            name: "Sponsorship Policies",
+            onClick: () => setSelectedTab("config"),
+            isActive: selectedTab === "config",
+            isEnabled: true,
+          },
+          {
+            name: "Account Factories",
+            onClick: () => setSelectedTab("factories"),
+            isActive: selectedTab === "factories",
+            isEnabled: true,
+          },
+        ]}
+      />
+
+      <div className="h-6" />
+
+      {selectedTab === "factories" && (
+        <AccountFactories trackingCategory={trackingCategory} />
+      )}
+
+      {selectedTab === "config" && (
+        <AccountAbstractionSettingsPage
+          apiKeyServices={apiKeyServices}
+          trackingCategory={trackingCategory}
+        />
+      )}
+    </div>
   );
 };

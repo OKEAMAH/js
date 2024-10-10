@@ -1,4 +1,6 @@
-import { useEVMContractInfo } from "@3rdweb-sdk/react/hooks/useActiveChainId";
+"use client";
+import { ThirdwebBarChart } from "@/components/blocks/charts/bar-chart";
+import { useIsomorphicLayoutEffect } from "@/lib/useIsomorphicLayoutEffect";
 import {
   Alert,
   AlertDescription,
@@ -7,23 +9,14 @@ import {
   Flex,
   SimpleGrid,
   Skeleton,
-  Stack,
   Stat,
   StatLabel,
   StatNumber,
 } from "@chakra-ui/react";
 import type { UseQueryResult } from "@tanstack/react-query";
-import type {
-  AreaChartProps,
-  GenericDataType,
-} from "components/analytics/area-chart";
-import { AutoBarChart } from "components/analytics/auto-bar-chart";
-import { BarChart } from "components/analytics/bar-chart";
-import { ChartContainer } from "components/analytics/chart-container";
 import {
   type AnalyticsQueryParams,
   type TotalQueryResult,
-  useAnalyticsSupportedChains,
   useEventsAnalytics,
   useFunctionsAnalytics,
   useLogsAnalytics,
@@ -33,15 +26,16 @@ import {
   useTransactionAnalytics,
   useUniqueWalletsAnalytics,
 } from "data/analytics/hooks";
-import { Suspense, useLayoutEffect, useMemo, useState } from "react";
-import { Card, Heading, Text } from "tw-components";
+import { Suspense, useMemo, useState } from "react";
+import type { ThirdwebContract } from "thirdweb";
+import { Card, Heading } from "tw-components";
 
 interface ContractAnalyticsPageProps {
-  contractAddress?: string;
+  contract: ThirdwebContract;
 }
 
 export const ContractAnalyticsPage: React.FC<ContractAnalyticsPageProps> = ({
-  contractAddress,
+  contract,
 }) => {
   const [startDate] = useState(
     (() => {
@@ -52,20 +46,13 @@ export const ContractAnalyticsPage: React.FC<ContractAnalyticsPageProps> = ({
   );
   const [endDate] = useState(new Date());
 
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     window?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const evmContractInfo = useEVMContractInfo();
-
-  if (!contractAddress) {
-    // TODO build a skeleton for this
-    return <div>Loading...</div>;
-  }
-
   return (
     <Flex direction="column" gap={6}>
-      {contractAddress && evmContractInfo?.chain && (
+      {contract && (
         <>
           <Flex gap={10} direction="column">
             <Flex direction="column" gap={2}>
@@ -81,24 +68,24 @@ export const ContractAnalyticsPage: React.FC<ContractAnalyticsPageProps> = ({
               </Heading>
               <Flex gap={4}>
                 <AnalyticsStat
-                  chainId={evmContractInfo.chain.chainId}
-                  contractAddress={contractAddress}
+                  chainId={contract.chain.id}
+                  contractAddress={contract.address}
                   // FIXME
                   // eslint-disable-next-line react-compiler/react-compiler
                   useTotal={useTotalWalletsAnalytics}
                   label="Unique Wallets"
                 />
                 <AnalyticsStat
-                  chainId={evmContractInfo.chain.chainId}
-                  contractAddress={contractAddress}
+                  chainId={contract.chain.id}
+                  contractAddress={contract.address}
                   // FIXME
                   // eslint-disable-next-line react-compiler/react-compiler
                   useTotal={useTotalTransactionAnalytics}
                   label="Total Transactions"
                 />
                 <AnalyticsStat
-                  chainId={evmContractInfo.chain.chainId}
-                  contractAddress={contractAddress}
+                  chainId={contract.chain.id}
+                  contractAddress={contract.address}
                   // FIXME
                   // eslint-disable-next-line react-compiler/react-compiler
                   useTotal={useTotalLogsAnalytics}
@@ -108,124 +95,40 @@ export const ContractAnalyticsPage: React.FC<ContractAnalyticsPageProps> = ({
             </Flex>
           </Flex>
           <SimpleGrid columns={{ base: 1, md: 1 }} gap={4}>
-            <Flex flexDir="column" gap={4} as={Card} bg="backgroundHighlight">
-              <Stack spacing={0}>
-                <Heading as="h3" size="subtitle.sm">
-                  Unique Wallets
-                </Heading>
-                <Text>
-                  The number of unique wallet addresses that have sent a
-                  transaction to this contract.
-                </Text>
-              </Stack>
-              <ChartContainer className="w-full" ratio={4.5 / 1}>
-                <AnalyticsChart
-                  contractAddress={contractAddress}
-                  chainId={evmContractInfo.chain.chainId}
-                  startDate={startDate}
-                  endDate={endDate}
-                  index={"time"}
-                  categories={[{ id: "wallets", label: "Unique Wallets" }]}
-                  // FIXME
-                  // eslint-disable-next-line react-compiler/react-compiler
-                  useAnalytics={useUniqueWalletsAnalytics}
-                />
-              </ChartContainer>
-            </Flex>
-            <Flex flexDir="column" gap={4} as={Card} bg="backgroundHighlight">
-              <Stack spacing={0}>
-                <Heading as="h3" size="subtitle.sm">
-                  Total Transactions
-                </Heading>
-                <Text>
-                  The number of transactions that have been sent to this
-                  contract.
-                </Text>
-              </Stack>
-              <ChartContainer className="w-full" ratio={4.5 / 1}>
-                <AnalyticsChart
-                  contractAddress={contractAddress}
-                  chainId={evmContractInfo.chain.chainId}
-                  startDate={startDate}
-                  endDate={endDate}
-                  index={"time"}
-                  categories={[{ id: "count", label: "Transactions" }]}
-                  // FIXME
-                  // eslint-disable-next-line react-compiler/react-compiler
-                  useAnalytics={useTransactionAnalytics}
-                />
-              </ChartContainer>
-            </Flex>
+            <UniqueWalletsChart
+              chainId={contract.chain.id}
+              contractAddress={contract.address}
+              startDate={startDate}
+              endDate={endDate}
+            />
 
-            <Flex flexDir="column" gap={4} as={Card} bg="backgroundHighlight">
-              <Stack spacing={0}>
-                <Heading as="h3" size="subtitle.sm">
-                  Total Events
-                </Heading>
-                <Text>
-                  The number of on-chain events that have been emitted from this
-                  contract.
-                </Text>
-              </Stack>
-              <ChartContainer className="w-full" ratio={4.5 / 1}>
-                <AnalyticsChart
-                  contractAddress={contractAddress}
-                  chainId={evmContractInfo.chain.chainId}
-                  startDate={startDate}
-                  endDate={endDate}
-                  index={"time"}
-                  categories={[{ id: "count", label: "Events" }]}
-                  // FIXME
-                  // eslint-disable-next-line react-compiler/react-compiler
-                  useAnalytics={useLogsAnalytics}
-                />
-              </ChartContainer>
-            </Flex>
-            <Flex flexDir="column" gap={4} as={Card} bg="backgroundHighlight">
-              <Stack spacing={0}>
-                <Heading as="h3" size="subtitle.sm">
-                  Function Breakdown
-                </Heading>
-                <Text>
-                  The breakdown of calls to each write function from
-                  transactions.
-                </Text>
-              </Stack>
-              <ChartContainer className="w-full" ratio={4.5 / 1}>
-                <AnalyticsChart
-                  contractAddress={contractAddress}
-                  chainId={evmContractInfo.chain.chainId}
-                  startDate={startDate}
-                  endDate={endDate}
-                  index={"time"}
-                  categories={"auto"}
-                  // FIXME
-                  // eslint-disable-next-line react-compiler/react-compiler
-                  useAnalytics={useFunctionsAnalytics}
-                />
-              </ChartContainer>
-            </Flex>
-            <Flex flexDir="column" gap={4} as={Card} bg="backgroundHighlight">
-              <Stack spacing={0}>
-                <Heading as="h3" size="subtitle.sm">
-                  Event Breakdown
-                </Heading>
-                <Text>The breakdown of events emitted by this contract.</Text>
-              </Stack>
-              <ChartContainer className="w-full" ratio={4.5 / 1}>
-                <AnalyticsChart
-                  contractAddress={contractAddress}
-                  chainId={evmContractInfo.chain.chainId}
-                  startDate={startDate}
-                  endDate={endDate}
-                  index={"time"}
-                  categories={"auto"}
-                  // FIXME
-                  // eslint-disable-next-line react-compiler/react-compiler
-                  useAnalytics={useEventsAnalytics}
-                />
-              </ChartContainer>
-            </Flex>
+            <TotalTransactionsChart
+              chainId={contract.chain.id}
+              contractAddress={contract.address}
+              startDate={startDate}
+              endDate={endDate}
+            />
+
+            <TotalEventsChart
+              chainId={contract.chain.id}
+              contractAddress={contract.address}
+              startDate={startDate}
+              endDate={endDate}
+            />
+
+            <FunctionBreakdownChart
+              chainId={contract.chain.id}
+              contractAddress={contract.address}
+              startDate={startDate}
+              endDate={endDate}
+            />
+
+            <EventBreakdownChart
+              chainId={contract.chain.id}
+              contractAddress={contract.address}
+              startDate={startDate}
+              endDate={endDate}
+            />
           </SimpleGrid>
         </>
       )}
@@ -233,87 +136,127 @@ export const ContractAnalyticsPage: React.FC<ContractAnalyticsPageProps> = ({
   );
 };
 
-interface AnalyticsChartProps<
-  TAnalytics extends GenericDataType = GenericDataType,
-> {
-  chainId: number;
+type ChartProps = {
   contractAddress: string;
+  chainId: number;
   startDate: Date;
   endDate: Date;
-  index: string;
-  categories: AreaChartProps<TAnalytics, "time">["categories"] | "auto";
-  useAnalytics: (params: AnalyticsQueryParams) => UseQueryResult<TAnalytics[]>;
-  showXAxis?: boolean;
-  showYAxis?: boolean;
-}
-
-export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
-  chainId,
-  contractAddress,
-  startDate,
-  endDate,
-  index,
-  categories,
-  useAnalytics,
-  showXAxis,
-  showYAxis,
-}) => {
-  const supportedChainsQuery = useAnalyticsSupportedChains();
-
-  const analyticsQuery = useAnalytics({
-    contractAddress,
-    chainId,
-    startDate,
-    endDate,
-  });
-
-  const data = useMemo(() => {
-    if (!analyticsQuery.data) {
-      return [];
-    }
-
-    return analyticsQuery.data;
-  }, [analyticsQuery.data]);
-
-  if (data.length <= 1) {
-    const supportedChains = supportedChainsQuery.data ?? [];
-
-    return (
-      <Alert status="info" borderRadius="md" mb={4}>
-        <AlertIcon />
-        {supportedChains.includes(chainId) ? (
-          <AlertDescription>No recent activity.</AlertDescription>
-        ) : (
-          <AlertDescription>
-            Analytics for this chain not currently supported.
-          </AlertDescription>
-        )}
-      </Alert>
-    );
-  }
-
-  if (categories === "auto") {
-    return (
-      <AutoBarChart
-        data={data}
-        index={{ id: index }}
-        showXAxis
-        showYAxis
-        stacked
-      />
-    );
-  }
+};
+function UniqueWalletsChart(props: ChartProps) {
+  const { data } = useUniqueWalletsAnalytics(props);
 
   return (
-    <BarChart
-      data={data}
-      index={{ id: index }}
-      categories={categories}
-      showXAxis={showXAxis !== undefined ? showXAxis : true}
-      showYAxis={showYAxis !== undefined ? showYAxis : true}
+    <ThirdwebBarChart
+      title="Unique Wallets"
+      description="The number of unique wallet addresses that have sent a transaction to this contract."
+      data={data || []}
+      config={{
+        wallets: {
+          label: "Unique Wallets",
+          color: "hsl(var(--chart-1))",
+        },
+      }}
+      chartClassName="aspect[2] lg:aspect-[4.5]"
     />
   );
-};
+}
+
+function TotalTransactionsChart(props: ChartProps) {
+  const { data } = useTransactionAnalytics({
+    chainId: props.chainId,
+    contractAddress: props.contractAddress,
+    endDate: props.endDate,
+    startDate: props.startDate,
+  });
+
+  return (
+    <ThirdwebBarChart
+      title="Total Transactions"
+      description="The number of transactions that have been sent to this contract."
+      data={data || []}
+      config={{
+        count: {
+          label: "Transactions",
+          color: "hsl(var(--chart-1))",
+        },
+      }}
+      chartClassName="aspect[2] lg:aspect-[4.5]"
+    />
+  );
+}
+
+function TotalEventsChart(props: ChartProps) {
+  const { data } = useLogsAnalytics(props);
+
+  return (
+    <ThirdwebBarChart
+      title="Total Events"
+      description="The number of on-chain events that have been emitted from this contract."
+      data={data || []}
+      config={{
+        count: {
+          label: "Events",
+          color: "hsl(var(--chart-1))",
+        },
+      }}
+      chartClassName="aspect[2] lg:aspect-[4.5]"
+    />
+  );
+}
+
+function FunctionBreakdownChart(props: ChartProps) {
+  const { data } = useFunctionsAnalytics(props);
+
+  return (
+    <ThirdwebBarChart
+      title="Function Breakdown"
+      description="The breakdown of calls to each write function from transactions."
+      data={data || []}
+      config={Object.keys(data?.[0] || {}).reduce(
+        (acc, key) => {
+          if (key === "time") {
+            return acc;
+          }
+          acc[key] = {
+            label: key,
+            color: `hsl(var(--chart-${(Object.keys(acc).length % 15) + 1}))`,
+          };
+          return acc;
+        },
+        {} as Record<string, { label: string; color: string }>,
+      )}
+      chartClassName="aspect[2] lg:aspect-[4.5]"
+      showLegend
+    />
+  );
+}
+
+function EventBreakdownChart(props: ChartProps) {
+  const { data } = useEventsAnalytics(props);
+
+  return (
+    <ThirdwebBarChart
+      title="Event Breakdown"
+      description="The breakdown of events emitted by this contract."
+      data={data || []}
+      config={Object.keys(data?.[0] || {}).reduce(
+        (acc, key) => {
+          if (key === "time") {
+            return acc;
+          }
+          acc[key] = {
+            label: key,
+            color: `hsl(var(--chart-${(Object.keys(acc).length % 15) + 1}))`,
+          };
+          return acc;
+        },
+        {} as Record<string, { label: string; color: string }>,
+      )}
+      chartClassName="aspect[2] lg:aspect-[4.5]"
+      showLegend
+    />
+  );
+}
 
 interface AnalyticsStatProps {
   label: string;
@@ -357,6 +300,8 @@ const AnalyticsData: React.FC<AnalyticsStatProps> = ({
   contractAddress,
   useTotal,
 }) => {
+  // FIXME: re-work this to not pass the hook down
+  // eslint-disable-next-line react-compiler/react-compiler
   const totalQuery = useTotal({
     contractAddress,
     chainId,

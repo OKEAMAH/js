@@ -1,3 +1,4 @@
+import { SingleNetworkSelector } from "@/components/blocks/NetworkSelectors";
 import {
   type CreateRelayerInput,
   useEngineBackendWallets,
@@ -20,14 +21,12 @@ import {
   type UseDisclosureReturn,
   useDisclosure,
 } from "@chakra-ui/react";
-import { shortenString } from "@thirdweb-dev/react";
-import { NetworkDropdown } from "components/contract-components/contract-publish-form/NetworkDropdown";
-import { isAddress } from "ethers/lib/utils";
 import { useTrack } from "hooks/analytics/useTrack";
 import { useAllChainsData } from "hooks/chains/allChains";
 import { useTxNotifications } from "hooks/useTxNotifications";
 import { useForm } from "react-hook-form";
 import { AiOutlinePlusCircle } from "react-icons/ai";
+import { isAddress, shortenAddress } from "thirdweb/utils";
 import { Button, FormHelperText, FormLabel } from "tw-components";
 
 interface AddRelayerButtonProps {
@@ -76,7 +75,7 @@ const AddModal = ({
 }) => {
   const { mutate: createRelayer } = useEngineCreateRelayer(instanceUrl);
   const { data: backendWallets } = useEngineBackendWallets(instanceUrl);
-  const { slugToChainRecord, chainIdToChainRecord } = useAllChainsData();
+  const { idToChain } = useAllChainsData();
   const trackEvent = useTrack();
   const { onSuccess, onError } = useTxNotifications(
     "Relayer created successfully.",
@@ -85,13 +84,13 @@ const AddModal = ({
 
   const form = useForm<AddModalInput>({
     defaultValues: {
-      chainId: slugToChainRecord.sepolia.chainId,
+      chainId: 11155111, // sepolia chain id
     },
   });
 
   const onSubmit = (data: AddModalInput) => {
     const createRelayerData: CreateRelayerInput = {
-      chain: chainIdToChainRecord[data.chainId]?.slug ?? "unknown",
+      chain: idToChain.get(data.chainId)?.slug ?? "unknown",
       backendWalletAddress: data.backendWalletAddress,
       name: data.name,
       allowedContracts: parseAddressListRaw(data.allowedContractsRaw),
@@ -125,7 +124,11 @@ const AddModal = ({
   return (
     <Modal isOpen={disclosure.isOpen} onClose={disclosure.onClose} isCentered>
       <ModalOverlay />
-      <ModalContent as="form" onSubmit={form.handleSubmit(onSubmit)}>
+      <ModalContent
+        className="!bg-background rounded-lg border border-border"
+        as="form"
+        onSubmit={form.handleSubmit(onSubmit)}
+      >
         <ModalHeader>Add Relayer</ModalHeader>
         <ModalCloseButton />
 
@@ -133,9 +136,9 @@ const AddModal = ({
           <Flex flexDir="column" gap={4}>
             <FormControl isRequired>
               <FormLabel>Chain</FormLabel>
-              <NetworkDropdown
-                value={form.watch("chainId")}
-                onSingleChange={(val) => form.setValue("chainId", val)}
+              <SingleNetworkSelector
+                chainId={form.watch("chainId")}
+                onChange={(val) => form.setValue("chainId", val)}
               />
             </FormControl>
             <FormControl isRequired>
@@ -148,7 +151,7 @@ const AddModal = ({
                 </option>
                 {backendWallets?.map((wallet) => (
                   <option key={wallet.address} value={wallet.address}>
-                    {shortenString(wallet.address, false)}
+                    {shortenAddress(wallet.address)}
                     {wallet.label && ` (${wallet.label})`}
                   </option>
                 ))}

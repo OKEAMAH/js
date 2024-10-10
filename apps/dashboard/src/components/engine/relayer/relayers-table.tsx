@@ -1,3 +1,4 @@
+import { SingleNetworkSelector } from "@/components/blocks/NetworkSelectors";
 import {
   type EngineRelayer,
   type UpdateRelayerInput,
@@ -17,14 +18,11 @@ import {
   ModalHeader,
   ModalOverlay,
   Select,
-  Stack,
   Textarea,
   type UseDisclosureReturn,
   useDisclosure,
 } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
-import { shortenString } from "@thirdweb-dev/react";
-import { NetworkDropdown } from "components/contract-components/contract-publish-form/NetworkDropdown";
 import { ChainIcon } from "components/icons/ChainIcon";
 import { TWTable } from "components/shared/TWTable";
 import { useTrack } from "hooks/analytics/useTrack";
@@ -34,6 +32,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { BiPencil } from "react-icons/bi";
 import { FiTrash } from "react-icons/fi";
+import { shortenAddress } from "thirdweb/utils";
 import {
   Button,
   FormHelperText,
@@ -47,7 +46,7 @@ import { type AddModalInput, parseAddressListRaw } from "./add-relayer-button";
 interface RelayersTableProps {
   instanceUrl: string;
   relayers: EngineRelayer[];
-  isLoading: boolean;
+  isPending: boolean;
   isFetched: boolean;
 }
 
@@ -56,19 +55,19 @@ const columnHelper = createColumnHelper<EngineRelayer>();
 export const RelayersTable: React.FC<RelayersTableProps> = ({
   instanceUrl,
   relayers,
-  isLoading,
+  isPending,
   isFetched,
 }) => {
   const editDisclosure = useDisclosure();
   const removeDisclosure = useDisclosure();
   const [selectedRelayer, setSelectedRelayer] = useState<EngineRelayer>();
-  const { chainIdToChainRecord } = useAllChainsData();
+  const { idToChain } = useAllChainsData();
 
   const columns = [
     columnHelper.accessor("chainId", {
       header: "Chain",
       cell: (cell) => {
-        const chain = chainIdToChainRecord[Number.parseInt(cell.getValue())];
+        const chain = idToChain.get(Number.parseInt(cell.getValue()));
         return (
           <Flex align="center" gap={2}>
             <ChainIcon size={12} ipfsSrc={chain?.icon?.url} />
@@ -81,7 +80,7 @@ export const RelayersTable: React.FC<RelayersTableProps> = ({
       header: "Backend Wallet",
       cell: (cell) => {
         const { chainId, backendWalletAddress } = cell.row.original;
-        const chain = chainIdToChainRecord[Number.parseInt(chainId)];
+        const chain = idToChain.get(Number.parseInt(chainId));
 
         const explorer = chain?.explorers?.[0];
         if (!explorer) {
@@ -156,7 +155,7 @@ export const RelayersTable: React.FC<RelayersTableProps> = ({
         title="relayers"
         data={relayers}
         columns={columns}
-        isLoading={isLoading}
+        isPending={isPending}
         isFetched={isFetched}
         onMenuClick={[
           {
@@ -208,7 +207,7 @@ const EditModal = ({
 }) => {
   const { mutate: updateRelayer } = useEngineUpdateRelayer(instanceUrl);
   const { data: backendWallets } = useEngineBackendWallets(instanceUrl);
-  const { chainIdToChainRecord } = useAllChainsData();
+  const { idToChain } = useAllChainsData();
   const trackEvent = useTrack();
   const { onSuccess, onError } = useTxNotifications(
     "Successfully updated relayer",
@@ -227,7 +226,7 @@ const EditModal = ({
   const onSubmit = (data: AddModalInput) => {
     const updateRelayerData: UpdateRelayerInput = {
       id: relayer.id,
-      chain: chainIdToChainRecord[data.chainId]?.slug ?? "unknown",
+      chain: idToChain.get(data.chainId)?.slug ?? "unknown",
       backendWalletAddress: data.backendWalletAddress,
       name: data.name,
       allowedContracts: parseAddressListRaw(data.allowedContractsRaw),
@@ -261,16 +260,20 @@ const EditModal = ({
   return (
     <Modal isOpen={disclosure.isOpen} onClose={disclosure.onClose} isCentered>
       <ModalOverlay />
-      <ModalContent as="form" onSubmit={form.handleSubmit(onSubmit)}>
+      <ModalContent
+        className="!bg-background rounded-lg border border-border"
+        as="form"
+        onSubmit={form.handleSubmit(onSubmit)}
+      >
         <ModalHeader>Update Relayer</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          <Stack spacing={4}>
+          <div className="flex flex-col gap-4">
             <FormControl>
               <FormLabel>Chain</FormLabel>
-              <NetworkDropdown
-                value={form.watch("chainId")}
-                onSingleChange={(val) => form.setValue("chainId", val)}
+              <SingleNetworkSelector
+                chainId={form.watch("chainId")}
+                onChange={(val) => form.setValue("chainId", val)}
               />
             </FormControl>
             <FormControl>
@@ -280,7 +283,7 @@ const EditModal = ({
               >
                 {backendWallets?.map((wallet) => (
                   <option key={wallet.address} value={wallet.address}>
-                    {shortenString(wallet.address, false)}
+                    {shortenAddress(wallet.address)}
                     {wallet.label && ` (${wallet.label})`}
                   </option>
                 ))}
@@ -312,7 +315,7 @@ const EditModal = ({
               />
               <FormHelperText>Allow all forwarders if omitted.</FormHelperText>
             </FormControl>
-          </Stack>
+          </div>
         </ModalBody>
 
         <ModalFooter as={Flex} gap={3}>
@@ -343,7 +346,7 @@ const RemoveModal = ({
     "Successfully removed relayer",
     "Failed to remove relayer",
   );
-  const { chainIdToChainRecord } = useAllChainsData();
+  const { idToChain } = useAllChainsData();
 
   const onClick = () => {
     revokeRelayer(
@@ -376,11 +379,11 @@ const RemoveModal = ({
   return (
     <Modal isOpen={disclosure.isOpen} onClose={disclosure.onClose} isCentered>
       <ModalOverlay />
-      <ModalContent>
+      <ModalContent className="!bg-background rounded-lg border border-border">
         <ModalHeader>Remove Relayer</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          <Stack spacing={4}>
+          <div className="flex flex-col gap-4">
             <Text>Are you sure you want to remove this relayer?</Text>
             <FormControl>
               <FormLabel>Chain</FormLabel>
@@ -388,12 +391,11 @@ const RemoveModal = ({
                 <ChainIcon
                   size={12}
                   ipfsSrc={
-                    chainIdToChainRecord[Number.parseInt(relayer.chainId)]?.icon
-                      ?.url
+                    idToChain.get(Number.parseInt(relayer.chainId))?.icon?.url
                   }
                 />
                 <Text>
-                  {chainIdToChainRecord[Number.parseInt(relayer.chainId)]?.name}
+                  {idToChain.get(Number.parseInt(relayer.chainId))?.name}
                 </Text>
               </Flex>
             </FormControl>
@@ -405,7 +407,7 @@ const RemoveModal = ({
               <FormLabel>Label</FormLabel>
               <Text>{relayer.name ?? <em>N/A</em>}</Text>
             </FormControl>
-          </Stack>
+          </div>
         </ModalBody>
         <ModalFooter as={Flex} gap={3}>
           <Button type="button" onClick={disclosure.onClose} variant="ghost">

@@ -15,11 +15,11 @@ import { ImageUpload } from "@/components/ui/image-upload";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItemButton } from "@/components/ui/radio-group";
 import { ToolTipLabel } from "@/components/ui/tooltip";
+import { useDashboardRouter } from "@/lib/DashboardRouter";
 import { AccountStatus, useAccount } from "@3rdweb-sdk/react/hooks/useApi";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -42,14 +42,16 @@ const formSchema = z.object({
   permission: z.union([z.literal("PARTNER_WHITELIST"), z.literal("ANYONE")]),
 });
 
-export function CreateEcosystemForm() {
+export function CreateEcosystemForm(props: {
+  ecosystemLayoutPath: string;
+}) {
   // When set, the confirmation modal is open the this contains the form data to be submitted
   const [formDataToBeConfirmed, setFormDataToBeConfirmed] = useState<
     z.infer<typeof formSchema> | undefined
   >();
   const { data: billingAccountInfo } = useAccount();
 
-  const router = useRouter();
+  const router = useDashboardRouter();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -57,7 +59,7 @@ export function CreateEcosystemForm() {
     },
   });
 
-  const { createEcosystem, isLoading } = useCreateEcosystem({
+  const { mutateAsync: createEcosystem, isPending } = useCreateEcosystem({
     onError: (error) => {
       const message =
         error instanceof Error ? error.message : "Failed to create ecosystem";
@@ -65,7 +67,7 @@ export function CreateEcosystemForm() {
     },
     onSuccess: (slug: string) => {
       form.reset();
-      router.push(`/dashboard/connect/ecosystem/${slug}`);
+      router.push(`${props.ecosystemLayoutPath}/${slug}`);
     },
   });
 
@@ -179,9 +181,9 @@ export function CreateEcosystemForm() {
               type="submit"
               variant="primary"
               className="w-full"
-              disabled={isLoading}
+              disabled={isPending}
             >
-              {isLoading && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+              {isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
               Create
             </Button>
           )}

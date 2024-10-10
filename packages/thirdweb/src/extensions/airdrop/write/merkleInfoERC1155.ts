@@ -2,6 +2,9 @@ import type { BaseTransactionOptions } from "../../../transaction/types.js";
 import { processSnapshotERC1155 } from "../../../utils/extensions/airdrop/process-snapshot-erc1155.js";
 import type { SnapshotEntryERC1155 } from "../../../utils/extensions/airdrop/types.js";
 
+/**
+ * @extension AIRDROP
+ */
 export type GenerateMerkleTreeInfoERC1155Params = {
   snapshot: SnapshotEntryERC1155[];
   tokenAddress: string;
@@ -34,7 +37,7 @@ export type GenerateMerkleTreeInfoERC1155Params = {
  * // - Set merkle root on the contract to enable claiming
  *
  * ```
- * @extension Airdrop
+ * @extension AIRDROP
  * @returns A promise that resolves to the merkle-root and snapshot-uri.
  */
 export async function generateMerkleTreeInfoERC1155(

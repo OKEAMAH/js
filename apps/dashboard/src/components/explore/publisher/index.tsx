@@ -1,8 +1,8 @@
-import { Flex, Skeleton } from "@chakra-ui/react";
-import type { RequiredParam } from "@thirdweb-dev/react";
+import { SkeletonContainer } from "@/components/ui/skeleton";
 import { useEns } from "components/contract-components/hooks";
 import { PublisherAvatar } from "components/contract-components/publisher/masked-avatar";
-import { Heading, Link } from "tw-components";
+import Link from "next/link";
+import type { RequiredParam } from "utils/types";
 import { shortenIfAddress } from "utils/usedapp-external";
 
 interface ContractPublisherProps {
@@ -17,36 +17,26 @@ export const ContractPublisher: React.FC<ContractPublisherProps> = ({
   const ensQuery = useEns(addressOrEns || undefined);
 
   return (
-    <Flex
-      as={Link}
-      gap={1.5}
-      align="center"
-      flexShrink={0}
+    <Link
+      className="flex shrink-0 items-center gap-1.5 hover:underline"
       href={replaceDeployerAddress(
         `/${ensQuery.data?.ensName || ensQuery.data?.address || addressOrEns}`,
       )}
     >
       <PublisherAvatar
-        isLoading={showSkeleton}
+        isPending={showSkeleton}
         boxSize={5}
         address={addressOrEns || ""}
       />
 
-      <Skeleton
-        isLoaded={
-          ensQuery.isSuccess && !ensQuery.isPlaceholderData && !showSkeleton
+      <SkeletonContainer
+        loadedData={
+          ensQuery.data?.ensName || ensQuery.data?.address || addressOrEns || ""
         }
-      >
-        <Heading size="subtitle.xs" lineHeight={1} as="h4">
-          {treatAddress(
-            ensQuery.data?.ensName ||
-              ensQuery.data?.address ||
-              addressOrEns ||
-              "",
-          )}
-        </Heading>
-      </Skeleton>
-    </Flex>
+        skeletonData=""
+        render={(v) => <p className="text-xs"> {treatAddress(v)} </p>}
+      />
+    </Link>
   );
 };
 

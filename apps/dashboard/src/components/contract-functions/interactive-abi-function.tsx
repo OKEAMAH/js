@@ -1,24 +1,36 @@
+"use client";
+
+import { InlineCode } from "@/components/ui/inline-code";
+import { ToolTipLabel } from "@/components/ui/tooltip";
 import {
   ButtonGroup,
-  Code,
   Divider,
   Flex,
   FormControl,
-  Icon,
   Input,
 } from "@chakra-ui/react";
 import { useMutation } from "@tanstack/react-query";
-import { useContractWrite } from "@thirdweb-dev/react";
-import type { AbiFunction, SmartContract } from "@thirdweb-dev/sdk";
+import type { AbiFunction, AbiParameter } from "abitype";
 import { TransactionButton } from "components/buttons/TransactionButton";
 import { SolidityInput } from "contract-ui/components/solidity-inputs";
 import { camelToTitle } from "contract-ui/components/solidity-inputs/helpers";
-import { BigNumber, type CallOverrides, utils } from "ethers";
 import { replaceIpfsUrl } from "lib/sdk";
-import { useEffect, useId, useMemo } from "react";
+import { ExternalLinkIcon, InfoIcon, PlayIcon } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useId, useMemo, useState } from "react";
 import { FormProvider, useFieldArray, useForm } from "react-hook-form";
-import { FiPlay } from "react-icons/fi";
-import invariant from "tiny-invariant";
+import { toast } from "sonner";
+import {
+  type ThirdwebContract,
+  prepareContractCall,
+  readContract,
+  resolveMethod,
+  simulateTransaction,
+  toSerializableTransaction,
+  toWei,
+} from "thirdweb";
+import { useActiveAccount, useSendAndConfirmTransaction } from "thirdweb/react";
+import { parseAbiParams, stringify } from "thirdweb/utils";
 import {
   Button,
   Card,
@@ -32,9 +44,17 @@ import {
 } from "tw-components";
 
 function formatResponseData(data: unknown): string {
-  if (BigNumber.isBigNumber(data)) {
-    // biome-ignore lint/style/noParameterAssign: FIXME
-    data = data.toString();
+  // Early exit if data is already a string,
+  // otherwise JSON.stringify(data) will wrap it in extra quotes - which will affect the value for [Copy button]
+  if (typeof data === "string") {
+    // "" is a valid response. For example, some token has `symbol` === ""
+    if (data === "") {
+      return `""`;
+    }
+    return data;
+  }
+  if (typeof data === "bigint") {
+    return data.toString();
   }
 
   if (typeof data === "object") {
@@ -51,10 +71,13 @@ function formatResponseData(data: unknown): string {
     }
   }
 
-  return JSON.stringify(data, null, 2);
+  return stringify(data, null, 2);
 }
 
 function formatError(error: Error): string {
+  if ((error as Error).message) {
+    return (error as Error).message;
+  }
   // biome-ignore lint/suspicious/noExplicitAny: FIXME
   if ((error as any).reason) {
     // biome-ignore lint/suspicious/noExplicitAny: FIXME
@@ -73,16 +96,8 @@ function formatContractCall(
     key: string;
     value: string;
     type: string;
-    components:
-      | {
-          // biome-ignore lint/suspicious/noExplicitAny: FIXME
-          [x: string]: any;
-          type: string;
-          name?: string;
-        }[]
-      | undefined;
+    components: Readonly<AbiParameter[]> | undefined;
   }[],
-  value?: BigNumber,
 ) {
   const parsedParams = params
     .map((p) => (p.type === "bool" ? p.value !== "false" : p.value))
@@ -99,33 +114,82 @@ function formatContractCall(
         return p;
       }
     });
-
-  if (value) {
-    parsedParams.push({
-      value,
-    });
-  }
-
   return parsedParams;
 }
 
 interface InteractiveAbiFunctionProps {
-  abiFunction?: AbiFunction;
-  contract: SmartContract;
+  abiFunction: AbiFunction;
+  contract: ThirdwebContract;
 }
 
-function useDelayedRead(
-  contract: Required<SmartContract> | undefined,
-  functionName?: string,
-) {
-  return useMutation(
-    // biome-ignore lint/suspicious/noExplicitAny: FIXME
-    async ({ args, overrides }: { args: any[]; overrides?: CallOverrides }) => {
-      invariant(contract, "Contract is required");
-      invariant(functionName, "functionName is required");
-      return contract?.call(functionName, args, overrides);
+function useAsyncRead(contract: ThirdwebContract, functionName: string) {
+  return useMutation({
+    mutationFn: async ({
+      args,
+      types,
+    }: { args: unknown[]; types: string[] }) => {
+      const params = parseAbiParams(types, args);
+      return readContract({
+        contract,
+        method: resolveMethod(functionName),
+        params,
+      });
     },
-  );
+  });
+}
+
+function useSimulateTransaction() {
+  const from = useActiveAccount()?.address;
+  return useMutation({
+    mutationFn: async ({
+      contract,
+      functionName,
+      params,
+      value,
+    }: {
+      contract: ThirdwebContract;
+      functionName: string;
+      params: unknown[];
+      value?: bigint;
+    }) => {
+      if (!from) {
+        return toast.error("No account connected");
+      }
+      const transaction = prepareContractCall({
+        contract,
+        method: resolveMethod(functionName),
+        params,
+        value,
+      });
+      try {
+        const [simulateResult, populatedTransaction] = await Promise.all([
+          simulateTransaction({
+            from,
+            transaction,
+          }),
+          toSerializableTransaction({
+            from,
+            transaction,
+          }),
+        ]);
+        return `--- ✅ Simulation succeeded ---
+Result: ${simulateResult.length ? simulateResult.join(", ") : "Method did not return a result."}
+Transaction data:
+${Object.keys(populatedTransaction)
+  .map((key) => {
+    let _val = populatedTransaction[key as keyof typeof populatedTransaction];
+    if (key === "value" && !_val) {
+      _val = 0;
+    }
+    return `${key}: ${_val}\n`;
+  })
+  .join("")}`;
+      } catch (err) {
+        throw new Error(`--- ❌ Simulation failed ---
+${(err as Error).message || ""}`);
+      }
+    },
+  });
 }
 
 export const InteractiveAbiFunction: React.FC<InteractiveAbiFunctionProps> = ({
@@ -136,11 +200,11 @@ export const InteractiveAbiFunction: React.FC<InteractiveAbiFunctionProps> = ({
   const form = useForm({
     defaultValues: {
       params:
-        abiFunction?.inputs.map((i) => ({
+        abiFunction.inputs.map((i) => ({
           key: i.name || "key",
           value: "",
           type: i.type,
-          components: i.components,
+          components: "components" in i ? i.components : undefined,
         })) || [],
       value: "0",
     },
@@ -157,33 +221,109 @@ export const InteractiveAbiFunction: React.FC<InteractiveAbiFunctionProps> = ({
       abiFunction.stateMutability === "pure"
     );
   }, [abiFunction]);
+
+  const [executionMode, setExecutionMode] = useState<
+    "read" | "write" | "simulate"
+  >(
+    abiFunction.stateMutability === "view" ||
+      abiFunction.stateMutability === "pure"
+      ? "read"
+      : "write",
+  );
+
   const {
     mutate,
-    data,
+    data: mutationData,
     error: mutationError,
-    isLoading: mutationLoading,
-  } = useContractWrite(contract, abiFunction?.name);
+    isPending: mutationLoading,
+  } = useSendAndConfirmTransaction();
 
   const {
     mutate: readFn,
     data: readData,
-    isLoading: readLoading,
+    isPending: readLoading,
     error: readError,
-  } = useDelayedRead(contract, abiFunction?.name);
+  } = useAsyncRead(contract, abiFunction.name);
 
-  const error = isView ? readError : mutationError;
+  const txSimulation = useSimulateTransaction();
+
+  const error =
+    executionMode === "read"
+      ? readError
+      : executionMode === "write"
+        ? mutationError
+        : executionMode === "simulate"
+          ? txSimulation.error
+          : undefined;
+
+  const data =
+    executionMode === "read"
+      ? readData
+      : executionMode === "write"
+        ? mutationData
+        : executionMode === "simulate"
+          ? txSimulation.data
+          : undefined;
+
+  const formattedResponseData = useMemo(
+    () => (data !== undefined ? formatResponseData(data) : ""),
+    [data],
+  );
 
   // legitimate(?) use-case
   // eslint-disable-next-line no-restricted-syntax
   useEffect(() => {
     if (
       form.watch("params").length === 0 &&
-      (abiFunction?.stateMutability === "view" ||
-        abiFunction?.stateMutability === "pure")
+      (abiFunction.stateMutability === "view" ||
+        abiFunction.stateMutability === "pure")
     ) {
-      readFn({ args: [] });
+      readFn({
+        args: [],
+        types: [],
+      });
     }
-  }, [readFn, abiFunction?.stateMutability, form]);
+  }, [abiFunction, form, readFn]);
+
+  const handleContractRead = form.handleSubmit((d) => {
+    setExecutionMode("read");
+    const types = abiFunction.inputs.map((o) => o.type);
+    const formatted = formatContractCall(d.params);
+    readFn({ args: formatted, types });
+  });
+
+  const handleContractWrite = form.handleSubmit((d) => {
+    setExecutionMode("write");
+    if (!abiFunction.name) {
+      return toast.error("Cannot detect function name");
+    }
+    const types = abiFunction.inputs.map((o) => o.type);
+    const formatted = formatContractCall(d.params);
+    const params = parseAbiParams(types, formatted);
+    const transaction = prepareContractCall({
+      contract,
+      method: resolveMethod(abiFunction.name),
+      params,
+      value: d.value ? toWei(d.value) : undefined,
+    });
+    mutate(transaction);
+  });
+
+  const handleContractSimulation = form.handleSubmit((d) => {
+    setExecutionMode("simulate");
+    if (!abiFunction.name) {
+      return toast.error("Cannot detect function name");
+    }
+    const types = abiFunction.inputs.map((o) => o.type);
+    const formatted = formatContractCall(d.params);
+    const params = parseAbiParams(types, formatted);
+    txSimulation.mutate({
+      contract,
+      params,
+      functionName: abiFunction.name,
+      value: d.value ? toWei(d.value) : undefined,
+    });
+  });
 
   return (
     <FormProvider {...form}>
@@ -207,27 +347,6 @@ export const InteractiveAbiFunction: React.FC<InteractiveAbiFunctionProps> = ({
           gap={2}
           as="form"
           id={formId}
-          onSubmit={form.handleSubmit((d) => {
-            if (d.params) {
-              const formatted = formatContractCall(d.params);
-              if (
-                contract &&
-                (abiFunction?.stateMutability === "view" ||
-                  abiFunction?.stateMutability === "pure")
-              ) {
-                readFn({
-                  args: formatted,
-                });
-              } else {
-                mutate({
-                  args: formatted,
-                  overrides: d.value
-                    ? { value: utils.parseEther(d.value) }
-                    : undefined,
-                });
-              }
-            }
-          })}
         >
           {fields.length > 0 && (
             <>
@@ -251,9 +370,10 @@ export const InteractiveAbiFunction: React.FC<InteractiveAbiFunctionProps> = ({
                     <SolidityInput
                       solidityName={item.key}
                       solidityType={item.type}
+                      // @ts-expect-error - old types, need to update
                       solidityComponents={item.components}
                       {...form.register(`params.${index}.value`)}
-                      functionName={abiFunction?.name}
+                      functionName={abiFunction.name}
                     />
                     <FormErrorMessage>
                       {
@@ -269,7 +389,7 @@ export const InteractiveAbiFunction: React.FC<InteractiveAbiFunctionProps> = ({
             </>
           )}
 
-          {abiFunction?.stateMutability === "payable" && (
+          {abiFunction.stateMutability === "payable" && (
             <>
               <Divider mb="8px" />
               <FormControl gap={0.5}>
@@ -287,45 +407,52 @@ export const InteractiveAbiFunction: React.FC<InteractiveAbiFunctionProps> = ({
             <>
               <Divider />
               <Heading size="label.sm">Error</Heading>
-              <Text
-                borderColor="borderColor"
-                as={Code}
-                p={4}
-                w="full"
-                bgColor="backgroundHighlight"
-                borderRadius="md"
-                color="red.500"
-                whiteSpace="pre-wrap"
-                borderWidth="1px"
-                position="relative"
-              >
-                {/* biome-ignore lint/suspicious/noExplicitAny: FIXME */}
-                {formatError(error as any)}
-              </Text>
+              <InlineCode
+                //  biome-ignore lint/suspicious/noExplicitAny: FIXME
+                code={formatError(error as any)}
+                className="relative w-full whitespace-pre-wrap rounded-md border border-border p-4 text-red-500"
+              />
             </>
-          ) : data !== undefined || readData !== undefined ? (
+          ) : formattedResponseData ? (
             <>
               <Divider />
               <Heading size="label.sm">Output</Heading>
               <CodeBlock
                 w="full"
                 position="relative"
-                language="json"
-                code={formatResponseData(data || readData)}
+                language={
+                  formattedResponseData.startsWith("http") ||
+                  formattedResponseData.startsWith("ipfs")
+                    ? "text"
+                    : "json"
+                }
+                code={formattedResponseData}
               />
-              {typeof readData === "string" &&
-                readData?.startsWith("ipfs://") && (
-                  <Text size="label.sm">
-                    <TrackedLink
-                      href={replaceIpfsUrl(readData)}
-                      isExternal
-                      category="contract-explorer"
-                      label="open-in-gateway"
-                    >
-                      Open in gateway
-                    </TrackedLink>
-                  </Text>
-                )}
+              {/* If the result is an IPFS URI, show a handy link so that users can open it in a new tab */}
+              {formattedResponseData.startsWith("ipfs://") && (
+                <Text size="label.sm">
+                  <TrackedLink
+                    href={replaceIpfsUrl(formattedResponseData)}
+                    isExternal
+                    category="contract-explorer"
+                    label="open-in-gateway"
+                  >
+                    Open in gateway
+                  </TrackedLink>
+                </Text>
+              )}
+              {/* Same with the logic above but this time it's applied to traditional urls */}
+              {(formattedResponseData.startsWith("https://") ||
+                formattedResponseData.startsWith("http://")) && (
+                <Link
+                  href={formattedResponseData}
+                  target="_blank"
+                  className="mt-1 inline-flex items-center gap-2 text-muted-foreground text-sm hover:text-foreground"
+                >
+                  Open link
+                  <ExternalLinkIcon className="size-4" />
+                </Link>
+              )}
             </>
           ) : null}
         </Flex>
@@ -335,25 +462,44 @@ export const InteractiveAbiFunction: React.FC<InteractiveAbiFunctionProps> = ({
           {isView ? (
             <Button
               isDisabled={!abiFunction}
-              rightIcon={<Icon as={FiPlay} />}
+              rightIcon={<PlayIcon className="size-4" />}
               colorScheme="primary"
               isLoading={readLoading}
-              type="submit"
+              onClick={handleContractRead}
               form={formId}
             >
               Run
             </Button>
           ) : (
-            <TransactionButton
-              isDisabled={!abiFunction}
-              colorScheme="primary"
-              transactionCount={1}
-              isLoading={mutationLoading}
-              type="submit"
-              form={formId}
-            >
-              Execute
-            </TransactionButton>
+            <>
+              <Button
+                onClick={handleContractSimulation}
+                isDisabled={
+                  !abiFunction || txSimulation.isPending || mutationLoading
+                }
+                isLoading={txSimulation.isPending}
+              >
+                <ToolTipLabel label="Simulate the transaction to see its potential outcome without actually sending it to the network. This action doesn't cost gas.">
+                  <span className="mr-3">
+                    <InfoIcon className="size-5" />
+                  </span>
+                </ToolTipLabel>
+                Simulate
+              </Button>
+              <TransactionButton
+                isDisabled={
+                  !abiFunction || txSimulation.isPending || mutationLoading
+                }
+                colorScheme="primary"
+                transactionCount={1}
+                isLoading={mutationLoading}
+                form={formId}
+                onClick={handleContractWrite}
+                txChainID={contract.chain.id}
+              >
+                Execute
+              </TransactionButton>
+            </>
           )}
         </ButtonGroup>
       </Card>

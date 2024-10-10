@@ -1,27 +1,37 @@
+import { WalletAddress } from "@/components/blocks/wallet-address";
 import { Flex, SimpleGrid, useBreakpointValue } from "@chakra-ui/react";
-import { useSDKChainId } from "@thirdweb-dev/react";
-import type { SignerWithPermissions } from "@thirdweb-dev/sdk";
 import { formatDistance } from "date-fns/formatDistance";
-import { useSupportedChainsRecord } from "hooks/chains/configureChains";
 import { useActiveAccount } from "thirdweb/react";
 import { Badge, Card, Heading, Text } from "tw-components";
-import { AddressCopyButton } from "tw-components/AddressCopyButton";
+import { useAllChainsData } from "../../../../hooks/chains/allChains";
 
-interface AccountSignerProps {
+export type AccountSignerType = {
+  signer: string;
   isAdmin?: boolean;
-  signer: SignerWithPermissions;
+  approvedTargets: readonly string[];
+  nativeTokenLimitPerTransaction: bigint;
+  endTimestamp: bigint;
+};
+interface AccountSignerProps {
+  item: AccountSignerType;
+  contractChainId: number;
 }
 
 export const AccountSigner: React.FC<AccountSignerProps> = ({
-  isAdmin,
-  signer,
+  item,
+  contractChainId,
 }) => {
   const address = useActiveAccount()?.address;
-  const chainId = useSDKChainId();
-  const configuredChainsRecord = useSupportedChainsRecord();
-  const chain = chainId ? configuredChainsRecord[chainId] : undefined;
+  const { idToChain } = useAllChainsData();
+  const chain = contractChainId ? idToChain.get(contractChainId) : undefined;
   const isMobile = useBreakpointValue({ base: true, md: false });
-
+  const {
+    isAdmin,
+    signer,
+    nativeTokenLimitPerTransaction,
+    approvedTargets,
+    endTimestamp,
+  } = item;
   return (
     <Card position="relative" p={8}>
       <Flex direction="column" gap={8}>
@@ -32,12 +42,9 @@ export const AccountSigner: React.FC<AccountSignerProps> = ({
             flexDir={{ base: "column", lg: "row" }}
           >
             <Heading size="label.lg">
-              <AddressCopyButton
-                shortenAddress={isMobile}
-                address={signer.signer}
-              />
+              <WalletAddress shortenAddress={isMobile} address={signer} />
             </Heading>
-            <Flex gap={2}>
+            <div className="flex flex-row gap-2">
               {isAdmin ? (
                 <Badge borderRadius="lg" p={1.5}>
                   Admin Key
@@ -47,40 +54,40 @@ export const AccountSigner: React.FC<AccountSignerProps> = ({
                   Scoped key
                 </Badge>
               )}
-              {signer.signer === address && (
+              {signer === address && (
                 <Badge colorScheme="green" borderRadius="lg" p={1.5}>
                   Currently connected
                 </Badge>
               )}
-            </Flex>
+            </div>
           </Flex>
         </Flex>
 
         {isAdmin ? null : (
           <SimpleGrid columns={{ base: 2, md: 4 }} gap={2}>
-            <Flex direction="column">
+            <div className="flex flex-col">
               <Text fontWeight="bold">Maximum value per transaction</Text>
               <Text textTransform="capitalize">
-                {signer.permissions.nativeTokenLimitPerTransaction.toString()}{" "}
+                {nativeTokenLimitPerTransaction.toString()}{" "}
                 {chain?.nativeCurrency.symbol}
               </Text>
-            </Flex>
-            <Flex direction="column">
+            </div>
+            <div className="flex flex-col">
               <Text fontWeight="bold">Approved targets</Text>
-              <Text textTransform="capitalize">
-                {signer.permissions.approvedCallTargets.length}
-              </Text>
-            </Flex>
-            <Flex direction="column">
+              <Text textTransform="capitalize">{approvedTargets.length}</Text>
+            </div>
+            <div className="flex flex-col">
               <Text fontWeight="bold">Expiration</Text>
-              <Text textTransform="capitalize">
+              <Text>
                 {formatDistance(
-                  new Date(signer.permissions.expirationDate),
+                  new Date(new Date(Number(endTimestamp * 1000n))),
                   new Date(),
-                  { addSuffix: true },
+                  {
+                    addSuffix: true,
+                  },
                 )}
               </Text>
-            </Flex>
+            </div>
           </SimpleGrid>
         )}
       </Flex>

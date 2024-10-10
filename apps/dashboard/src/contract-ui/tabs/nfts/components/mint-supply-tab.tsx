@@ -1,15 +1,17 @@
-import { FormControl, Input, Stack } from "@chakra-ui/react";
-import { useMintNFTSupply } from "@thirdweb-dev/react";
-import type { Erc1155 } from "@thirdweb-dev/sdk";
+"use client";
+
+import { FormControl, Input } from "@chakra-ui/react";
 import { TransactionButton } from "components/buttons/TransactionButton";
 import { useTrack } from "hooks/analytics/useTrack";
 import { useTxNotifications } from "hooks/useTxNotifications";
 import { useForm } from "react-hook-form";
-import { useActiveAccount } from "thirdweb/react";
+import type { ThirdwebContract } from "thirdweb";
+import { mintAdditionalSupplyTo } from "thirdweb/extensions/erc1155";
+import { useActiveAccount, useSendAndConfirmTransaction } from "thirdweb/react";
 import { FormErrorMessage, FormHelperText, FormLabel } from "tw-components";
 
 interface MintSupplyTabProps {
-  contract: Erc1155;
+  contract: ThirdwebContract;
   tokenId: string;
 }
 
@@ -25,8 +27,7 @@ const MintSupplyTab: React.FC<MintSupplyTabProps> = ({ contract, tokenId }) => {
   });
 
   const address = useActiveAccount()?.address;
-  const mintSupply = useMintNFTSupply(contract);
-
+  const { mutate, isPending } = useSendAndConfirmTransaction();
   const { onSuccess, onError } = useTxNotifications(
     "Mint successful",
     "Error minting additional supply",
@@ -34,7 +35,7 @@ const MintSupplyTab: React.FC<MintSupplyTabProps> = ({ contract, tokenId }) => {
   );
 
   return (
-    <Stack w="full">
+    <div className="flex w-full flex-col gap-2">
       <form
         onSubmit={handleSubmit((data) => {
           if (address) {
@@ -43,58 +44,58 @@ const MintSupplyTab: React.FC<MintSupplyTabProps> = ({ contract, tokenId }) => {
               action: "mint-supply",
               label: "attempt",
             });
-            mintSupply.mutate(
-              {
-                tokenId,
-                additionalSupply: data.amount,
-                to: address,
+            const transaction = mintAdditionalSupplyTo({
+              contract,
+              to: address,
+              tokenId: BigInt(tokenId),
+              supply: BigInt(data.amount),
+            });
+            mutate(transaction, {
+              onSuccess: () => {
+                trackEvent({
+                  category: "nft",
+                  action: "mint-supply",
+                  label: "success",
+                });
+                onSuccess();
+                reset();
               },
-              {
-                onSuccess: () => {
-                  trackEvent({
-                    category: "nft",
-                    action: "mint-supply",
-                    label: "success",
-                  });
-                  onSuccess();
-                  reset();
-                },
-                onError: (error) => {
-                  trackEvent({
-                    category: "nft",
-                    action: "mint-supply",
-                    label: "error",
-                    error,
-                  });
-                  onError(error);
-                },
+              onError: (error) => {
+                trackEvent({
+                  category: "nft",
+                  action: "mint-supply",
+                  label: "error",
+                  error,
+                });
+                onError(error);
               },
-            );
+            });
           }
         })}
       >
-        <Stack gap={3}>
-          <Stack spacing={6} w="100%" direction={{ base: "column", md: "row" }}>
+        <div className="flex flex-col gap-3">
+          <div className="flex w-full flex-col gap-6 md:flex-row">
             <FormControl isRequired isInvalid={!!errors.to}>
               <FormLabel>Amount</FormLabel>
-              <Input placeholder={"1"} {...register("amount")} />
+              <Input placeholder="1" {...register("amount")} />
               <FormHelperText>How many would you like to mint?</FormHelperText>
               <FormErrorMessage>{errors.to?.message}</FormErrorMessage>
             </FormControl>
-          </Stack>
+          </div>
 
           <TransactionButton
+            txChainID={contract.chain.id}
             transactionCount={1}
-            isLoading={mintSupply.isLoading}
+            isLoading={isPending}
             type="submit"
             colorScheme="primary"
             alignSelf="flex-end"
           >
             Mint
           </TransactionButton>
-        </Stack>
+        </div>
       </form>
-    </Stack>
+    </div>
   );
 };
 

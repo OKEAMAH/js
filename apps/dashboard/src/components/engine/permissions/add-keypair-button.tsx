@@ -15,7 +15,6 @@ import {
   ModalHeader,
   ModalOverlay,
   Select,
-  Stack,
   Textarea,
   useDisclosure,
 } from "@chakra-ui/react";
@@ -125,12 +124,12 @@ export const AddKeypairButton: React.FC<AddKeypairButtonProps> = ({
         size="2xl"
       >
         <ModalOverlay />
-        <ModalContent>
+        <ModalContent className="!bg-background rounded-lg border border-border">
           <ModalHeader>Add Public Key</ModalHeader>
           <ModalBody as={Flex} flexDir="column" gap={8}>
             <FormControl>
-              <Stack>
-                <Flex gap={2}>
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-row gap-2">
                   <Text>Create a private key using:</Text>
                   <Select
                     w="fit-content"
@@ -156,7 +155,7 @@ export const AddKeypairButton: React.FC<AddKeypairButtonProps> = ({
                       </option>
                     ))}
                   </Select>
-                </Flex>
+                </div>
 
                 <CodeBlock
                   fontSize="small"
@@ -176,10 +175,10 @@ export const AddKeypairButton: React.FC<AddKeypairButtonProps> = ({
                 <Text>Print the public key.</Text>
                 <CodeBlock
                   fontSize="small"
-                  code={"cat public.key"}
+                  code="cat public.key"
                   language="solidity"
                 />
-              </Stack>
+              </div>
             </FormControl>
 
             <FormControl isRequired>
@@ -190,9 +189,7 @@ export const AddKeypairButton: React.FC<AddKeypairButtonProps> = ({
                 fontFamily="mono"
                 value={publicKey}
                 onChange={(e) => setPublicKey(e.target.value)}
-                placeholder={
-                  "-----BEGIN PUBLIC KEY-----\n...\n...\n...\n...\n-----END PUBLIC KEY-----"
-                }
+                placeholder="-----BEGIN PUBLIC KEY-----\n...\n...\n...\n...\n-----END PUBLIC KEY-----"
                 rows={6}
                 fontSize="small"
               />
@@ -208,14 +205,14 @@ export const AddKeypairButton: React.FC<AddKeypairButtonProps> = ({
             </FormControl>
 
             <Alert variant="left-accent">
-              <Stack>
+              <div className="flex flex-col gap-2">
                 <Text>
                   <strong>Keep your private key secure!</strong>
                   <br />
                   Your backend will sign access tokens with this private key
                   which Engine verifies with this public key.
                 </Text>
-              </Stack>
+              </div>
             </Alert>
           </ModalBody>
 

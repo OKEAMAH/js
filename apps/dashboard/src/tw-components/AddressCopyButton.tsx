@@ -1,6 +1,8 @@
-import { Icon, Tooltip, useClipboard, useToast } from "@chakra-ui/react";
+import { Tooltip } from "@chakra-ui/react";
 import { useTrack } from "hooks/analytics/useTrack";
-import { FiCopy } from "react-icons/fi";
+import { useClipboard } from "hooks/useClipboard";
+import { CopyIcon } from "lucide-react";
+import { toast } from "sonner";
 import {
   Button,
   type ButtonProps,
@@ -46,7 +48,6 @@ export const AddressCopyButton: React.FC<AddressCopyButtonProps> = ({
   const { onCopy } = useClipboard(address || "");
 
   const trackEvent = useTrack();
-  const toast = useToast();
 
   return (
     <Tooltip
@@ -69,14 +70,9 @@ export const AddressCopyButton: React.FC<AddressCopyButtonProps> = ({
           e.stopPropagation();
           e.preventDefault();
           onCopy();
-          toast({
-            variant: "solid",
-            position: "bottom",
-            title: `${title.charAt(0).toUpperCase() + title.slice(1)} copied.`,
-            status: "success",
-            duration: 5000,
-            isClosable: true,
-          });
+          toast.info(
+            `${title.charAt(0).toUpperCase() + title.slice(1)} copied.`,
+          );
           if (title === "Token ID") {
             trackEvent({
               category: "tokenid_button",
@@ -91,7 +87,7 @@ export const AddressCopyButton: React.FC<AddressCopyButtonProps> = ({
             });
           }
         }}
-        leftIcon={noIcon ? undefined : <Icon boxSize={3} as={FiCopy} />}
+        leftIcon={noIcon ? undefined : <CopyIcon className="size-3" />}
         fontFamily="mono"
       >
         <Text color="inherit" size={`label.${buttonSizesMap[size]}`}>

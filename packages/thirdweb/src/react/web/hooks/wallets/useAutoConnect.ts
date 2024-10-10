@@ -3,7 +3,6 @@ import { createWallet } from "../../../../wallets/create-wallet.js";
 import { getInstalledWalletProviders } from "../../../../wallets/injected/mipdStore.js";
 import type { AutoConnectProps } from "../../../core/hooks/connection/types.js";
 import { useAutoConnectCore } from "../../../core/hooks/wallets/useAutoConnect.js";
-import { connectionManager } from "../../index.js";
 import { getDefaultWallets } from "../../wallets/defaultWallets.js";
 
 /**
@@ -27,13 +26,14 @@ import { getDefaultWallets } from "../../wallets/defaultWallets.js";
  */
 export function useAutoConnect(props: AutoConnectProps) {
   const wallets = props.wallets || getDefaultWallets(props);
+
   return useAutoConnectCore(
-    connectionManager,
     webLocalStorage,
     {
       ...props,
       wallets,
     },
+    createWallet,
     () => {
       const specifiedWalletIds = new Set(wallets.map((x) => x.id));
 

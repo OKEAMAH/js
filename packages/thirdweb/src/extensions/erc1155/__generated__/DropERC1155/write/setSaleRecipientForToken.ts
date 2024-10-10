@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -35,21 +34,21 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `setSaleRecipientForToken` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `setSaleRecipientForToken` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `setSaleRecipientForToken` method is supported.
  * @extension ERC1155
  * @example
  * ```ts
  * import { isSetSaleRecipientForTokenSupported } from "thirdweb/extensions/erc1155";
  *
- * const supported = await isSetSaleRecipientForTokenSupported(contract);
+ * const supported = isSetSaleRecipientForTokenSupported(["0x..."]);
  * ```
  */
-export async function isSetSaleRecipientForTokenSupported(
-  contract: ThirdwebContract<any>,
+export function isSetSaleRecipientForTokenSupported(
+  availableSelectors: string[],
 ) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -61,7 +60,7 @@ export async function isSetSaleRecipientForTokenSupported(
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeSetSaleRecipientForTokenParams } "thirdweb/extensions/erc1155";
+ * import { encodeSetSaleRecipientForTokenParams } from "thirdweb/extensions/erc1155";
  * const result = encodeSetSaleRecipientForTokenParams({
  *  tokenId: ...,
  *  saleRecipient: ...,
@@ -84,7 +83,7 @@ export function encodeSetSaleRecipientForTokenParams(
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeSetSaleRecipientForToken } "thirdweb/extensions/erc1155";
+ * import { encodeSetSaleRecipientForToken } from "thirdweb/extensions/erc1155";
  * const result = encodeSetSaleRecipientForToken({
  *  tokenId: ...,
  *  saleRecipient: ...,
@@ -109,6 +108,7 @@ export function encodeSetSaleRecipientForToken(
  * @extension ERC1155
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { setSaleRecipientForToken } from "thirdweb/extensions/erc1155";
  *
  * const transaction = setSaleRecipientForToken({
@@ -121,8 +121,7 @@ export function encodeSetSaleRecipientForToken(
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function setSaleRecipientForToken(

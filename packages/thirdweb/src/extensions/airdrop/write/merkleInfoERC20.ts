@@ -1,11 +1,14 @@
 import {
-  ADDRESS_ZERO,
+  ZERO_ADDRESS,
   isNativeTokenAddress,
 } from "../../../constants/addresses.js";
 import type { BaseTransactionOptions } from "../../../transaction/types.js";
 import { processSnapshotERC20 } from "../../../utils/extensions/airdrop/process-snapshot-erc20.js";
 import type { SnapshotEntryERC20 } from "../../../utils/extensions/airdrop/types.js";
 
+/**
+ * @extension AIRDROP
+ */
 export type GenerateMerkleTreeInfoERC20Params = {
   snapshot: SnapshotEntryERC20[];
   tokenAddress: string;
@@ -38,7 +41,7 @@ export type GenerateMerkleTreeInfoERC20Params = {
  * // - Set merkle root on the contract to enable claiming
  *
  * ```
- * @extension Airdrop
+ * @extension AIRDROP
  * @returns A promise that resolves to the merkle-root and snapshot-uri.
  */
 export async function generateMerkleTreeInfoERC20(
@@ -49,7 +52,7 @@ export async function generateMerkleTreeInfoERC20(
   // get token decimals
   const tokenAddress = options.tokenAddress;
   const tokenDecimals = await (async () => {
-    if (isNativeTokenAddress(tokenAddress) || tokenAddress === ADDRESS_ZERO) {
+    if (isNativeTokenAddress(tokenAddress) || tokenAddress === ZERO_ADDRESS) {
       throw new Error("Token address can't be zero address or native token");
     }
     const [{ getContract }, { decimals: getDecimals }] = await Promise.all([

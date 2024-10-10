@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -51,21 +50,21 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `onERC1155BatchReceived` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `onERC1155BatchReceived` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `onERC1155BatchReceived` method is supported.
  * @extension ERC1155
  * @example
  * ```ts
  * import { isOnERC1155BatchReceivedSupported } from "thirdweb/extensions/erc1155";
  *
- * const supported = await isOnERC1155BatchReceivedSupported(contract);
+ * const supported = isOnERC1155BatchReceivedSupported(["0x..."]);
  * ```
  */
-export async function isOnERC1155BatchReceivedSupported(
-  contract: ThirdwebContract<any>,
+export function isOnERC1155BatchReceivedSupported(
+  availableSelectors: string[],
 ) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -77,7 +76,7 @@ export async function isOnERC1155BatchReceivedSupported(
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeOnERC1155BatchReceivedParams } "thirdweb/extensions/erc1155";
+ * import { encodeOnERC1155BatchReceivedParams } from "thirdweb/extensions/erc1155";
  * const result = encodeOnERC1155BatchReceivedParams({
  *  operator: ...,
  *  from: ...,
@@ -106,7 +105,7 @@ export function encodeOnERC1155BatchReceivedParams(
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeOnERC1155BatchReceived } "thirdweb/extensions/erc1155";
+ * import { encodeOnERC1155BatchReceived } from "thirdweb/extensions/erc1155";
  * const result = encodeOnERC1155BatchReceived({
  *  operator: ...,
  *  from: ...,
@@ -134,6 +133,7 @@ export function encodeOnERC1155BatchReceived(
  * @extension ERC1155
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { onERC1155BatchReceived } from "thirdweb/extensions/erc1155";
  *
  * const transaction = onERC1155BatchReceived({
@@ -149,8 +149,7 @@ export function encodeOnERC1155BatchReceived(
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function onERC1155BatchReceived(

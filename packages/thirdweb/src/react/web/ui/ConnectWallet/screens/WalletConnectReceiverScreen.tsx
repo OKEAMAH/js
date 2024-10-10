@@ -11,7 +11,7 @@ import {
   getActiveWalletConnectSessions,
 } from "../../../../../wallets/wallet-connect/receiver/index.js";
 import { iconSize, spacing } from "../../../../core/design-system/index.js";
-import { useActiveWallet } from "../../../hooks/wallets/useActiveWallet.js";
+import { useActiveWallet } from "../../../../core/hooks/wallets/useActiveWallet.js";
 import { InputSelectionUI } from "../../../wallets/in-app/InputSelectionUI.js";
 import { Spacer } from "../../components/Spacer.js";
 import { Container, Line, ModalHeader } from "../../components/basic.js";
@@ -60,7 +60,7 @@ export function WalletConnectReceiverScreen(props: {
           },
         });
         return client;
-      } catch (e) {
+      } catch {
         setErrorConnecting("Failed to establish WalletConnect connection");
         return;
       }
@@ -133,7 +133,7 @@ export function WalletConnectReceiverScreen(props: {
             <WalletLogoSpinner
               client={props.client}
               error={!!errorConnecting}
-              id={"walletConnect"}
+              id="walletConnect"
               hideSpinner={!loading}
             />
           </Container>
@@ -164,7 +164,7 @@ export function WalletConnectReceiverScreen(props: {
                           uri: value,
                           walletConnectClient,
                         });
-                      } catch (e) {
+                      } catch {
                         setErrorConnecting(
                           "Error creating WalletConnect session",
                         );
@@ -193,7 +193,7 @@ export function WalletConnectReceiverScreen(props: {
                       alignItems: "center",
                     }}
                   >
-                    <ReloadIcon width={iconSize.sm} height={iconSize.sm} />{" "}
+                    <ReloadIcon width={iconSize.sm} height={iconSize.sm} />
                     Retry
                   </Button>
                 </Container>

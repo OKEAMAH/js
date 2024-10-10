@@ -3,18 +3,19 @@ import { Linking, StyleSheet, TouchableOpacity, View } from "react-native";
 import type { ThirdwebClient } from "../../../../client/client.js";
 import { getContract } from "../../../../contract/contract.js";
 import { isContractDeployed } from "../../../../utils/bytecode/is-contract-deployed.js";
+import { formatNumber } from "../../../../utils/formatNumber.js";
 import type { Account, Wallet } from "../../../../wallets/interfaces/wallet.js";
 import type { Theme } from "../../../core/design-system/index.js";
 import { useSiweAuth } from "../../../core/hooks/auth/useSiweAuth.js";
 import type { ConnectButtonProps } from "../../../core/hooks/connection/ConnectButtonProps.js";
 import { useChainName } from "../../../core/hooks/others/useChainQuery.js";
+import { useActiveAccount } from "../../../core/hooks/wallets/useActiveAccount.js";
+import { useActiveWallet } from "../../../core/hooks/wallets/useActiveWallet.js";
+import { useActiveWalletChain } from "../../../core/hooks/wallets/useActiveWalletChain.js";
+import { useDisconnect } from "../../../core/hooks/wallets/useDisconnect.js";
 import { hasSmartAccount } from "../../../core/utils/isSmartWallet.js";
 import { useConnectedWalletDetails } from "../../../core/utils/wallet.js";
 import { fontSize, radius, spacing } from "../../design-system/index.js";
-import { useActiveAccount } from "../../hooks/wallets/useActiveAccount.js";
-import { useActiveWallet } from "../../hooks/wallets/useActiveWallet.js";
-import { useActiveWalletChain } from "../../hooks/wallets/useActiveWalletChain.js";
-import { useDisconnect } from "../../hooks/wallets/useDisconnect.js";
 import { Address } from "../components/Address.js";
 import { ChainIcon } from "../components/ChainIcon.js";
 import { type ContainerType, Header } from "../components/Header.js";
@@ -162,24 +163,18 @@ export function ConnectedModal(props: ConnectedModalProps) {
 const AccountHeader = (props: ConnectedModalProps) => {
   const { account, wallet, theme } = props;
   const walletChain = useActiveWalletChain();
-  const { ensAvatarQuery, addressOrENS, balanceQuery } =
-    useConnectedWalletDetails(
-      props.client,
-      walletChain,
-      account,
-      props.detailsButton?.displayBalanceToken,
-    );
+  const { pfp, name, balanceQuery } = useConnectedWalletDetails(
+    props.client,
+    walletChain,
+    account,
+    props.detailsButton?.displayBalanceToken,
+  );
   return (
     <View style={styles.accountHeaderContainer}>
-      <WalletImage
-        theme={theme}
-        size={64}
-        wallet={wallet}
-        ensAvatar={ensAvatarQuery.data}
-      />
+      <WalletImage theme={theme} size={70} wallet={wallet} avatar={pfp} />
       <SmartAccountBadge client={props.client} theme={theme} />
       <Spacer size="smd" />
-      <Address account={account} theme={theme} addressOrENS={addressOrENS} />
+      <Address account={account} theme={theme} addressOrENS={name} />
       <Spacer size="xxs" />
       {balanceQuery.data ? (
         <ThemedText
@@ -189,7 +184,7 @@ const AccountHeader = (props: ConnectedModalProps) => {
             fontSize: fontSize.sm,
           }}
         >
-          {Number(balanceQuery.data.displayValue).toFixed(3)}{" "}
+          {formatNumber(Number(balanceQuery.data.displayValue), 5)}{" "}
           {balanceQuery.data?.symbol}
         </ThemedText>
       ) : (
@@ -270,25 +265,6 @@ const ChainSwitcher = (props: ConnectedModalPropsInner) => {
   );
 };
 
-/** TODO (rn) implement transactions screen
-const Transactions = (props: ConnectedModalPropsInner) => {
-  const { client, wallet, theme } = props;
-  return (
-    <TouchableOpacity style={styles.walletMenuRow} onPress={() => {}}>
-      <RNImage
-        theme={theme}
-        size={32}
-        data={TRANSACTIONS_ICON}
-        color={theme.colors.secondaryIconColor}
-      />
-      <ThemedText theme={theme} type="defaultSemiBold">
-        Transactions
-      </ThemedText>
-    </TouchableOpacity>
-  );
-};
- */
-
 const ViewFunds = (props: ConnectedModalPropsInner) => {
   const { theme, setModalState } = props;
   return (
@@ -310,9 +286,9 @@ const ViewFunds = (props: ConnectedModalPropsInner) => {
 };
 
 const DisconnectWallet = (props: ConnectedModalProps) => {
-  const { wallet, theme, onClose } = props;
+  const { wallet, account, theme, onClose } = props;
   const { disconnect } = useDisconnect();
-  const siweAuth = useSiweAuth(wallet, props.auth);
+  const siweAuth = useSiweAuth(wallet, account, props.auth);
   return (
     <TouchableOpacity
       style={styles.walletMenuRow}

@@ -1,9 +1,12 @@
-import { concat } from "viem";
-import type { Chain } from "../../../chains/types.js";
-import { isHex, numberToHex, toHex } from "../../../utils/encoding/hex.js";
-import type { UserOperation, UserOperationHexed } from "../types.js";
+import { isHex, toHex } from "../../../utils/encoding/hex.js";
+import type {
+  UserOperationV06,
+  UserOperationV06Hexed,
+  UserOperationV07,
+  UserOperationV07Hexed,
+} from "../types.js";
 
-const generateRandomUint192 = (): bigint => {
+export const generateRandomUint192 = (): bigint => {
   const rand1 = BigInt(Math.floor(Math.random() * 0x100000000));
   const rand2 = BigInt(Math.floor(Math.random() * 0x100000000));
   const rand3 = BigInt(Math.floor(Math.random() * 0x100000000));
@@ -23,25 +26,14 @@ const generateRandomUint192 = (): bigint => {
 /**
  * @internal
  */
-export const randomNonce = () => {
-  return BigInt(
-    concat([numberToHex(generateRandomUint192()), "0x0000000000000000"]),
-  );
-};
-
-/**
- * @internal
- */
-export function hexlifyUserOp(userOp: UserOperation): UserOperationHexed {
+export function hexlifyUserOp(
+  userOp: UserOperationV06 | UserOperationV07,
+): UserOperationV06Hexed | UserOperationV07Hexed {
   return Object.fromEntries(
     Object.entries(userOp).map(([key, val]) => [
       key,
       // turn any value that's not hex into hex
-      isHex(val) ? val : toHex(val),
+      val === undefined || val === null || isHex(val) ? val : toHex(val),
     ]),
-  ) as UserOperationHexed;
-}
-
-export function isNativeAAChain(chain: Chain) {
-  return chain.id === 324 || chain.id === 300 || chain.id === 302;
+  ) as UserOperationV06Hexed | UserOperationV07Hexed;
 }

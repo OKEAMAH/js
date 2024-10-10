@@ -1,5 +1,6 @@
-import { Box, DarkMode, Flex, Image } from "@chakra-ui/react";
-import { CopyButton } from "components/homepage/AnimatedCLICommand/AnimatedCLICommand";
+import { useForceDarkTheme } from "@/components/theme-provider";
+import { CopyButton } from "@/components/ui/CopyButton";
+import { Box, Flex, Image } from "@chakra-ui/react";
 import { ProductButton } from "components/product-pages/common/ProductButton";
 import { HomepageTopNav } from "components/product-pages/common/Topnav";
 import type { GetStaticPaths, GetStaticProps } from "next";
@@ -31,10 +32,11 @@ const CodeBlock: React.FC<{ text: string }> = (props) => {
       py={3}
       px={4}
       my={4}
-      minW={"300px"}
+      minW="300px"
       gap={1}
       align="center"
       alignSelf="start"
+      justifyContent="space-between"
     >
       <Text color="white" fontFamily="mono" fontSize="16px" fontWeight="500">
         <span>{props.text}</span>
@@ -54,25 +56,23 @@ const TemplateContents: React.FC<TemplateContentsProps> = (props) => {
       {props.overview}
 
       {props.featurePoints.length > 0 && (
-        <>
-          <Box as="ul" listStyleType="inherit" pl={4} mt={4}>
-            {props.featurePoints.map((feature, idx) => (
-              <Box
-                as="li"
-                // biome-ignore lint/suspicious/noArrayIndexKey: FIXME
-                key={idx}
-                fontWeight={400}
-                fontSize={16}
-                lineHeight={1.5}
-                opacity={0.7}
-                color="whiteAlpha.900"
-                mb={2}
-              >
-                {feature}
-              </Box>
-            ))}
-          </Box>
-        </>
+        <Box as="ul" listStyleType="inherit" pl={4} mt={4}>
+          {props.featurePoints.map((feature, idx) => (
+            <Box
+              as="li"
+              // biome-ignore lint/suspicious/noArrayIndexKey: FIXME
+              key={idx}
+              fontWeight={400}
+              fontSize={16}
+              lineHeight={1.5}
+              opacity={0.7}
+              color="whiteAlpha.900"
+              mb={2}
+            >
+              {feature}
+            </Box>
+          ))}
+        </Box>
       )}
 
       <Heading as="h3" fontSize="24px" fontWeight={700} mt={12} mb={4}>
@@ -99,30 +99,28 @@ const templateContents: Record<(typeof templates)[number]["id"], JSX.Element> =
     erc721: (
       <TemplateContents
         overview={
-          <>
-            <Text
-              fontWeight={400}
-              fontSize={16}
-              lineHeight={1.5}
-              opacity={0.7}
-              color="whiteAlpha.900"
+          <Text
+            fontWeight={400}
+            fontSize={16}
+            lineHeight={1.5}
+            opacity={0.7}
+            color="whiteAlpha.900"
+          >
+            A web and mobile friendly page for users to claim NFTs from a smart
+            contract implementing{" "}
+            <Link
+              href="https://portal.thirdweb.com/contracts/build/extensions/erc-721/ERC721Claimable"
+              isExternal
+              color="blue.300"
             >
-              A web and mobile friendly page for users to claim NFTs from a
-              smart contract implementing{" "}
-              <Link
-                href="https://portal.thirdweb.com/contracts/build/extensions/erc-721/ERC721Claimable"
-                isExternal
-                color="blue.300"
-              >
-                ERC721Claimable
-              </Link>
-              , such as the{" "}
-              <Link href="/thirdweb.eth/DropERC721" isExternal color="blue.300">
-                NFT Drop
-              </Link>
-              .
-            </Text>
-          </>
+              ERC721Claimable
+            </Link>
+            , such as the{" "}
+            <Link href="/thirdweb.eth/DropERC721" isExternal color="blue.300">
+              NFT Drop
+            </Link>
+            .
+          </Text>
         }
         featurePoints={[
           <Fragment key="react">
@@ -163,7 +161,7 @@ const templateContents: Record<(typeof templates)[number]["id"], JSX.Element> =
             UI Component.
           </Fragment>,
           <Fragment key="contract-metadata">
-            View{" "}
+            View
             <Link
               fontWeight="500"
               isExternal
@@ -224,7 +222,7 @@ const templateContents: Record<(typeof templates)[number]["id"], JSX.Element> =
             <br />
             <br />
             Run the application from the command line:
-            <CodeBlock text={"npm run dev"} />
+            <CodeBlock text="npm run dev" />
             This will make the application available to preview at{" "}
             <Link
               href="http://localhost:3000"
@@ -242,19 +240,17 @@ const templateContents: Record<(typeof templates)[number]["id"], JSX.Element> =
     "marketplace-v3": (
       <TemplateContents
         overview={
-          <>
-            <Text
-              fontWeight={400}
-              fontSize={16}
-              lineHeight={1.5}
-              opacity={0.7}
-              color="whiteAlpha.900"
-            >
-              Create your own NFT marketplace where users can buy and sell NFTs
-              from your NFT collection. This template provides the foundation
-              for building an NFT marketplace application.
-            </Text>
-          </>
+          <Text
+            fontWeight={400}
+            fontSize={16}
+            lineHeight={1.5}
+            opacity={0.7}
+            color="whiteAlpha.900"
+          >
+            Create your own NFT marketplace where users can buy and sell NFTs
+            from your NFT collection. This template provides the foundation for
+            building an NFT marketplace application.
+          </Text>
         }
         featurePoints={[
           <Fragment key="react-sdk">
@@ -323,8 +319,8 @@ const templateContents: Record<(typeof templates)[number]["id"], JSX.Element> =
             <br />
             <br />
             Run the application from the command line:
-            <CodeBlock text={"npm run dev"} />
-            This will make the application available to preview at{" "}
+            <CodeBlock text="npm run dev" />
+            This will make the application available to preview at
             <Link
               href="http://localhost:3000"
               isExternal
@@ -341,18 +337,16 @@ const templateContents: Record<(typeof templates)[number]["id"], JSX.Element> =
     "nft-gallery": (
       <TemplateContents
         overview={
-          <>
-            <Text
-              fontWeight={400}
-              fontSize={16}
-              lineHeight={1.5}
-              opacity={0.7}
-              color="whiteAlpha.900"
-            >
-              Showcase your NFT collection with a gallery application that
-              allows users to view the metadata of all NFTs in your collection.
-            </Text>
-          </>
+          <Text
+            fontWeight={400}
+            fontSize={16}
+            lineHeight={1.5}
+            opacity={0.7}
+            color="whiteAlpha.900"
+          >
+            Showcase your NFT collection with a gallery application that allows
+            users to view the metadata of all NFTs in your collection.
+          </Text>
         }
         featurePoints={[
           <Fragment key="react-sdk">
@@ -395,7 +389,7 @@ const templateContents: Record<(typeof templates)[number]["id"], JSX.Element> =
             >
               NFT collection
             </Link>{" "}
-            or import your existing one using the{" "}
+            or import your existing one using the
             <Link
               href="/dashboard"
               isExternal
@@ -415,12 +409,12 @@ const templateContents: Record<(typeof templates)[number]["id"], JSX.Element> =
               fontWeight="500"
             >
               consts/parameters.ts
-            </Link>{" "}
+            </Link>
             file.
             <br />
             <br />
-            Run the application from the command line:
-            <CodeBlock text={"npm run dev"} />
+            Run the application from the command line:{" "}
+            <CodeBlock text="npm run dev" />
             This will make the application available to preview at{" "}
             <Link
               href="http://localhost:3000"
@@ -443,261 +437,259 @@ type TemplatePageProps = {
 
 const TemplatePage: ThirdwebNextPage = (props: TemplatePageProps) => {
   const contents = templateContents[props.template.id];
+  useForceDarkTheme();
 
   return (
-    <DarkMode>
+    <Flex
+      sx={{
+        // overwrite the theme colors because the page is *always* in "dark mode"
+        "--chakra-colors-heading": "#F2F2F7",
+        "--chakra-colors-paragraph": "#AEAEB2",
+        "--chakra-colors-borderColor": "rgba(255,255,255,0.1)",
+      }}
+      justify="center"
+      flexDir="column"
+      as="main"
+    >
+      <HomepageTopNav />
+
       <Flex
-        sx={{
-          // overwrite the theme colors because the page is *always* in "dark mode"
-          "--chakra-colors-heading": "#F2F2F7",
-          "--chakra-colors-paragraph": "#AEAEB2",
-          "--chakra-colors-borderColor": "rgba(255,255,255,0.1)",
-        }}
-        justify="center"
-        flexDir="column"
-        as="main"
+        pt={{ base: 4, md: 24 }}
+        px={{ base: 4, md: 8 }}
+        ml="auto"
+        mr="auto"
+        direction={{ base: "column", md: "row" }}
+        alignItems={{ base: "baseline", md: "flex-start" }}
+        justifyContent={{ base: "center", md: "flex-start" }}
+        gap={{ base: 8, md: 0 }}
+        maxWidth={1280}
+        mb={16}
       >
-        <HomepageTopNav />
-
-        <Flex
-          pt={{ base: 4, md: 24 }}
-          px={{ base: 4, md: 8 }}
-          ml="auto"
-          mr="auto"
-          direction={{ base: "column", md: "row" }}
-          alignItems={{ base: "baseline", md: "flex-start" }}
-          justifyContent={{ base: "center", md: "flex-start" }}
-          gap={{ base: 8, md: 0 }}
-          maxWidth={1280}
-          mb={16}
+        <Box
+          maxWidth={{ base: "100%", md: 440 }}
+          pr={{ base: 0, md: 8 }}
+          position={{ base: "static", md: "sticky" }}
+          top={{ base: "auto", md: 24 }}
         >
-          <Box
-            maxWidth={{ base: "100%", md: 440 }}
-            pr={{ base: 0, md: 8 }}
-            position={{ base: "static", md: "sticky" }}
-            top={{ base: "auto", md: 24 }}
+          <Image
+            src={props.template.img}
+            alt={`Screenshot of ${props.template.title} template`}
+            width="100%"
+            height={{ base: "auto", md: 442 }}
+            objectFit="cover"
+            mb={12}
+            borderRadius={8}
+            display={{ base: "block", md: "none" }}
+          />
+
+          <Heading as="h1" fontSize="48px" fontWeight={700}>
+            {props.template.title}
+          </Heading>
+          <Text
+            mt={4}
+            fontWeight={500}
+            fontSize={16}
+            lineHeight={1.5}
+            opacity={0.7}
+            color="whiteAlpha.900"
           >
-            <Image
-              src={props.template.img}
-              alt={`Screenshot of ${props.template.title} template`}
-              width="100%"
-              height={{ base: "auto", md: 442 }}
-              objectFit="cover"
-              mb={12}
-              borderRadius={8}
-              display={{ base: "block", md: "none" }}
-            />
-
-            <Heading as="h1" fontSize="48px" fontWeight={700}>
-              {props.template.title}
-            </Heading>
-            <Text
-              mt={4}
-              fontWeight={500}
-              fontSize={16}
-              lineHeight={1.5}
-              opacity={0.7}
-              color="whiteAlpha.900"
-            >
-              {props.template.description}
-            </Text>
-            <Flex
-              direction="row"
-              alignItems="center"
-              gap={1}
-              my={4}
-              flexWrap="wrap"
-            >
-              {props.template.tags.map((tag) => (
-                <Box
-                  as="div"
-                  key={tag}
-                  color="whiteAlpha.700"
-                  border="1px solid #383838"
-                  borderRadius="8px"
-                  height="26px"
-                  padding="6px 12px"
-                  display={"flex"}
-                  alignItems={"center"}
-                  justifyContent={"center"}
-                  mt={1}
-                >
-                  <Text
-                    as="span"
-                    fontSize="12px"
-                    fontWeight={500}
-                    lineHeight={1.2}
-                    letterSpacing="-0.015em"
-                    opacity={0.7}
-                    color="whiteAlpha.900"
-                  >
-                    {tag}
-                  </Text>
-                </Box>
-              ))}
-            </Flex>
-
-            <Box my={8}>
-              <Text
-                textTransform="uppercase"
-                fontWeight={600}
-                color="#646D7A"
-                letterSpacing="0.1em"
-                fontSize="12px"
+            {props.template.description}
+          </Text>
+          <Flex
+            direction="row"
+            alignItems="center"
+            gap={1}
+            my={4}
+            flexWrap="wrap"
+          >
+            {props.template.tags.map((tag) => (
+              <Box
+                as="div"
+                key={tag}
+                color="whiteAlpha.700"
+                border="1px solid #383838"
+                borderRadius="8px"
+                height="26px"
+                padding="6px 12px"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                mt={1}
               >
-                Author
-              </Text>
-              <Flex direction="row" alignItems="center" mt={2}>
-                <Image
-                  src={props.template.authorIcon}
-                  alt={`Icon of ${props.template.authorENS}`}
-                  width="16px"
-                  height="16px"
-                  mr={1}
-                />
                 <Text
                   as="span"
-                  color="whiteAlpha.900"
-                  lineHeight={1.5}
                   fontSize="12px"
                   fontWeight={500}
-                  letterSpacing="-0.02em"
-                  opacity={0.75}
+                  lineHeight={1.2}
+                  letterSpacing="-0.015em"
+                  opacity={0.7}
+                  color="whiteAlpha.900"
                 >
-                  {props.template.authorENS}
+                  {tag}
                 </Text>
-              </Flex>
-            </Box>
+              </Box>
+            ))}
+          </Flex>
 
-            <Flex mt={8}>
-              <ProductButton
-                title={"View Demo"}
-                href={props.template.homepage}
-                color="blackAlpha.900"
-                bg="white"
-                height="44px"
-                width="149px"
-                fontSize="14px"
-                lineHeight="20px"
-                fontWeight={600}
-                iconColor="blackAlpha.900"
+          <Box my={8}>
+            <Text
+              textTransform="uppercase"
+              fontWeight={600}
+              color="#646D7A"
+              letterSpacing="0.1em"
+              fontSize="12px"
+            >
+              Author
+            </Text>
+            <Flex direction="row" alignItems="center" mt={2}>
+              <Image
+                src={props.template.authorIcon}
+                alt={`Icon of ${props.template.authorENS}`}
+                width="16px"
+                height="16px"
+                mr={1}
               />
-              <LinkButton
-                as={TrackedLink}
-                variant="outline"
-                borderWidth="2px"
-                w="full"
-                py={"22px"}
-                textAlign="center"
-                borderRadius="md"
-                href={props.template.repo}
-                isExternal={true}
-                noIcon
-                height="44px"
-                width="149px"
-                fontSize="14px"
-                lineHeight="20px"
-                fontWeight={600}
-                ml={4}
+              <Text
+                as="span"
+                color="whiteAlpha.900"
+                lineHeight={1.5}
+                fontSize="12px"
+                fontWeight={500}
+                letterSpacing="-0.02em"
+                opacity={0.75}
               >
-                View Repo
-              </LinkButton>
+                {props.template.authorENS}
+              </Text>
             </Flex>
           </Box>
 
-          <Box
-            borderLeft={{
-              base: "none",
-              md: "1px solid #222222",
-            }}
-            pl={{ base: 0, md: 16 }}
-            minHeight="75vh"
-            height={"100%"}
-          >
-            <Image
-              src={props.template.img}
-              alt={`Screenshot of ${props.template.title} template`}
-              width="100%"
-              height={{ base: "auto", md: 442 }}
-              objectFit="cover"
-              borderRadius={8}
-              display={{ base: "none", md: "block" }}
+          <Flex mt={8}>
+            <ProductButton
+              title="View Demo"
+              href={props.template.homepage}
+              color="blackAlpha.900"
+              bg="white"
+              height="44px"
+              width="149px"
+              fontSize="14px"
+              lineHeight="20px"
+              fontWeight={600}
             />
-
-            {props.template.contractLink && (
-              <Flex
-                w="full"
-                border="1px solid rgba(255, 255, 255, 0.2)"
-                borderRadius="2xl"
-                flexShrink={0}
-                p={8}
-                mt={6}
-                gap={1}
-                align="center"
-                justify="space-between"
-              >
-                <Flex flexDir="column">
-                  <Text
-                    color="whiteAlpha.900"
-                    fontWeight={500}
-                    fontSize={18}
-                    lineHeight={1.5}
-                    opacity={0.7}
-                  >
-                    This template is using
-                  </Text>
-
-                  <Link
-                    href={props.template.contractLink}
-                    isExternal
-                    color="blue.300"
-                    fontWeight={600}
-                    fontSize={28}
-                  >
-                    {props.template.contractName} Contract
-                  </Link>
-                </Flex>
-
-                <TrackedLinkButton
-                  href={props.template.contractLink}
-                  category="template-page"
-                  label="deploy-your-own"
-                  bg="white"
-                  color="blackAlpha.900"
-                  fontWeight={600}
-                  _hover={{
-                    bg: "white",
-                    opacity: 0.8,
-                  }}
-                  isExternal
-                  noIcon
-                >
-                  Deploy your own
-                </TrackedLinkButton>
-              </Flex>
-            )}
-
-            <Heading as="h2" fontSize="32px" fontWeight={700} mt={16}>
-              Get started
-            </Heading>
-            <Text
-              mt={4}
-              fontWeight={500}
-              fontSize={16}
-              lineHeight={1.5}
-              opacity={0.7}
-              color="whiteAlpha.900"
+            <LinkButton
+              as={TrackedLink}
+              variant="outline"
+              borderWidth="2px"
+              w="full"
+              py="22px"
+              textAlign="center"
+              borderRadius="md"
+              href={props.template.repo}
+              isExternal={true}
+              noIcon
+              height="44px"
+              width="149px"
+              fontSize="14px"
+              lineHeight="20px"
+              fontWeight={600}
+              ml={4}
             >
-              Kick start your project by copying this command into your CLI.
-            </Text>
-            <CodeBlock
-              text={`npx thirdweb create --template ${props.template.id}`}
-            />
-            {contents}
-          </Box>
-        </Flex>
+              View Repo
+            </LinkButton>
+          </Flex>
+        </Box>
+
+        <Box
+          borderLeft={{
+            base: "none",
+            md: "1px solid #222222",
+          }}
+          pl={{ base: 0, md: 16 }}
+          minHeight="75vh"
+          height="100%"
+        >
+          <Image
+            src={props.template.img}
+            alt={`Screenshot of ${props.template.title} template`}
+            width="100%"
+            height={{ base: "auto", md: 442 }}
+            objectFit="cover"
+            borderRadius={8}
+            display={{ base: "none", md: "block" }}
+          />
+
+          {props.template.contractLink && (
+            <Flex
+              w="full"
+              border="1px solid rgba(255, 255, 255, 0.2)"
+              borderRadius="2xl"
+              flexShrink={0}
+              p={8}
+              mt={6}
+              gap={1}
+              align="center"
+              justify="space-between"
+            >
+              <Flex flexDir="column">
+                <Text
+                  color="whiteAlpha.900"
+                  fontWeight={500}
+                  fontSize={18}
+                  lineHeight={1.5}
+                  opacity={0.7}
+                >
+                  This template is using
+                </Text>
+
+                <Link
+                  href={props.template.contractLink}
+                  isExternal
+                  color="blue.300"
+                  fontWeight={600}
+                  fontSize={28}
+                >
+                  {props.template.contractName} Contract
+                </Link>
+              </Flex>
+
+              <TrackedLinkButton
+                href={props.template.contractLink}
+                category="template-page"
+                label="deploy-your-own"
+                bg="white"
+                color="blackAlpha.900"
+                fontWeight={600}
+                _hover={{
+                  bg: "white",
+                  opacity: 0.8,
+                }}
+                isExternal
+                noIcon
+              >
+                Deploy your own
+              </TrackedLinkButton>
+            </Flex>
+          )}
+
+          <Heading as="h2" fontSize="32px" fontWeight={700} mt={16}>
+            Get started
+          </Heading>
+          <Text
+            mt={4}
+            fontWeight={500}
+            fontSize={16}
+            lineHeight={1.5}
+            opacity={0.7}
+            color="whiteAlpha.900"
+          >
+            Kick start your project by copying this command into your CLI.
+          </Text>
+          <CodeBlock
+            text={`npx thirdweb create --template ${props.template.id}`}
+          />
+          {contents}
+        </Box>
       </Flex>
-    </DarkMode>
+    </Flex>
   );
 };
 
@@ -725,7 +717,7 @@ export const getStaticProps: GetStaticProps<TemplatePageProps> = async (
         template,
       },
     };
-  } catch (error) {
+  } catch {
     return {
       notFound: true,
     };

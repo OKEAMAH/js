@@ -1,204 +1,103 @@
+import { useMutation } from "@tanstack/react-query";
 import {
-  type RequiredParam,
-  useContract,
-  useContractMetadata,
-  useSDK,
-} from "@thirdweb-dev/react";
-import type { Vote, VoteType } from "@thirdweb-dev/sdk";
-import { useActiveAccount } from "thirdweb/react";
+  type BaseTransactionOptions,
+  type ThirdwebContract,
+  getAddress,
+  getContract,
+  toTokens,
+} from "thirdweb";
+import * as ERC20Ext from "thirdweb/extensions/erc20";
+import * as VoteExt from "thirdweb/extensions/vote";
+import { useSendAndConfirmTransaction } from "thirdweb/react";
+import type { Account } from "thirdweb/wallets";
 import invariant from "tiny-invariant";
-import { voteKeys } from "../cache-keys";
-import {
-  useMutationWithInvalidate,
-  useQueryWithNetwork,
-} from "./query/useQueryWithNetwork";
 
-export function useVoteProposalList(contract?: Vote) {
-  return useQueryWithNetwork(
-    voteKeys.proposals(contract?.getAddress()),
-    async () => await contract?.getAll(),
-    {
-      enabled: !!contract,
-    },
-  );
+export async function tokensDelegated(
+  options: BaseTransactionOptions<{ account: Account | undefined }>,
+) {
+  if (!options.account) {
+    throw new Error("Expected an account to be passed in options");
+  }
+  const tokenAddress = await VoteExt.token(options);
+  if (!tokenAddress) {
+    throw new Error("Expected a delegated token address");
+  }
+  const tokenContract = getContract({
+    ...options.contract,
+    address: tokenAddress,
+  });
+  const delegatedAddress = await ERC20Ext.delegates({
+    contract: tokenContract,
+    account: options.account.address,
+  });
+  return getAddress(delegatedAddress) === getAddress(options.account.address);
 }
 
-export function useHasVotedOnProposal(
-  contract: RequiredParam<Vote>,
-  proposalId: string,
+export async function voteTokenBalances(
+  options: BaseTransactionOptions<{ addresses: string[] }>,
 ) {
-  const address = useActiveAccount()?.address;
-  return useQueryWithNetwork(
-    voteKeys.userHasVotedOnProposal(
-      proposalId,
-      contract?.getAddress(),
-      address,
+  invariant(options.addresses.length, "addresses are required");
+  const tokenAddress = await VoteExt.token({ contract: options.contract });
+  if (!tokenAddress) {
+    throw new Error("Expected a delegated token address");
+  }
+  const tokenContract = getContract({
+    ...options.contract,
+    address: tokenAddress,
+  });
+  const [decimals, balanceData] = await Promise.all([
+    ERC20Ext.decimals({ contract: tokenContract }),
+    Promise.all(
+      options.addresses.map((address) =>
+        ERC20Ext.balanceOf({ contract: tokenContract, address }),
+      ),
     ),
-    async () => await contract?.hasVoted(proposalId, address),
-    {
-      enabled: !!contract,
-    },
-  );
+  ]);
+  return options.addresses.map((address, index) => {
+    const balance = balanceData[index] || 0n;
+    return {
+      address,
+      balance: toTokens(balance, decimals),
+      decimals: decimals,
+    };
+  });
 }
 
-export function useCanExecuteProposal(
-  contract: RequiredParam<Vote>,
-  proposalId: string,
-) {
-  return useQueryWithNetwork(
-    voteKeys.canExecuteProposal(proposalId, contract?.getAddress()),
-    async () => await contract?.canExecute(proposalId),
-    {
-      enabled: !!contract,
-    },
-  );
+/**
+ * Get the decimals of the voting erc20 token
+ *
+ * TODO: move this into SDK extensions?
+ */
+export async function votingTokenDecimals(options: BaseTransactionOptions) {
+  const tokenAddress = await VoteExt.token(options);
+  if (!tokenAddress) {
+    throw new Error("Expected a delegated token address");
+  }
+  const tokenContract = getContract({
+    ...options.contract,
+    address: tokenAddress,
+  });
+  return await ERC20Ext.decimals({ contract: tokenContract });
 }
 
-export function useTokensDelegated(contract?: Vote) {
-  const sdk = useSDK();
-  const address = useActiveAccount()?.address;
+export function useDelegateMutation() {
+  const { mutateAsync } = useSendAndConfirmTransaction();
 
-  return useQueryWithNetwork(
-    voteKeys.delegation(contract?.getAddress(), address),
-    async () => {
-      invariant(address, "address is required");
-      invariant(contract, "vote contract is required");
-
-      const metadata = await contract?.metadata.get();
-      const tokenAddress = metadata?.voting_token_address;
-      const tokenContract = await sdk?.getToken(tokenAddress);
-      const delegation = await tokenContract?.getDelegationOf(address);
-      return delegation?.toLowerCase() === address.toLowerCase();
-    },
-    {
-      enabled: !!contract && !!address,
-    },
-  );
-}
-
-export function useVoteTokenBalances(contract?: Vote, addresses?: string[]) {
-  const { data } = useContractMetadata(contract);
-  const tokenContract = useContract(
-    data?.voting_token_address,
-    "token",
-  ).contract;
-
-  return useQueryWithNetwork(
-    voteKeys.balances(contract?.getAddress(), addresses),
-    async () => {
-      invariant(data, "contract metadata is required");
-      invariant(tokenContract, "voting contract is required");
-      invariant(addresses, "addresses are required");
-
-      const balances = addresses.map(async (address) => {
-        return {
-          address,
-          balance: (await tokenContract.balanceOf(address)).displayValue,
-        };
+  return useMutation({
+    mutationFn: async (contract: ThirdwebContract) => {
+      const tokenAddress = await VoteExt.token({ contract });
+      if (!tokenAddress) {
+        throw new Error("Expected a delegated token address");
+      }
+      const tokenContract = getContract({
+        ...contract,
+        address: tokenAddress,
       });
-
-      return await Promise.all(balances);
+      const transaction = ERC20Ext.delegate({
+        contract: tokenContract,
+        delegatee: contract.address,
+      });
+      return await mutateAsync(transaction);
     },
-    {
-      enabled: !!data && !!contract && !!addresses?.length,
-    },
-  );
-}
-
-export interface IProposalInput {
-  description: string;
-}
-
-export function useProposalCreateMutation(contractAddress?: string) {
-  const voteContract = useContract(contractAddress, "vote").contract;
-  return useMutationWithInvalidate(
-    (proposal: IProposalInput) => {
-      invariant(voteContract, "contract is required");
-      const { description } = proposal;
-      return voteContract.propose(description);
-    },
-    {
-      onSuccess: (_data, _options, _variables, invalidate) => {
-        return invalidate([voteKeys.proposals(contractAddress)]);
-      },
-    },
-  );
-}
-
-export function useDelegateMutation(contract?: Vote) {
-  const sdk = useSDK();
-  const address = useActiveAccount()?.address;
-
-  const contractAddress = contract?.getAddress();
-
-  return useMutationWithInvalidate(
-    async () => {
-      invariant(address, "address is required");
-      invariant(contractAddress, "contract address is required");
-      invariant(contract, "vote contract is required");
-
-      const metadata = await contract?.metadata.get();
-      const tokenAddress = metadata?.voting_token_address;
-      const tokenContract = await sdk?.getToken(tokenAddress);
-      return tokenContract?.delegateTo(address);
-    },
-    {
-      onSuccess: (_data, _options, _variables, invalidate) => {
-        return invalidate([voteKeys.delegation(contractAddress, address)]);
-      },
-    },
-  );
-}
-
-interface IVoteCast {
-  voteType: VoteType;
-  reason?: string;
-}
-
-export function useCastVoteMutation(
-  contract: RequiredParam<Vote>,
-  proposalId: string,
-) {
-  const address = useActiveAccount()?.address;
-  const contractAddress = contract?.getAddress();
-
-  return useMutationWithInvalidate(
-    async (vote: IVoteCast) => {
-      invariant(contract, "contract is required");
-      invariant(address, "address is required");
-      const { voteType, reason } = vote;
-      return contract.vote(proposalId, voteType, reason);
-    },
-    {
-      onSuccess: (_data, _options, _variables, invalidate) => {
-        return invalidate([
-          voteKeys.proposals(contractAddress),
-          voteKeys.userHasVotedOnProposal(proposalId, contractAddress, address),
-          voteKeys.canExecuteProposal(proposalId, contractAddress),
-        ]);
-      },
-    },
-  );
-}
-
-export function useExecuteProposalMutation(
-  contract: RequiredParam<Vote>,
-  proposalId: string,
-) {
-  const contractAddress = contract?.getAddress();
-
-  return useMutationWithInvalidate(
-    async () => {
-      invariant(contract, "contract is required");
-      return contract.execute(proposalId);
-    },
-    {
-      onSuccess: (_data, _options, _variables, invalidate) => {
-        return invalidate([
-          voteKeys.proposals(contractAddress),
-          voteKeys.canExecuteProposal(proposalId, contractAddress),
-        ]);
-      },
-    },
-  );
+  });
 }

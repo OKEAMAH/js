@@ -4,7 +4,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -52,21 +51,20 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `getPermissionsForSigner` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `getPermissionsForSigner` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `getPermissionsForSigner` method is supported.
  * @extension ERC4337
  * @example
  * ```ts
  * import { isGetPermissionsForSignerSupported } from "thirdweb/extensions/erc4337";
- *
- * const supported = await isGetPermissionsForSignerSupported(contract);
+ * const supported = isGetPermissionsForSignerSupported(["0x..."]);
  * ```
  */
-export async function isGetPermissionsForSignerSupported(
-  contract: ThirdwebContract<any>,
+export function isGetPermissionsForSignerSupported(
+  availableSelectors: string[],
 ) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -78,7 +76,7 @@ export async function isGetPermissionsForSignerSupported(
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeGetPermissionsForSignerParams } "thirdweb/extensions/erc4337";
+ * import { encodeGetPermissionsForSignerParams } from "thirdweb/extensions/erc4337";
  * const result = encodeGetPermissionsForSignerParams({
  *  signer: ...,
  * });
@@ -97,7 +95,7 @@ export function encodeGetPermissionsForSignerParams(
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeGetPermissionsForSigner } "thirdweb/extensions/erc4337";
+ * import { encodeGetPermissionsForSigner } from "thirdweb/extensions/erc4337";
  * const result = encodeGetPermissionsForSigner({
  *  signer: ...,
  * });
@@ -122,7 +120,7 @@ export function encodeGetPermissionsForSigner(
  * @example
  * ```ts
  * import { decodeGetPermissionsForSignerResult } from "thirdweb/extensions/erc4337";
- * const result = decodeGetPermissionsForSignerResult("...");
+ * const result = decodeGetPermissionsForSignerResultResult("...");
  * ```
  */
 export function decodeGetPermissionsForSignerResult(result: Hex) {

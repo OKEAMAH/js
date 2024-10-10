@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -89,21 +88,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `simulateValidation` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `simulateValidation` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `simulateValidation` method is supported.
  * @extension ERC4337
  * @example
  * ```ts
  * import { isSimulateValidationSupported } from "thirdweb/extensions/erc4337";
  *
- * const supported = await isSimulateValidationSupported(contract);
+ * const supported = isSimulateValidationSupported(["0x..."]);
  * ```
  */
-export async function isSimulateValidationSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isSimulateValidationSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -115,7 +112,7 @@ export async function isSimulateValidationSupported(
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeSimulateValidationParams } "thirdweb/extensions/erc4337";
+ * import { encodeSimulateValidationParams } from "thirdweb/extensions/erc4337";
  * const result = encodeSimulateValidationParams({
  *  userOp: ...,
  * });
@@ -134,7 +131,7 @@ export function encodeSimulateValidationParams(
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeSimulateValidation } "thirdweb/extensions/erc4337";
+ * import { encodeSimulateValidation } from "thirdweb/extensions/erc4337";
  * const result = encodeSimulateValidation({
  *  userOp: ...,
  * });
@@ -156,6 +153,7 @@ export function encodeSimulateValidation(options: SimulateValidationParams) {
  * @extension ERC4337
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { simulateValidation } from "thirdweb/extensions/erc4337";
  *
  * const transaction = simulateValidation({
@@ -167,8 +165,7 @@ export function encodeSimulateValidation(options: SimulateValidationParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function simulateValidation(

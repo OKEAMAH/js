@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Flex,
   Tab,
@@ -6,22 +8,18 @@ import {
   TabPanels,
   Tabs,
 } from "@chakra-ui/react";
-import type {
-  Abi,
-  AbiEvent,
-  AbiFunction,
-  SmartContract,
-} from "@thirdweb-dev/sdk";
+import type { Abi, AbiEvent, AbiFunction } from "abitype";
 import { SourcesPanel } from "components/contract-components/shared/sources-panel";
 import type { SourceFile } from "components/contract-components/types";
 import { CodeOverview } from "contract-ui/tabs/code/components/code-overview";
+import type { ThirdwebContract } from "thirdweb";
 import { Heading } from "tw-components";
 import { ContractFunctionsPanel } from "./contract-function";
 
 interface ContractFunctionsOverview {
   functions?: AbiFunction[] | null;
   events?: AbiEvent[] | null;
-  contract?: SmartContract;
+  contract?: ThirdwebContract;
   sources?: SourceFile[];
   abi?: Abi;
   onlyFunctions?: boolean;
@@ -97,9 +95,13 @@ export const ContractFunctionsOverview: React.FC<ContractFunctionsOverview> = ({
           ) : null}
           {abi && (
             <TabPanel>
-              <Flex direction="column" gap={6}>
-                <CodeOverview abi={abi} noSidebar />
-              </Flex>
+              <div className="flex flex-col gap-6">
+                <CodeOverview
+                  abi={abi}
+                  noSidebar
+                  chainId={contract?.chain.id || 1}
+                />
+              </div>
             </TabPanel>
           )}
           {(sources || abi) && (

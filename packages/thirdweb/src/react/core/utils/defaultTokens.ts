@@ -1,3 +1,4 @@
+import type { Chain } from "../../../chains/types.js";
 import type { Address } from "../../../utils/address.js";
 
 export type TokenInfo = {
@@ -7,7 +8,7 @@ export type TokenInfo = {
   icon?: string;
 };
 
-export const wrappedEthIcon =
+const wrappedEthIcon =
   "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTAwIiBoZWlnaHQ9IjI1MDAiIHZpZXdCb3g9IjAgMCAzMiAzMiI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzYyN0VFQSIvPjxnIGZpbGw9IiNGRkYiIGZpbGwtcnVsZT0ibm9uemVybyI+PHBhdGggZmlsbC1vcGFjaXR5PSIuNjAyIiBkPSJNMTYuNDk4IDR2OC44N2w3LjQ5NyAzLjM1eiIvPjxwYXRoIGQ9Ik0xNi40OTggNEw5IDE2LjIybDcuNDk4LTMuMzV6Ii8+PHBhdGggZmlsbC1vcGFjaXR5PSIuNjAyIiBkPSJNMTYuNDk4IDIxLjk2OHY2LjAyN0wyNCAxNy42MTZ6Ii8+PHBhdGggZD0iTTE2LjQ5OCAyNy45OTV2LTYuMDI4TDkgMTcuNjE2eiIvPjxwYXRoIGZpbGwtb3BhY2l0eT0iLjIiIGQ9Ik0xNi40OTggMjAuNTczbDcuNDk3LTQuMzUzLTcuNDk3LTMuMzQ4eiIvPjxwYXRoIGZpbGwtb3BhY2l0eT0iLjYwMiIgZD0iTTkgMTYuMjJsNy40OTggNC4zNTN2LTcuNzAxeiIvPjwvZz48L2c+PC9zdmc+";
 
 const tetherUsdIcon =
@@ -34,31 +35,8 @@ const fantomIcon =
 export type SupportedTokens = Record<number, TokenInfo[]>;
 export type SupportedNFTs = Record<number, Address[]>;
 
-/**
- * Default tokens shown in [`ConnectButton`](https://portal.thirdweb.com/react/v4/components/ConnectButton)'s SendFunds screen for each network.
- *
- * You can use the default tokens as a starting point for your own list of tokens and override tokens for specific networks.
- * @example
- * Below example shows adding a custom token for the Ethereum mainnet at start of the list of default tokens for the Ethereum mainnet. Here the `1` represents the chainId of Ethereum mainnet.
- *
- * ```tsx
- * const ethereumChainId = 1;
- *
- * <ConnectButton supportedTokens={{
- *  ...defaultTokens,
- *  [ethereumChainId]: [
- *    {
- *      address: 'YOUR_TOKEN_ADDRESS',
- *      name: 'YOUR_TOKEN_NAME',
- *      symbol: 'YOUR_TOKEN_SYMBOL',
- *      icon: 'YOUR_TOKEN_ICON_URL'
- *    },
- *    ...defaultTokens[ethereumChainId],
- *  ]
- * }} />
- * ```
- */
-export const defaultTokens: SupportedTokens = {
+// TODO these should be moved to chain definitions
+const DEFAULT_TOKENS = {
   "1": [
     {
       address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
@@ -333,4 +311,52 @@ export const defaultTokens: SupportedTokens = {
       icon: usdcIcon,
     },
   ],
-};
+} as const;
+
+/**
+ * Default tokens shown in [`ConnectButton`](https://portal.thirdweb.com/react/v4/components/ConnectButton)'s SendFunds screen for each network.
+ *
+ * You can use the default tokens as a starting point for your own list of tokens and override tokens for specific networks.
+ * @example
+ * Below example shows adding a custom token for the Ethereum mainnet at start of the list of default tokens for the Ethereum mainnet. Here the `1` represents the chainId of Ethereum mainnet.
+ *
+ * ```tsx
+ * const ethereumChainId = 1;
+ *
+ * <ConnectButton supportedTokens={{
+ *  ...defaultTokens,
+ *  [ethereumChainId]: [
+ *    {
+ *      address: 'YOUR_TOKEN_ADDRESS',
+ *      name: 'YOUR_TOKEN_NAME',
+ *      symbol: 'YOUR_TOKEN_SYMBOL',
+ *      icon: 'YOUR_TOKEN_ICON_URL'
+ *    },
+ *    ...defaultTokens[ethereumChainId],
+ *  ]
+ * }} />
+ * ```
+ */
+export const defaultTokens = DEFAULT_TOKENS as unknown as SupportedTokens;
+
+type SupportedSymbol =
+  (typeof DEFAULT_TOKENS)[keyof typeof DEFAULT_TOKENS][number]["symbol"];
+
+/**
+ * Get the default token for a given chain and symbol
+ * @param chain - The chain to get the token for
+ * @param symbol - The symbol of the token to get
+ * @returns The default token for the given chain and symbol
+ * @example
+ * ```ts
+ * import { getDefaultToken } from "thirdweb/react";
+ * import { ethereum } from "thirdweb/chains";
+ *
+ * const token = getDefaultToken(ethereum, "USDC");
+ * ```
+ * @utils
+ */
+export function getDefaultToken(chain: Chain, symbol: SupportedSymbol) {
+  const tokens = defaultTokens[chain.id];
+  return tokens?.find((t) => t.symbol === symbol);
+}

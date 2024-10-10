@@ -1,33 +1,29 @@
 "use client";
 
-import { useEffect } from "react";
+import { baseSepolia } from "thirdweb/chains";
 import {
   useActiveAccount,
   useActiveWallet,
   useConnect,
   useDisconnect,
+  useWalletBalance,
 } from "thirdweb/react";
 import { shortenAddress } from "thirdweb/utils";
-import { createWallet } from "thirdweb/wallets";
+import { inAppWallet, socialIcons } from "thirdweb/wallets/in-app";
 import { THIRDWEB_CLIENT } from "../../lib/client";
 import { StyledConnectButton } from "../styled-connect-button";
 import { Button } from "../ui/button";
-import { chain } from "./constants";
 
 export function ConnectSmartAccountPreview() {
-  // force disconnect if not smart wallet already
-  const wallet = useActiveWallet();
-  const { disconnect } = useDisconnect();
-  useEffect(() => {
-    if (wallet && wallet.id !== "smart") {
-      disconnect(wallet);
-    }
-  }, [wallet, disconnect]);
   return (
     <div className="flex flex-col">
       <StyledConnectButton
+        detailsModal={{
+          // We hide the in-app wallet so they can't switch to it
+          hiddenWallets: ["inApp"],
+        }}
         accountAbstraction={{
-          chain,
+          chain: baseSepolia,
           sponsorGas: true,
         }}
       />
@@ -40,15 +36,22 @@ export function ConnectSmartAccountCustomPreview() {
   const wallet = useActiveWallet();
   const connectMutation = useConnect({
     client: THIRDWEB_CLIENT,
-    accountAbstraction: { chain, sponsorGas: true },
+    accountAbstraction: { chain: baseSepolia, sponsorGas: true },
   });
   const { disconnect } = useDisconnect();
+  const balanceQuery = useWalletBalance({
+    client: THIRDWEB_CLIENT,
+    address: account?.address,
+    chain: baseSepolia,
+  });
 
   const connect = async () => {
     const wallet = await connectMutation.connect(async () => {
-      const adminWallet = createWallet("io.metamask");
+      const adminWallet = inAppWallet();
       await adminWallet.connect({
         client: THIRDWEB_CLIENT,
+        strategy: "google",
+        chain: baseSepolia,
       });
       return adminWallet;
     });
@@ -59,14 +62,26 @@ export function ConnectSmartAccountCustomPreview() {
     <div className="flex flex-col">
       {account && wallet ? (
         <>
-          <p className="py-4">Connected as {shortenAddress(account.address)}</p>
-          <Button variant={"outline"} onClick={() => disconnect(wallet)}>
+          <div className="py-4">
+            <p>Smart Account: {shortenAddress(account.address)}</p>
+            <p>
+              Balance: {balanceQuery.data?.displayValue}
+              {balanceQuery.data?.symbol}
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => disconnect(wallet)}>
             Disconnect
           </Button>
         </>
       ) : (
-        <Button variant={"default"} onClick={connect}>
-          Connect (metamask)
+        <Button
+          variant="default"
+          onClick={connect}
+          className="rounded-full p-6"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={socialIcons.google} alt="Google" className="mr-2 h-4 w-4" />
+          Connect with Google
         </Button>
       )}
     </div>

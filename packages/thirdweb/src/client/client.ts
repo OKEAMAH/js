@@ -1,4 +1,5 @@
 import { computeClientIdFromSecretKey } from "../utils/client-id.js";
+import { isJWT } from "../utils/jwt/is-jwt.js";
 import type { Prettify } from "../utils/type-utils.js";
 
 type FetchConfig = {
@@ -54,10 +55,10 @@ export type CreateThirdwebClientOptions = Prettify<
   (
     | {
         clientId: string;
-        secretKey?: never;
+        secretKey?: string;
       }
     | {
-        clientId?: never;
+        clientId?: string;
         secretKey: string;
       }
   ) &
@@ -70,37 +71,60 @@ export type ThirdwebClient = {
 } & Readonly<ClientOptions>;
 
 /**
- * Creates a Thirdweb client with the provided options.
+ * Creates a Thirdweb client using the provided client ID (client-side) or secret key (server-side).
+ *
+ * Get your client ID and secret key from the Thirdweb dashboard [here](https://thirdweb.com/dashboard/settings/api-keys).
+ * **Never share your secret key with anyone.
+ *
+ * A client is necessary for most functions in the thirdweb SDK. It provides access to thirdweb APIs including built-in RPC, storage, and more.
+ *
  * @param options - The options for creating the client.
+ * @param [options.clientId] - The client ID to use for thirdweb services.
+ * @param [options.secretKey] - The secret key to use for thirdweb services.
  * @returns The created Thirdweb client.
  * @throws An error if neither `clientId` nor `secretKey` is provided.
+ *
  * @example
+ * Create a client on the client side (client ID):
  * ```ts
  * import { createThirdwebClient } from "thirdweb";
+ *
  * const client = createThirdwebClient({ clientId: "..." });
+ * ```
+ *
+ * Create a client on the server (secret key):
+ * ```ts
+ * import { createThirdwebClient } from "thirdweb";
+ *
+ * const client = createThirdwebClient({ secretKey: "..." });
  * ```
  */
 export function createThirdwebClient(
   options: CreateThirdwebClientOptions,
 ): ThirdwebClient {
   const { clientId, secretKey, ...rest } = options;
-  // if secretKey is provided, compute the clientId from it (and ignore any clientId passed in)
+
+  let realClientId: string | undefined = clientId;
+
   if (secretKey) {
-    return {
-      ...rest,
-      clientId: computeClientIdFromSecretKey(secretKey),
-      secretKey,
-    } as const;
-  }
-  // otherwise if clientId is provided, use it
-  if (clientId) {
-    return {
-      ...rest,
-      clientId: options.clientId,
-      secretKey: undefined,
-    } as const;
+    if (isJWT(secretKey)) {
+      // when passing a JWT as secret key we HAVE to also have a clientId
+      if (!clientId) {
+        throw new Error("clientId must be provided when using a JWT secretKey");
+      }
+    } else {
+      realClientId = computeClientIdFromSecretKey(secretKey);
+    }
   }
 
-  // otherwise throw an error
-  throw new Error("clientId or secretKey must be provided");
+  // only path we get here is if we have no secretKey and no clientId
+  if (!realClientId) {
+    throw new Error("clientId or secretKey must be provided");
+  }
+
+  return {
+    ...rest,
+    clientId: realClientId,
+    secretKey,
+  } as const;
 }

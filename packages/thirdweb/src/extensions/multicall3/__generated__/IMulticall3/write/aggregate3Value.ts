@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -14,85 +13,74 @@ import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
  */
 export type Aggregate3ValueParams = WithOverrides<{
   calls: AbiParameterToPrimitiveType<{
-    components: [
-      { internalType: "address"; name: "target"; type: "address" },
-      { internalType: "bool"; name: "allowFailure"; type: "bool" },
-      { internalType: "uint256"; name: "value"; type: "uint256" },
-      { internalType: "bytes"; name: "callData"; type: "bytes" },
-    ];
-    internalType: "struct Multicall3.Call3Value[]";
-    name: "calls";
     type: "tuple[]";
+    name: "calls";
+    components: [
+      { type: "address"; name: "target" },
+      { type: "bool"; name: "allowFailure" },
+      { type: "uint256"; name: "value" },
+      { type: "bytes"; name: "callData" },
+    ];
   }>;
 }>;
 
 export const FN_SELECTOR = "0x174dea71" as const;
 const FN_INPUTS = [
   {
+    type: "tuple[]",
+    name: "calls",
     components: [
       {
-        internalType: "address",
-        name: "target",
         type: "address",
+        name: "target",
       },
       {
-        internalType: "bool",
-        name: "allowFailure",
         type: "bool",
+        name: "allowFailure",
       },
       {
-        internalType: "uint256",
-        name: "value",
         type: "uint256",
+        name: "value",
       },
       {
-        internalType: "bytes",
-        name: "callData",
         type: "bytes",
+        name: "callData",
       },
     ],
-    internalType: "struct Multicall3.Call3Value[]",
-    name: "calls",
-    type: "tuple[]",
   },
 ] as const;
 const FN_OUTPUTS = [
   {
+    type: "tuple[]",
+    name: "returnData",
     components: [
       {
-        internalType: "bool",
-        name: "success",
         type: "bool",
+        name: "success",
       },
       {
-        internalType: "bytes",
-        name: "returnData",
         type: "bytes",
+        name: "returnData",
       },
     ],
-    internalType: "struct Multicall3.Result[]",
-    name: "returnData",
-    type: "tuple[]",
   },
 ] as const;
 
 /**
  * Checks if the `aggregate3Value` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `aggregate3Value` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `aggregate3Value` method is supported.
  * @extension MULTICALL3
  * @example
  * ```ts
  * import { isAggregate3ValueSupported } from "thirdweb/extensions/multicall3";
  *
- * const supported = await isAggregate3ValueSupported(contract);
+ * const supported = isAggregate3ValueSupported(["0x..."]);
  * ```
  */
-export async function isAggregate3ValueSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isAggregate3ValueSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -104,7 +92,7 @@ export async function isAggregate3ValueSupported(
  * @extension MULTICALL3
  * @example
  * ```ts
- * import { encodeAggregate3ValueParams } "thirdweb/extensions/multicall3";
+ * import { encodeAggregate3ValueParams } from "thirdweb/extensions/multicall3";
  * const result = encodeAggregate3ValueParams({
  *  calls: ...,
  * });
@@ -121,7 +109,7 @@ export function encodeAggregate3ValueParams(options: Aggregate3ValueParams) {
  * @extension MULTICALL3
  * @example
  * ```ts
- * import { encodeAggregate3Value } "thirdweb/extensions/multicall3";
+ * import { encodeAggregate3Value } from "thirdweb/extensions/multicall3";
  * const result = encodeAggregate3Value({
  *  calls: ...,
  * });
@@ -143,6 +131,7 @@ export function encodeAggregate3Value(options: Aggregate3ValueParams) {
  * @extension MULTICALL3
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { aggregate3Value } from "thirdweb/extensions/multicall3";
  *
  * const transaction = aggregate3Value({
@@ -154,8 +143,7 @@ export function encodeAggregate3Value(options: Aggregate3ValueParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function aggregate3Value(

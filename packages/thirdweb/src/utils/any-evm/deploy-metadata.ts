@@ -1,18 +1,20 @@
 import type { Abi } from "abitype";
+import type { Chain } from "../../chains/types.js";
 import type { ThirdwebClient } from "../../client/client.js";
+import { formatCompilerMetadata } from "../../contract/actions/compiler-metadata.js";
 import { download } from "../../storage/download.js";
 import type { Hex } from "../encoding/hex.js";
+import { withCache } from "../promise/withCache.js";
 import type { Prettify } from "../type-utils.js";
+import { isZkSyncChain } from "./zksync/isZkSyncChain.js";
 
-export type FetchDeployMetadataOptions = {
+type FetchDeployMetadataOptions = {
   uri: string;
   client: ThirdwebClient;
 };
 
-export type FetchDeployMetadataResult = {
-  compilerMetadata: CompilerMetadata;
-  extendedMetadata: ExtendedMetadata | undefined;
-};
+export type FetchDeployMetadataResult = Partial<ExtendedMetadata> &
+  CompilerMetadata;
 
 /**
  * Fetches the deployment metadata.
@@ -23,49 +25,22 @@ export type FetchDeployMetadataResult = {
 export async function fetchDeployMetadata(
   options: FetchDeployMetadataOptions,
 ): Promise<FetchDeployMetadataResult> {
-  const [compilerMetadata, extendedMetadata] = await Promise.all([
-    fetchCompilerMetadata(options),
-    fetchExtendedMetadata(options).catch(() => undefined),
-  ]);
-  return { compilerMetadata, extendedMetadata };
-}
-
-// helpers
-/**
- * Fetches the published metadata.
- * @param options - The options for fetching the published metadata.
- * @internal
- */
-async function fetchExtendedMetadata(
-  options: FetchDeployMetadataOptions,
-): Promise<ExtendedMetadata> {
-  return download({
-    uri: options.uri,
-    client: options.client,
-  }).then((r) => r.json());
-}
-
-async function fetchCompilerMetadata(
-  options: FetchDeployMetadataOptions,
-): Promise<CompilerMetadata> {
   const rawMeta: RawCompilerMetadata = await download({
     uri: options.uri,
     client: options.client,
   }).then((r) => r.json());
-  const [deployBytecode, parsedMeta] = await Promise.all([
-    download({ uri: rawMeta.bytecodeUri, client: options.client }).then(
-      (res) => res.text() as Promise<Hex>,
-    ),
-    fetchAndParseCompilerMetadata({
-      client: options.client,
-      uri: rawMeta.metadataUri,
-    }),
-  ]);
+
+  const metadataUri = rawMeta.metadataUri;
+  const parsedMeta = await fetchAndParseCompilerMetadata({
+    client: options.client,
+    uri: metadataUri,
+  });
 
   return {
     ...rawMeta,
     ...parsedMeta,
-    bytecode: deployBytecode,
+    version: rawMeta.version,
+    name: rawMeta.name,
   };
 }
 
@@ -81,40 +56,50 @@ async function fetchAndParseCompilerMetadata(
       requestTimeoutMs: CONTRACT_METADATA_TIMEOUT_SEC,
     })
   ).json();
-  if (!metadata || !metadata.output) {
+  if (
+    (!metadata || !metadata.output) &&
+    (!metadata.source_metadata || !metadata.source_metadata.output)
+  ) {
     throw new Error(
       `Could not resolve metadata for contract at ${options.uri}`,
     );
   }
-  return formatCompilerMetadata(metadata);
+  return {
+    ...metadata,
+    ...formatCompilerMetadata(metadata),
+  };
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: TODO: fix later
-function formatCompilerMetadata(metadata: any): ParsedCompilerMetadata {
-  const abi = metadata.output.abi;
-  const compilationTarget = metadata.settings.compilationTarget;
-  const targets = Object.keys(compilationTarget);
-  const name = compilationTarget[targets[0] as keyof typeof compilationTarget];
-  const info = {
-    title: metadata.output.devdoc.title,
-    author: metadata.output.devdoc.author,
-    details: metadata.output.devdoc.detail,
-    notice: metadata.output.userdoc.notice,
-  };
-  const licenses: string[] = [
-    ...new Set(
-      // biome-ignore lint/suspicious/noExplicitAny: TODO: fix later
-      Object.entries(metadata.sources).map(([, src]) => (src as any).license),
-    ),
-  ];
-  return {
-    name,
-    abi,
-    metadata,
-    info,
-    licenses,
-    isPartialAbi: metadata.isPartialAbi,
-  };
+export async function fetchBytecodeFromCompilerMetadata(options: {
+  compilerMetadata: FetchDeployMetadataResult;
+  client: ThirdwebClient;
+  chain: Chain;
+}) {
+  const { compilerMetadata, client, chain } = options;
+  return withCache(
+    async () => {
+      const isZksolc = await isZkSyncChain(chain);
+      const bytecodeUri = isZksolc
+        ? compilerMetadata.compilers?.zksolc?.[0]?.bytecodeUri
+        : compilerMetadata.bytecodeUri;
+
+      if (!bytecodeUri) {
+        throw new Error(
+          `No bytecode URI found in compiler metadata for ${compilerMetadata.name} on chain ${chain.name}`,
+        );
+      }
+      const deployBytecode = await download({
+        uri: bytecodeUri,
+        client,
+      }).then((res) => res.text() as Promise<Hex>);
+
+      return deployBytecode;
+    },
+    {
+      cacheKey: `bytecode:${compilerMetadata.name}:${chain.id}`,
+      cacheTime: 24 * 60 * 60 * 1000,
+    },
+  );
 }
 
 // types
@@ -125,14 +110,44 @@ type RawCompilerMetadata = {
   bytecodeUri: string;
   // biome-ignore lint/suspicious/noExplicitAny: TODO: fix later
   analytics?: any;
-  // biome-ignore lint/suspicious/noExplicitAny: TODO: fix later
-  [key: string]: any;
+  version?: string;
+  [key: string]: unknown;
 };
 
 type ParsedCompilerMetadata = {
   name: string;
   abi: Abi;
-  metadata: Record<string, unknown>;
+  metadata: {
+    compiler: {
+      version: string;
+    };
+    language: string;
+    output: {
+      abi: Abi;
+      devdoc: Record<string, unknown>;
+      userdoc: Record<string, unknown>;
+    };
+    settings: {
+      compilationTarget: Record<string, unknown>;
+      evmVersion: string;
+      libraries: Record<string, string>;
+      optimizer: Record<string, unknown>;
+      remappings: string[];
+    };
+    sources: Record<
+      string,
+      { keccak256: string } & (
+        | {
+            content: string;
+          }
+        | {
+            urls: string[];
+            license?: string;
+          }
+      )
+    >;
+    [key: string]: unknown;
+  };
   info: {
     title?: string;
     author?: string;
@@ -141,12 +156,11 @@ type ParsedCompilerMetadata = {
   };
   licenses: string[];
   isPartialAbi?: boolean;
+  zk_version?: string;
 };
 
 export type CompilerMetadata = Prettify<
-  ParsedCompilerMetadata & {
-    bytecode: Hex;
-  }
+  RawCompilerMetadata & ParsedCompilerMetadata
 >;
 
 export type ExtendedMetadata = {
@@ -161,6 +175,13 @@ export type ExtendedMetadata = {
         extensionVersion: string;
         publisherAddress: string;
       }[]
+    | undefined;
+  defaultModules?:
+    | Array<{
+        moduleName: string;
+        moduleVersion: string;
+        publisherAddress: string;
+      }>
     | undefined;
   publisher?: string | undefined;
   audit?: string | undefined;
@@ -202,5 +223,18 @@ export type ExtendedMetadata = {
     }
   >;
   compositeAbi?: Abi;
+  compilers?: Record<
+    "solc" | "zksolc",
+    {
+      evmVersion: string;
+      compilerVersion: string;
+      metadataUri: string;
+      bytecodeUri: string;
+    }[]
+  >;
+  externalLinks?: Array<{
+    name: string;
+    url: string;
+  }>;
   [key: string]: unknown;
 };

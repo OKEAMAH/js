@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -14,17 +13,15 @@ import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
  */
 export type AirdropERC20Params = WithOverrides<{
   tokenAddress: AbiParameterToPrimitiveType<{
-    name: "_tokenAddress";
     type: "address";
-    internalType: "address";
+    name: "_tokenAddress";
   }>;
   contents: AbiParameterToPrimitiveType<{
-    name: "_contents";
     type: "tuple[]";
-    internalType: "struct Airdrop.AirdropContentERC20[]";
+    name: "_contents";
     components: [
-      { name: "recipient"; type: "address"; internalType: "address" },
-      { name: "amount"; type: "uint256"; internalType: "uint256" },
+      { type: "address"; name: "recipient" },
+      { type: "uint256"; name: "amount" },
     ];
   }>;
 }>;
@@ -32,24 +29,20 @@ export type AirdropERC20Params = WithOverrides<{
 export const FN_SELECTOR = "0x56b0b449" as const;
 const FN_INPUTS = [
   {
-    name: "_tokenAddress",
     type: "address",
-    internalType: "address",
+    name: "_tokenAddress",
   },
   {
-    name: "_contents",
     type: "tuple[]",
-    internalType: "struct Airdrop.AirdropContentERC20[]",
+    name: "_contents",
     components: [
       {
-        name: "recipient",
         type: "address",
-        internalType: "address",
+        name: "recipient",
       },
       {
-        name: "amount",
         type: "uint256",
-        internalType: "uint256",
+        name: "amount",
       },
     ],
   },
@@ -58,19 +51,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `airdropERC20` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `airdropERC20` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `airdropERC20` method is supported.
  * @extension AIRDROP
  * @example
  * ```ts
  * import { isAirdropERC20Supported } from "thirdweb/extensions/airdrop";
  *
- * const supported = await isAirdropERC20Supported(contract);
+ * const supported = isAirdropERC20Supported(["0x..."]);
  * ```
  */
-export async function isAirdropERC20Supported(contract: ThirdwebContract<any>) {
+export function isAirdropERC20Supported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -82,7 +75,7 @@ export async function isAirdropERC20Supported(contract: ThirdwebContract<any>) {
  * @extension AIRDROP
  * @example
  * ```ts
- * import { encodeAirdropERC20Params } "thirdweb/extensions/airdrop";
+ * import { encodeAirdropERC20Params } from "thirdweb/extensions/airdrop";
  * const result = encodeAirdropERC20Params({
  *  tokenAddress: ...,
  *  contents: ...,
@@ -103,7 +96,7 @@ export function encodeAirdropERC20Params(options: AirdropERC20Params) {
  * @extension AIRDROP
  * @example
  * ```ts
- * import { encodeAirdropERC20 } "thirdweb/extensions/airdrop";
+ * import { encodeAirdropERC20 } from "thirdweb/extensions/airdrop";
  * const result = encodeAirdropERC20({
  *  tokenAddress: ...,
  *  contents: ...,
@@ -126,6 +119,7 @@ export function encodeAirdropERC20(options: AirdropERC20Params) {
  * @extension AIRDROP
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { airdropERC20 } from "thirdweb/extensions/airdrop";
  *
  * const transaction = airdropERC20({
@@ -138,8 +132,7 @@ export function encodeAirdropERC20(options: AirdropERC20Params) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function airdropERC20(

@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -53,19 +52,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `buy` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `buy` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `buy` method is supported.
  * @extension MARKETPLACE
  * @example
  * ```ts
  * import { isBuySupported } from "thirdweb/extensions/marketplace";
  *
- * const supported = await isBuySupported(contract);
+ * const supported = isBuySupported(["0x..."]);
  * ```
  */
-export async function isBuySupported(contract: ThirdwebContract<any>) {
+export function isBuySupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -77,7 +76,7 @@ export async function isBuySupported(contract: ThirdwebContract<any>) {
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeBuyParams } "thirdweb/extensions/marketplace";
+ * import { encodeBuyParams } from "thirdweb/extensions/marketplace";
  * const result = encodeBuyParams({
  *  listingId: ...,
  *  buyFor: ...,
@@ -104,7 +103,7 @@ export function encodeBuyParams(options: BuyParams) {
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeBuy } "thirdweb/extensions/marketplace";
+ * import { encodeBuy } from "thirdweb/extensions/marketplace";
  * const result = encodeBuy({
  *  listingId: ...,
  *  buyFor: ...,
@@ -128,6 +127,7 @@ export function encodeBuy(options: BuyParams) {
  * @extension MARKETPLACE
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { buy } from "thirdweb/extensions/marketplace";
  *
  * const transaction = buy({
@@ -143,8 +143,7 @@ export function encodeBuy(options: BuyParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function buy(

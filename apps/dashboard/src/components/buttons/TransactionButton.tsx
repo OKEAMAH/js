@@ -1,6 +1,7 @@
+"use client";
+import { ToolTipLabel } from "@/components/ui/tooltip";
 import {
   Center,
-  DarkMode,
   Flex,
   Icon,
   Popover,
@@ -8,12 +9,11 @@ import {
   PopoverBody,
   PopoverContent,
   PopoverTrigger,
-  Tooltip,
-  useColorMode,
 } from "@chakra-ui/react";
 import { CHAIN_ID_TO_GNOSIS } from "constants/mappings";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { BiTransferAlt } from "react-icons/bi";
+import { useActiveChainAsDashboardChain } from "lib/v5-adapter";
+import { ArrowLeftRightIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FiInfo } from "react-icons/fi";
 import {
   useActiveAccount,
@@ -29,7 +29,6 @@ import {
   LinkButton,
   Text,
 } from "tw-components";
-import { useActiveChainAsDashboardChain } from "../../lib/v5-adapter";
 import { MismatchButton } from "./MismatchButton";
 
 interface TransactionButtonProps extends Omit<ButtonProps, "leftIcon"> {
@@ -37,7 +36,7 @@ interface TransactionButtonProps extends Omit<ButtonProps, "leftIcon"> {
   isLoading: boolean;
   isGasless?: boolean;
   upsellTestnet?: boolean;
-  onChainSelect?: (chainId: number) => void;
+  txChainID: number;
 }
 
 function useWalletRequiresExternalConfirmation() {
@@ -52,15 +51,14 @@ function useWalletRequiresExternalConfirmation() {
 export const TransactionButton: React.FC<TransactionButtonProps> = ({
   children,
   transactionCount,
-  isLoading,
+  isLoading: isPending,
   size,
   colorScheme,
   variant,
   isGasless,
-  onChainSelect,
+  txChainID,
   ...restButtonProps
 }) => {
-  const colorMode = useColorMode();
   const activeWallet = useActiveWallet();
   const walletRequiresExternalConfirmation =
     useWalletRequiresExternalConfirmation();
@@ -71,8 +69,6 @@ export const TransactionButton: React.FC<TransactionButtonProps> = ({
     () => chain?.status === "deprecated",
     [chain],
   );
-
-  const ColorModeComp = colorMode.colorMode === "dark" ? DarkMode : Fragment;
 
   const numberWidth = useMemo(() => {
     // for each digit of transaction count add 8.3px
@@ -94,23 +90,23 @@ export const TransactionButton: React.FC<TransactionButtonProps> = ({
       returnFocusOnClose={false}
       initialFocusRef={initialFocusRef}
       isLazy
-      isOpen={walletRequiresExternalConfirmation && isLoading}
+      isOpen={walletRequiresExternalConfirmation && isPending}
     >
       <PopoverTrigger>
         <ButtonComponent
-          onChainSelect={onChainSelect}
+          desiredChainId={txChainID}
           borderRadius="md"
           position="relative"
           role="group"
           colorScheme={colorScheme}
-          isLoading={isLoading}
+          isLoading={isPending}
           size={size}
           variant={variant}
           {...restButtonProps}
           overflow="hidden"
           boxSizing="border-box"
           pl={
-            isLoading || !isConnected
+            isPending || !isConnected
               ? undefined
               : `calc(${52 + numberWidth}px + var(--chakra-space-${
                   size === "sm" ? 3 : size === "lg" ? 6 : size === "xs" ? 2 : 4
@@ -119,33 +115,14 @@ export const TransactionButton: React.FC<TransactionButtonProps> = ({
           isDisabled={isChainDeprecated || restButtonProps.isDisabled}
         >
           {children}
-          <Tooltip
-            bg="transparent"
-            boxShadow="none"
-            p={0}
-            w="auto"
+          <ToolTipLabel
             label={
-              isChainDeprecated ? (
-                <ColorModeComp>
-                  <Card w="auto" py={2} bgColor="backgroundHighlight">
-                    <Text>
-                      This chain is deprecated so you cannot execute
-                      transactions on it.
-                    </Text>
-                  </Card>
-                </ColorModeComp>
-              ) : (
-                <ColorModeComp>
-                  <Card w="auto" py={2} bgColor="backgroundHighlight">
-                    <Text>
-                      This action will trigger {transactionCount}{" "}
-                      {transactionCount > 1 ? "transactions" : "transaction"}.
-                    </Text>
-                  </Card>
-                </ColorModeComp>
-              )
+              isChainDeprecated
+                ? "This chain is deprecated so you cannot execute transactions on it"
+                : `This action will trigger ${transactionCount} ${transactionCount > 1 ? "transactions" : "transaction"}`
             }
           >
+            {/* to be completed */}
             <Center
               _groupHover={{
                 bg:
@@ -177,10 +154,10 @@ export const TransactionButton: React.FC<TransactionButtonProps> = ({
                 <Text color="inherit" size="label.md" fontFamily="mono">
                   {transactionCount}
                 </Text>
-                <BiTransferAlt />
+                <ArrowLeftRightIcon className="size-3" />
               </Flex>
             </Center>
-          </Tooltip>
+          </ToolTipLabel>
         </ButtonComponent>
       </PopoverTrigger>
       <Card
@@ -229,12 +206,12 @@ const ExternalApprovalNotice: React.FC<ExternalApprovalNoticeProps> = ({
   if (walletId === "global.safe") {
     const isChainIdSupported = chainId in CHAIN_ID_TO_GNOSIS;
     return (
-      <Flex direction="column" gap={4}>
+      <div className="flex flex-col gap-4">
         <Heading size="label.lg">
-          <Flex gap={2} align="center">
+          <div className="flex flex-row items-center gap-2">
             <Icon color="primary.500" boxSize={6} as={FiInfo} />
             <span>Execute Transaction</span>
-          </Flex>
+          </div>
         </Heading>
         <Text>
           You will need to execute this transaction in your Safe to continue.
@@ -259,17 +236,17 @@ const ExternalApprovalNotice: React.FC<ExternalApprovalNoticeProps> = ({
         >
           Go To Safe
         </LinkButton>
-      </Flex>
+      </div>
     );
   }
   if (walletId === "walletConnect") {
     return (
-      <Flex direction="column" gap={4}>
+      <div className="flex flex-col gap-4">
         <Heading size="label.lg">
-          <Flex gap={2} align="center">
+          <div className="flex flex-row items-center gap-2">
             <Icon color="primary.500" boxSize={6} as={FiInfo} />
             <span>Approve Transaction</span>
-          </Flex>
+          </div>
         </Heading>
         <Text>
           You will need to approve this transaction in your connected wallet.
@@ -281,7 +258,7 @@ const ExternalApprovalNotice: React.FC<ExternalApprovalNoticeProps> = ({
             action will continue automatically.
           </Text>
         )}
-      </Flex>
+      </div>
     );
   }
 

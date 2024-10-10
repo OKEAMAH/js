@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -14,12 +13,11 @@ import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
  */
 export type AirdropNativeTokenParams = WithOverrides<{
   contents: AbiParameterToPrimitiveType<{
-    name: "_contents";
     type: "tuple[]";
-    internalType: "struct Airdrop.AirdropContentERC20[]";
+    name: "_contents";
     components: [
-      { name: "recipient"; type: "address"; internalType: "address" },
-      { name: "amount"; type: "uint256"; internalType: "uint256" },
+      { type: "address"; name: "recipient" },
+      { type: "uint256"; name: "amount" },
     ];
   }>;
 }>;
@@ -27,19 +25,16 @@ export type AirdropNativeTokenParams = WithOverrides<{
 export const FN_SELECTOR = "0x0d5818f7" as const;
 const FN_INPUTS = [
   {
-    name: "_contents",
     type: "tuple[]",
-    internalType: "struct Airdrop.AirdropContentERC20[]",
+    name: "_contents",
     components: [
       {
-        name: "recipient",
         type: "address",
-        internalType: "address",
+        name: "recipient",
       },
       {
-        name: "amount",
         type: "uint256",
-        internalType: "uint256",
+        name: "amount",
       },
     ],
   },
@@ -48,21 +43,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `airdropNativeToken` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `airdropNativeToken` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `airdropNativeToken` method is supported.
  * @extension AIRDROP
  * @example
  * ```ts
  * import { isAirdropNativeTokenSupported } from "thirdweb/extensions/airdrop";
  *
- * const supported = await isAirdropNativeTokenSupported(contract);
+ * const supported = isAirdropNativeTokenSupported(["0x..."]);
  * ```
  */
-export async function isAirdropNativeTokenSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isAirdropNativeTokenSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -74,7 +67,7 @@ export async function isAirdropNativeTokenSupported(
  * @extension AIRDROP
  * @example
  * ```ts
- * import { encodeAirdropNativeTokenParams } "thirdweb/extensions/airdrop";
+ * import { encodeAirdropNativeTokenParams } from "thirdweb/extensions/airdrop";
  * const result = encodeAirdropNativeTokenParams({
  *  contents: ...,
  * });
@@ -93,7 +86,7 @@ export function encodeAirdropNativeTokenParams(
  * @extension AIRDROP
  * @example
  * ```ts
- * import { encodeAirdropNativeToken } "thirdweb/extensions/airdrop";
+ * import { encodeAirdropNativeToken } from "thirdweb/extensions/airdrop";
  * const result = encodeAirdropNativeToken({
  *  contents: ...,
  * });
@@ -115,6 +108,7 @@ export function encodeAirdropNativeToken(options: AirdropNativeTokenParams) {
  * @extension AIRDROP
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { airdropNativeToken } from "thirdweb/extensions/airdrop";
  *
  * const transaction = airdropNativeToken({
@@ -126,8 +120,7 @@ export function encodeAirdropNativeToken(options: AirdropNativeTokenParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function airdropNativeToken(

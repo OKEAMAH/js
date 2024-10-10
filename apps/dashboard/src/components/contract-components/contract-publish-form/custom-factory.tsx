@@ -1,3 +1,4 @@
+import { SingleNetworkSelector } from "@/components/blocks/NetworkSelectors";
 import {
   Box,
   Flex,
@@ -8,13 +9,13 @@ import {
   ListItem,
   UnorderedList,
 } from "@chakra-ui/react";
-import type { Abi } from "@thirdweb-dev/sdk";
+import type { Abi } from "abitype";
+import { PlusIcon } from "lucide-react";
 import { type Dispatch, type SetStateAction, useEffect } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
-import { FiPlus, FiTrash } from "react-icons/fi";
+import { FiTrash } from "react-icons/fi";
 import { Button, Heading, Text } from "tw-components";
 import { useCustomFactoryAbi } from "../hooks";
-import { NetworkDropdown } from "./NetworkDropdown";
 import { AbiSelector } from "./abi-selector";
 
 interface CustomFactoryProps {
@@ -75,19 +76,20 @@ export const CustomFactory: React.FC<CustomFactoryProps> = ({
         {fields.map((field, index) => (
           <div key={field.id}>
             <FormControl isRequired as={Flex} gap={4}>
-              <Box w={{ base: "full", md: "30%" }}>
+              <Box w={{ base: "full", md: "40%" }}>
                 <Controller
                   name={`customFactoryAddresses[${index}].key`}
                   control={form.control}
-                  render={({ field: _field }) => (
-                    <NetworkDropdown
-                      {..._field}
-                      onSingleChange={(value) => {
-                        _field.onChange(value);
-                      }}
-                      value={_field.value}
-                    />
-                  )}
+                  render={({ field: _field }) => {
+                    return (
+                      <SingleNetworkSelector
+                        chainId={_field.value}
+                        onChange={(value) => {
+                          _field.onChange(value);
+                        }}
+                      />
+                    );
+                  }}
                 />
               </Box>
               <Box w="full">
@@ -106,18 +108,18 @@ export const CustomFactory: React.FC<CustomFactoryProps> = ({
             </FormControl>
           </div>
         ))}
-        <Box>
+        <div>
           <Button
             type="button"
             size="sm"
             colorScheme="primary"
             borderRadius="md"
-            leftIcon={<Icon as={FiPlus} />}
+            leftIcon={<PlusIcon className="size-5" />}
             onClick={() => append({ key: "", value: "" })}
           >
             Add Network
           </Button>
-        </Box>
+        </div>
       </Flex>
       <Flex flexDir="column" gap={4}>
         <Flex flexDir="column" gap={2}>

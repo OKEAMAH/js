@@ -1,9 +1,7 @@
 import { AdminOnly } from "@3rdweb-sdk/react/components/roles/admin-only";
-import { Box, Flex, Icon, SimpleGrid } from "@chakra-ui/react";
-import type { DropContract } from "@thirdweb-dev/react";
-import type { ValidContractInstance } from "@thirdweb-dev/sdk";
-import { FiX } from "react-icons/fi";
-import { RxCaretDown, RxCaretUp } from "react-icons/rx";
+import { Flex, SimpleGrid } from "@chakra-ui/react";
+import { ChevronDownIcon, ChevronUpIcon, XIcon } from "lucide-react";
+import type { ThirdwebContract } from "thirdweb";
 import { Badge, Button, Card, Heading, Text } from "tw-components";
 import { ClaimConditionTypeData, useClaimConditionsFormContext } from ".";
 import { PricePreview } from "../price-preview";
@@ -14,25 +12,23 @@ import { MaxClaimablePerWalletInput } from "./Inputs/MaxClaimablePerWalletInput"
 import { MaxClaimableSupplyInput } from "./Inputs/MaxClaimableSupplyInput";
 import { PhaseNameInput } from "./Inputs/PhaseNameInput";
 import { PhaseStartTimeInput } from "./Inputs/PhaseStartTimeInput";
-import { WaitingTimeInput } from "./Inputs/WaitingTimeInput";
 import { CustomFormGroup } from "./common";
 
 interface ClaimConditionsPhaseProps {
-  contract: DropContract;
+  contract: ThirdwebContract;
   onRemove: () => void;
-  isLoading: boolean;
+  isPending: boolean;
 }
 
 export const ClaimConditionsPhase: React.FC<ClaimConditionsPhaseProps> = ({
   contract,
   onRemove,
-  isLoading,
+  isPending,
 }) => {
   const {
     form,
     field,
     isErc20,
-    isClaimPhaseV1,
     isAdmin,
     claimConditionType,
     isActive,
@@ -60,22 +56,23 @@ export const ClaimConditionsPhase: React.FC<ClaimConditionsPhaseProps> = ({
             onClick={toggleEditing}
             size="sm"
             rightIcon={
-              <Icon
-                as={field.isEditing ? RxCaretUp : RxCaretDown}
-                boxSize={5}
-              />
+              field.isEditing ? (
+                <ChevronUpIcon className="size-4" />
+              ) : (
+                <ChevronDownIcon className="size-4" />
+              )
             }
           >
             {field.isEditing ? "Collapse" : isAdmin ? "Edit" : "See Phase"}
           </Button>
-          <AdminOnly contract={contract as ValidContractInstance}>
+          <AdminOnly contract={contract}>
             <Button
               variant="ghost"
               onClick={onRemove}
-              isDisabled={isLoading}
+              isDisabled={isPending}
               colorScheme="red"
               size="sm"
-              rightIcon={<Icon as={FiX} />}
+              rightIcon={<XIcon className="size-4" />}
             >
               Remove
             </Button>
@@ -84,45 +81,35 @@ export const ClaimConditionsPhase: React.FC<ClaimConditionsPhaseProps> = ({
 
         <Flex flexDir="column" gap={2} mt={{ base: 4, md: 0 }}>
           <Flex gap={3} alignItems="center">
-            <Heading>
-              {isClaimPhaseV1
-                ? isMultiPhase
-                  ? `Claim Phase ${phaseIndex + 1}`
-                  : "Claim Conditions"
-                : ClaimConditionTypeData[claimConditionType].name}
-            </Heading>
+            <Heading>{ClaimConditionTypeData[claimConditionType].name}</Heading>
             {isActive && (
               <Badge colorScheme="green" borderRadius="lg" p={1.5}>
                 Currently active
               </Badge>
             )}
           </Flex>
-          {isClaimPhaseV1 ? (
-            ""
-          ) : (
-            <Text>
-              {ClaimConditionTypeData[claimConditionType].description}
-            </Text>
-          )}
+
+          <Text>{ClaimConditionTypeData[claimConditionType].description}</Text>
         </Flex>
 
         {!field.isEditing ? (
           <SimpleGrid columns={{ base: 2, md: 4 }} gap={2}>
-            <Flex direction="column">
+            <div className="flex flex-col">
               <Text fontWeight="bold">Phase start</Text>
               <Text>{field.startTime?.toLocaleString()}</Text>
-            </Flex>
-            <Flex direction="column">
+            </div>
+            <div className="flex flex-col">
               <Text fontWeight="bold">
                 {isErc20 ? "Tokens" : "NFTs"} to drop
               </Text>
               <Text textTransform="capitalize">{field.maxClaimableSupply}</Text>
-            </Flex>
+            </div>
             <PricePreview
               price={field.price}
               currencyAddress={field.currencyAddress}
+              contractChainId={contract.chain.id}
             />
-            <Flex direction="column">
+            <div className="flex flex-col">
               <Text fontWeight="bold">Limit per wallet</Text>
               {claimConditionType === "specific" ? (
                 <Text>Set in the snapshot</Text>
@@ -133,7 +120,7 @@ export const ClaimConditionsPhase: React.FC<ClaimConditionsPhaseProps> = ({
                   {field.maxClaimablePerWallet}
                 </Text>
               )}
-            </Flex>
+            </div>
           </SimpleGrid>
         ) : (
           <>
@@ -151,18 +138,13 @@ export const ClaimConditionsPhase: React.FC<ClaimConditionsPhaseProps> = ({
 
             <CustomFormGroup>
               <MaxClaimableSupplyInput />
-              <ClaimPriceInput />
+              <ClaimPriceInput contractChainId={contract.chain.id} />
             </CustomFormGroup>
 
             {claimConditionType === "specific" ||
             claimConditionType === "creator" ? null : (
               <CustomFormGroup>
                 <MaxClaimablePerWalletInput />
-                {isClaimPhaseV1 ? (
-                  <WaitingTimeInput />
-                ) : (
-                  <Box w="100%" display={{ base: "none", md: "block" }} />
-                )}
               </CustomFormGroup>
             )}
 

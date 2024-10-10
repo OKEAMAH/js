@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -30,19 +29,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `addStake` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `addStake` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `addStake` method is supported.
  * @extension ERC4337
  * @example
  * ```ts
  * import { isAddStakeSupported } from "thirdweb/extensions/erc4337";
  *
- * const supported = await isAddStakeSupported(contract);
+ * const supported = isAddStakeSupported(["0x..."]);
  * ```
  */
-export async function isAddStakeSupported(contract: ThirdwebContract<any>) {
+export function isAddStakeSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -54,7 +53,7 @@ export async function isAddStakeSupported(contract: ThirdwebContract<any>) {
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeAddStakeParams } "thirdweb/extensions/erc4337";
+ * import { encodeAddStakeParams } from "thirdweb/extensions/erc4337";
  * const result = encodeAddStakeParams({
  *  unstakeDelaySec: ...,
  * });
@@ -71,7 +70,7 @@ export function encodeAddStakeParams(options: AddStakeParams) {
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeAddStake } "thirdweb/extensions/erc4337";
+ * import { encodeAddStake } from "thirdweb/extensions/erc4337";
  * const result = encodeAddStake({
  *  unstakeDelaySec: ...,
  * });
@@ -91,6 +90,7 @@ export function encodeAddStake(options: AddStakeParams) {
  * @extension ERC4337
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { addStake } from "thirdweb/extensions/erc4337";
  *
  * const transaction = addStake({
@@ -102,8 +102,7 @@ export function encodeAddStake(options: AddStakeParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function addStake(

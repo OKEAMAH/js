@@ -1,10 +1,8 @@
 import {
   Box,
   ButtonGroup,
-  Center,
   Flex,
   GridItem,
-  Icon,
   Select,
   SimpleGrid,
   Skeleton,
@@ -23,9 +21,9 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { MoveRightIcon } from "lucide-react";
 import pluralize from "pluralize";
 import { type SetStateAction, useMemo } from "react";
-import { FiArrowRight } from "react-icons/fi";
 import { Button, TableContainer, Text } from "tw-components";
 
 type TWQueryTableProps<TRowData, TInputData> = {
@@ -34,7 +32,7 @@ type TWQueryTableProps<TRowData, TInputData> = {
   query: UseQueryResult<TInputData, unknown>;
   selectData: (data?: TInputData) => TRowData[];
   onRowClick?: (row: TRowData) => void;
-  pagination?: Omit<PaginationProps<TInputData>, "data" | "isLoading">;
+  pagination?: Omit<PaginationProps<TInputData>, "data" | "isPending">;
   title: string;
 };
 
@@ -42,7 +40,7 @@ export function TWQueryTable<TRowData, TInputData>(
   tableProps: TWQueryTableProps<TRowData, TInputData>,
 ) {
   const data = tableProps.selectData(tableProps.query.data);
-  const isLoading = tableProps.query.isLoading;
+  const isPending = tableProps.query.isPending;
   const isFetching = tableProps.query.isFetching;
   const isFetched = tableProps.query.isFetched;
 
@@ -107,7 +105,7 @@ export function TWQueryTable<TRowData, TInputData>(
                       <Td
                         key={cell.id}
                         borderBottomWidth="inherit"
-                        borderBottomColor="accent.100"
+                        borderBottomColor="hsl(var(--border))"
                       >
                         {flexRender(
                           cell.column.columnDef.cell,
@@ -121,9 +119,9 @@ export function TWQueryTable<TRowData, TInputData>(
                     <Td
                       isNumeric
                       borderBottomWidth="inherit"
-                      borderBottomColor="accent.100"
+                      borderBottomColor="hsl(var(--border))"
                     >
-                      <Icon as={FiArrowRight} />
+                      <MoveRightIcon className="size-4" />
                     </Td>
                   )}
                 </Tr>
@@ -131,28 +129,28 @@ export function TWQueryTable<TRowData, TInputData>(
             })}
           </Tbody>
         </Table>
-        {isLoading && (
-          <Center>
+        {isPending && (
+          <div className="flex items-center justify-center">
             <Flex py={4} direction="row" gap={4} align="center">
               <Spinner size="sm" />
               <Text>Loading {pluralize(tableProps.title, 0, false)}</Text>
             </Flex>
-          </Center>
+          </div>
         )}
 
-        {!isLoading && !isFetching && data.length === 0 && isFetched && (
-          <Center>
+        {!isPending && !isFetching && data.length === 0 && isFetched && (
+          <div className="flex items-center justify-center">
             <Flex py={4} direction="column" gap={4} align="center">
               <Text>No {pluralize(tableProps.title, 0, false)} found.</Text>
             </Flex>
-          </Center>
+          </div>
         )}
       </TableContainer>
       {/* render pagination if pagination is enabled */}
       {tableProps.pagination && (
         <Pagination
           {...tableProps.pagination}
-          isLoading={isLoading}
+          isPending={isPending}
           data={tableProps.query.data}
         />
       )}
@@ -162,7 +160,7 @@ export function TWQueryTable<TRowData, TInputData>(
 
 type PaginationProps<TInputData> = {
   data?: TInputData;
-  isLoading: boolean;
+  isPending: boolean;
   pageSize: number;
   setPageSize?: (value: SetStateAction<number>) => void;
   pageSizeOptions?: number[];
@@ -236,9 +234,9 @@ function Pagination<TInputData>(paginationProps: PaginationProps<TInputData>) {
       {/* filler box on left side for spacing */}
       <GridItem colSpan={2} />
       <GridItem colSpan={8}>
-        <Center>
+        <div className="flex items-center justify-center">
           <ButtonGroup fontFamily="mono" variant="outline" size="sm">
-            {paginationProps.isLoading
+            {paginationProps.isPending
               ? new Array(MAX_PAGE_BUTTONS).fill("0").map((val, i) => {
                   return (
                     <Skeleton
@@ -265,15 +263,9 @@ function Pagination<TInputData>(paginationProps: PaginationProps<TInputData>) {
                       <Box as="span" visibility="hidden">
                         {buttonStringTemplate}
                       </Box>
-                      <Center
-                        position="absolute"
-                        top={0}
-                        right={0}
-                        left={0}
-                        bottom={0}
-                      >
+                      <div className="absolute inset-0 flex items-center justify-center">
                         {page.page + 1}
-                      </Center>
+                      </div>
                     </Button>
                   ) : (
                     <Button
@@ -287,7 +279,7 @@ function Pagination<TInputData>(paginationProps: PaginationProps<TInputData>) {
                   ),
                 )}
           </ButtonGroup>
-        </Center>
+        </div>
       </GridItem>
 
       {/* if we let the users set the page size then show a select to do that */}

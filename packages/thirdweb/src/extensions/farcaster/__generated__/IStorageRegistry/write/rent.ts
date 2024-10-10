@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -37,19 +36,19 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `rent` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `rent` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `rent` method is supported.
  * @extension FARCASTER
  * @example
  * ```ts
  * import { isRentSupported } from "thirdweb/extensions/farcaster";
  *
- * const supported = await isRentSupported(contract);
+ * const supported = isRentSupported(["0x..."]);
  * ```
  */
-export async function isRentSupported(contract: ThirdwebContract<any>) {
+export function isRentSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -61,7 +60,7 @@ export async function isRentSupported(contract: ThirdwebContract<any>) {
  * @extension FARCASTER
  * @example
  * ```ts
- * import { encodeRentParams } "thirdweb/extensions/farcaster";
+ * import { encodeRentParams } from "thirdweb/extensions/farcaster";
  * const result = encodeRentParams({
  *  fid: ...,
  *  units: ...,
@@ -79,7 +78,7 @@ export function encodeRentParams(options: RentParams) {
  * @extension FARCASTER
  * @example
  * ```ts
- * import { encodeRent } "thirdweb/extensions/farcaster";
+ * import { encodeRent } from "thirdweb/extensions/farcaster";
  * const result = encodeRent({
  *  fid: ...,
  *  units: ...,
@@ -100,6 +99,7 @@ export function encodeRent(options: RentParams) {
  * @extension FARCASTER
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { rent } from "thirdweb/extensions/farcaster";
  *
  * const transaction = rent({
@@ -112,8 +112,7 @@ export function encodeRent(options: RentParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function rent(

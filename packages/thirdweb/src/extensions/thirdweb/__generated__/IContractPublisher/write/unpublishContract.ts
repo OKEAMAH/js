@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -38,21 +37,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `unpublishContract` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `unpublishContract` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `unpublishContract` method is supported.
  * @extension THIRDWEB
  * @example
  * ```ts
  * import { isUnpublishContractSupported } from "thirdweb/extensions/thirdweb";
  *
- * const supported = await isUnpublishContractSupported(contract);
+ * const supported = isUnpublishContractSupported(["0x..."]);
  * ```
  */
-export async function isUnpublishContractSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isUnpublishContractSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -64,7 +61,7 @@ export async function isUnpublishContractSupported(
  * @extension THIRDWEB
  * @example
  * ```ts
- * import { encodeUnpublishContractParams } "thirdweb/extensions/thirdweb";
+ * import { encodeUnpublishContractParams } from "thirdweb/extensions/thirdweb";
  * const result = encodeUnpublishContractParams({
  *  publisher: ...,
  *  contractId: ...,
@@ -87,7 +84,7 @@ export function encodeUnpublishContractParams(
  * @extension THIRDWEB
  * @example
  * ```ts
- * import { encodeUnpublishContract } "thirdweb/extensions/thirdweb";
+ * import { encodeUnpublishContract } from "thirdweb/extensions/thirdweb";
  * const result = encodeUnpublishContract({
  *  publisher: ...,
  *  contractId: ...,
@@ -110,6 +107,7 @@ export function encodeUnpublishContract(options: UnpublishContractParams) {
  * @extension THIRDWEB
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { unpublishContract } from "thirdweb/extensions/thirdweb";
  *
  * const transaction = unpublishContract({
@@ -122,8 +120,7 @@ export function encodeUnpublishContract(options: UnpublishContractParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function unpublishContract(

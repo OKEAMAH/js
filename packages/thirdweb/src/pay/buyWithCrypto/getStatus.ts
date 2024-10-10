@@ -8,7 +8,10 @@ import { getPayBuyWithCryptoStatusUrl } from "../utils/definitions.js";
 
 // TODO: add JSDoc description for all properties
 
-export type BuyWithCryptoQuoteSummary = {
+/**
+ * @buyCrypto
+ */
+type BuyWithCryptoQuoteSummary = {
   fromToken: PayTokenInfo;
   toToken: PayTokenInfo;
 
@@ -34,22 +37,26 @@ export type BuyWithCryptoQuoteSummary = {
   createdAt: string; // ISO DATE
 };
 
+/**
+ * @buyCrypto
+ */
 export type BuyWithCryptoTransaction = {
   client: ThirdwebClient;
   transactionHash: string;
 };
 
-export type BuyWithCryptoStatuses = "NONE" | "PENDING" | "FAILED" | "COMPLETED";
+type BuyWithCryptoStatuses = "NONE" | "PENDING" | "FAILED" | "COMPLETED";
 
-export type BuyWithCryptoSubStatuses =
+type BuyWithCryptoSubStatuses =
   | "NONE"
   | "WAITING_BRIDGE"
   | "REVERTED_ON_CHAIN"
   | "SUCCESS"
   | "PARTIAL_SUCCESS"
-  | "UNKNOWN_ERROR";
+  | "UNKNOWN_ERROR"
+  | "REFUNDED";
 
-export type SwapType = "SAME_CHAIN" | "CROSS_CHAIN";
+type SwapType = "SAME_CHAIN" | "CROSS_CHAIN" | "TRANSFER";
 
 /**
  * The object returned by the [`getBuyWithCryptoStatus`](https://portal.thirdweb.com/references/typescript/v5/getBuyWithCryptoStatus) function to represent the status of a quoted transaction

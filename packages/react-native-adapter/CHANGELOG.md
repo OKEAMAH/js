@@ -1,5 +1,61 @@
 # @thirdweb-dev/react-native-adapter
 
+## 1.4.4
+
+### Patch Changes
+
+- [#4874](https://github.com/thirdweb-dev/js/pull/4874) [`783d844`](https://github.com/thirdweb-dev/js/commit/783d84467d81db856a1f0b3509036bbc612ba7e5) Thanks [@jnsdls](https://github.com/jnsdls)! - update dependencies
+
+## 1.4.3
+
+### Patch Changes
+
+- [#4789](https://github.com/thirdweb-dev/js/pull/4789) [`e384001`](https://github.com/thirdweb-dev/js/commit/e38400195f2644ef8dfcfbce5fa127a9a218247d) Thanks [@MananTank](https://github.com/MananTank)! - Fix whitespaces in UI components
+
+## 1.4.2
+
+### Patch Changes
+
+- [#4665](https://github.com/thirdweb-dev/js/pull/4665) [`6ce7c83`](https://github.com/thirdweb-dev/js/commit/6ce7c83a3b9eb2374ad2f8163d9c6a68bba4bc42) Thanks [@joaquim-verges](https://github.com/joaquim-verges)! - Update @mobile-wallet-protocol/client to 0.0.3
+
+## 1.4.1
+
+### Patch Changes
+
+- [#4603](https://github.com/thirdweb-dev/js/pull/4603) [`b837b69`](https://github.com/thirdweb-dev/js/commit/b837b690ae27fb8bf45f6cd51820f7591e94dab0) Thanks [@jnsdls](https://github.com/jnsdls)! - bump various dependencies
+
+## 1.4.0
+
+### Minor Changes
+
+- [#4527](https://github.com/thirdweb-dev/js/pull/4527) [`b76a82c`](https://github.com/thirdweb-dev/js/commit/b76a82c30345e06d7b2c203c1e20bf7ec7e0dd9d) Thanks [@joaquim-verges](https://github.com/joaquim-verges)! - Update React Native dependencies and add support for React Native 0.75
+
+## 1.3.0
+
+### Minor Changes
+
+- [#4094](https://github.com/thirdweb-dev/js/pull/4094) [`f1d087e`](https://github.com/thirdweb-dev/js/commit/f1d087e24e8ad74948c0cdfa85d3705319753850) Thanks [@joaquim-verges](https://github.com/joaquim-verges)! - Support for Coinbase Smart Wallet in React Native
+
+  You can now use the Coinbase Smart Wallet in your React Native apps.
+
+  ```ts
+  const wallet = createWallet("com.coinbase.wallet", {
+    appMetadata: {
+      name: "My app name",
+    },
+    mobileConfig: {
+      callbackURL: "https://example.com",
+    },
+    walletConfig: {
+      options: "smartWalletOnly",
+    },
+  });
+
+  await wallet.connect({
+    client,
+  });
+  ```
+
 ## 1.2.0
 
 ### Minor Changes

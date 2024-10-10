@@ -1,4 +1,4 @@
-import type { ServiceName } from "./services";
+import type { ServiceName } from "./services.js";
 
 export type UserOpData = {
   sender: string;
@@ -20,11 +20,6 @@ export type CoreServiceConfig = {
   serviceApiKey: string;
   serviceAction?: string;
   useWalletAuth?: boolean;
-  checkPolicy?: boolean;
-  policyMetadata?: {
-    chainId: number;
-    userOp: UserOpData;
-  };
 };
 
 type Usage = {
@@ -90,15 +85,8 @@ export async function fetchKeyMetadataFromApi(
   clientId: string,
   config: CoreServiceConfig,
 ): Promise<ApiResponse> {
-  const { apiUrl, serviceScope, serviceApiKey, checkPolicy, policyMetadata } =
-    config;
-  const policyQuery =
-    checkPolicy && policyMetadata
-      ? `&checkPolicy=true&policyMetadata=${encodeURIComponent(
-          JSON.stringify(policyMetadata),
-        )}`
-      : "";
-  const url = `${apiUrl}/v1/keys/use?clientId=${clientId}&scope=${serviceScope}&includeUsage=true${policyQuery}`;
+  const { apiUrl, serviceScope, serviceApiKey } = config;
+  const url = `${apiUrl}/v1/keys/use?clientId=${clientId}&scope=${serviceScope}&includeUsage=true`;
   const response = await fetch(url, {
     method: "GET",
     headers: {
@@ -111,7 +99,7 @@ export async function fetchKeyMetadataFromApi(
   try {
     text = await response.text();
     return JSON.parse(text);
-  } catch (e) {
+  } catch {
     throw new Error(
       `Error fetching key metadata from API: ${response.status} - ${text}`,
     );
@@ -140,7 +128,7 @@ export async function fetchAccountFromApi(
   try {
     text = await response.text();
     return JSON.parse(text);
-  } catch (e) {
+  } catch {
     throw new Error(
       `Error fetching account from API: ${response.status} - ${text}`,
     );

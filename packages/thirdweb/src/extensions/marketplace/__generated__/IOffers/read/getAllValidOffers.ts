@@ -4,7 +4,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -77,21 +76,18 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `getAllValidOffers` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `getAllValidOffers` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `getAllValidOffers` method is supported.
  * @extension MARKETPLACE
  * @example
  * ```ts
  * import { isGetAllValidOffersSupported } from "thirdweb/extensions/marketplace";
- *
- * const supported = await isGetAllValidOffersSupported(contract);
+ * const supported = isGetAllValidOffersSupported(["0x..."]);
  * ```
  */
-export async function isGetAllValidOffersSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isGetAllValidOffersSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -103,7 +99,7 @@ export async function isGetAllValidOffersSupported(
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeGetAllValidOffersParams } "thirdweb/extensions/marketplace";
+ * import { encodeGetAllValidOffersParams } from "thirdweb/extensions/marketplace";
  * const result = encodeGetAllValidOffersParams({
  *  startId: ...,
  *  endId: ...,
@@ -123,7 +119,7 @@ export function encodeGetAllValidOffersParams(
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeGetAllValidOffers } "thirdweb/extensions/marketplace";
+ * import { encodeGetAllValidOffers } from "thirdweb/extensions/marketplace";
  * const result = encodeGetAllValidOffers({
  *  startId: ...,
  *  endId: ...,
@@ -147,7 +143,7 @@ export function encodeGetAllValidOffers(options: GetAllValidOffersParams) {
  * @example
  * ```ts
  * import { decodeGetAllValidOffersResult } from "thirdweb/extensions/marketplace";
- * const result = decodeGetAllValidOffersResult("...");
+ * const result = decodeGetAllValidOffersResultResult("...");
  * ```
  */
 export function decodeGetAllValidOffersResult(result: Hex) {

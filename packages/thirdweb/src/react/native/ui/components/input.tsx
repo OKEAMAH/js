@@ -12,13 +12,14 @@ import { radius, spacing } from "../../design-system/index.js";
 import { RIGHT_ARROW } from "../icons/svgs.js";
 import { ThemedSpinner } from "./spinner.js";
 
-export type ThemedInputProps = {
+type ThemedInputProps = {
   theme: Theme;
+  leftView?: React.ReactNode;
   rightView?: React.ReactNode;
 } & TextInputProps;
 
 export function ThemedInput(props: ThemedInputProps) {
-  const { theme, rightView } = props;
+  const { theme, leftView, rightView } = props;
   const [isFocused, setIsFocused] = useState(false);
   return (
     <View
@@ -31,9 +32,14 @@ export function ThemedInput(props: ThemedInputProps) {
         },
       ]}
     >
+      {leftView && leftView}
       <TextInput
         placeholderTextColor={theme.colors.secondaryText}
-        style={[styles.input, { color: theme.colors.primaryText }]}
+        style={[
+          styles.input,
+          { color: theme.colors.primaryText },
+          leftView ? { paddingLeft: 0 } : {},
+        ]}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         {...props}

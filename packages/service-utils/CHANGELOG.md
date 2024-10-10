@@ -1,5 +1,43 @@
 # @thirdweb-dev/service-utils
 
+## 0.4.43
+
+### Patch Changes
+
+- [#4958](https://github.com/thirdweb-dev/js/pull/4958) [`4170c60`](https://github.com/thirdweb-dev/js/commit/4170c60ca6c42863b5e268f73b2fc332f48aebaf) Thanks [@joaquim-verges](https://github.com/joaquim-verges)! - Fix fetchMetadataFromApi export
+
+## 0.4.42
+
+### Patch Changes
+
+- [#4955](https://github.com/thirdweb-dev/js/pull/4955) [`eff129a`](https://github.com/thirdweb-dev/js/commit/eff129ab9aa990378bae88e28b045c3333c77996) Thanks [@joaquim-verges](https://github.com/joaquim-verges)! - Export fetchKeyMetadataFromApi, remove checkPolicy options
+
+## 0.4.41
+
+### Patch Changes
+
+- [#4946](https://github.com/thirdweb-dev/js/pull/4946) [`7b7226f`](https://github.com/thirdweb-dev/js/commit/7b7226f9c6668834a66dec839b049905716626c9) Thanks [@joaquim-verges](https://github.com/joaquim-verges)! - Export types
+
+## 0.4.40
+
+### Patch Changes
+
+- [#4789](https://github.com/thirdweb-dev/js/pull/4789) [`e384001`](https://github.com/thirdweb-dev/js/commit/e38400195f2644ef8dfcfbce5fa127a9a218247d) Thanks [@MananTank](https://github.com/MananTank)! - Fix whitespaces in UI components
+
+## 0.4.39
+
+### Patch Changes
+
+- [#4760](https://github.com/thirdweb-dev/js/pull/4760) [`57a0e27`](https://github.com/thirdweb-dev/js/commit/57a0e271b3f84348c79e99e4e15b239a1a2fce0d) Thanks [@arcoraven](https://github.com/arcoraven)! - fix: Return 402 status if payment required
+
+## 0.4.38
+
+### Patch Changes
+
+- [#4147](https://github.com/thirdweb-dev/js/pull/4147) [`997c394`](https://github.com/thirdweb-dev/js/commit/997c3945a7673517fb28273a9985f70ff892b365) Thanks [@iuwqyir](https://github.com/iuwqyir)! - exported usageEventSchema for cf worker and also UsageEvent for node
+
+- [#4146](https://github.com/thirdweb-dev/js/pull/4146) [`214a74c`](https://github.com/thirdweb-dev/js/commit/214a74c36aefee1db47eddd459943241c4e3740e) Thanks [@ElasticBottle](https://github.com/ElasticBottle)! - add `authenticationMethod` to usageTracker types
+
 ## 0.4.37
 
 ### Patch Changes

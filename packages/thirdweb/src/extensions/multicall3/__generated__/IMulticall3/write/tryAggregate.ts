@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -14,81 +13,72 @@ import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
  */
 export type TryAggregateParams = WithOverrides<{
   requireSuccess: AbiParameterToPrimitiveType<{
-    internalType: "bool";
-    name: "requireSuccess";
     type: "bool";
+    name: "requireSuccess";
   }>;
   calls: AbiParameterToPrimitiveType<{
-    components: [
-      { internalType: "address"; name: "target"; type: "address" },
-      { internalType: "bytes"; name: "callData"; type: "bytes" },
-    ];
-    internalType: "struct Multicall3.Call[]";
-    name: "calls";
     type: "tuple[]";
+    name: "calls";
+    components: [
+      { type: "address"; name: "target" },
+      { type: "bytes"; name: "callData" },
+    ];
   }>;
 }>;
 
 export const FN_SELECTOR = "0xbce38bd7" as const;
 const FN_INPUTS = [
   {
-    internalType: "bool",
-    name: "requireSuccess",
     type: "bool",
+    name: "requireSuccess",
   },
   {
+    type: "tuple[]",
+    name: "calls",
     components: [
       {
-        internalType: "address",
-        name: "target",
         type: "address",
+        name: "target",
       },
       {
-        internalType: "bytes",
-        name: "callData",
         type: "bytes",
+        name: "callData",
       },
     ],
-    internalType: "struct Multicall3.Call[]",
-    name: "calls",
-    type: "tuple[]",
   },
 ] as const;
 const FN_OUTPUTS = [
   {
+    type: "tuple[]",
+    name: "returnData",
     components: [
       {
-        internalType: "bool",
-        name: "success",
         type: "bool",
+        name: "success",
       },
       {
-        internalType: "bytes",
-        name: "returnData",
         type: "bytes",
+        name: "returnData",
       },
     ],
-    internalType: "struct Multicall3.Result[]",
-    name: "returnData",
-    type: "tuple[]",
   },
 ] as const;
 
 /**
  * Checks if the `tryAggregate` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `tryAggregate` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `tryAggregate` method is supported.
  * @extension MULTICALL3
  * @example
  * ```ts
  * import { isTryAggregateSupported } from "thirdweb/extensions/multicall3";
  *
- * const supported = await isTryAggregateSupported(contract);
+ * const supported = isTryAggregateSupported(["0x..."]);
  * ```
  */
-export async function isTryAggregateSupported(contract: ThirdwebContract<any>) {
+export function isTryAggregateSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -100,7 +90,7 @@ export async function isTryAggregateSupported(contract: ThirdwebContract<any>) {
  * @extension MULTICALL3
  * @example
  * ```ts
- * import { encodeTryAggregateParams } "thirdweb/extensions/multicall3";
+ * import { encodeTryAggregateParams } from "thirdweb/extensions/multicall3";
  * const result = encodeTryAggregateParams({
  *  requireSuccess: ...,
  *  calls: ...,
@@ -121,7 +111,7 @@ export function encodeTryAggregateParams(options: TryAggregateParams) {
  * @extension MULTICALL3
  * @example
  * ```ts
- * import { encodeTryAggregate } "thirdweb/extensions/multicall3";
+ * import { encodeTryAggregate } from "thirdweb/extensions/multicall3";
  * const result = encodeTryAggregate({
  *  requireSuccess: ...,
  *  calls: ...,
@@ -144,6 +134,7 @@ export function encodeTryAggregate(options: TryAggregateParams) {
  * @extension MULTICALL3
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { tryAggregate } from "thirdweb/extensions/multicall3";
  *
  * const transaction = tryAggregate({
@@ -156,8 +147,7 @@ export function encodeTryAggregate(options: TryAggregateParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function tryAggregate(

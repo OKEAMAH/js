@@ -7,6 +7,7 @@ import { encode } from "../../transaction/actions/encode.js";
 import { sendAndConfirmTransaction } from "../../transaction/actions/send-and-confirm-transaction.js";
 import type { PreparedTransaction } from "../../transaction/prepare-transaction.js";
 import { keccakId } from "../../utils/any-evm/keccak-id.js";
+import { isZkSyncChain } from "../../utils/any-evm/zksync/isZkSyncChain.js";
 import { toHex } from "../../utils/encoding/hex.js";
 import { resolvePromisedValue } from "../../utils/promise/resolve-promised-value.js";
 import type {
@@ -14,6 +15,7 @@ import type {
   ClientAndChainAndAccount,
 } from "../../utils/types.js";
 import type { ThirdwebContract } from "../contract.js";
+import { zkDeployProxy } from "./zksync/zkDeployProxy.js";
 
 /**
  * @internal
@@ -68,12 +70,26 @@ export async function deployViaAutoFactory(
     account,
     cloneFactoryContract,
     initializeTransaction,
+    salt,
   } = options;
+
+  if (await isZkSyncChain(chain)) {
+    return zkDeployProxy({
+      chain,
+      client,
+      account,
+      cloneFactoryContract,
+      initializeTransaction,
+      salt,
+    });
+  }
+
   const tx = prepareAutoFactoryDeployTransaction({
     chain,
     client,
     cloneFactoryContract,
     initializeTransaction,
+    salt,
   });
   const receipt = await sendAndConfirmTransaction({
     transaction: tx,

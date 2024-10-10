@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { TEST_CONTRACT_URI } from "~test/ipfs-uris.js";
 import { ANVIL_CHAIN } from "../../../test/src/chains.js";
 import { TEST_CLIENT } from "../../../test/src/test-clients.js";
 import {
@@ -10,7 +11,7 @@ import { sendAndConfirmTransaction } from "../../transaction/actions/send-and-co
 import { deployERC20Contract } from "../prebuilts/deploy-erc20.js";
 import { getAllRoleMembers } from "./read/getAllMembers.js";
 import { hasRole } from "./read/hasRole.js";
-import { grantRole } from "./write/grant.js";
+import { grantRole } from "./write/grantRole.js";
 import { revokeRole } from "./write/revokeRole.js";
 
 describe.runIf(process.env.TW_SECRET_KEY)("Permissions", () => {
@@ -22,6 +23,7 @@ describe.runIf(process.env.TW_SECRET_KEY)("Permissions", () => {
       client: TEST_CLIENT,
       params: {
         name: "PermissionsErc20",
+        contractURI: TEST_CONTRACT_URI,
       },
       type: "TokenERC20",
     });
@@ -196,6 +198,7 @@ describe.runIf(process.env.TW_SECRET_KEY)("PermissionsEnumerable", () => {
       client: TEST_CLIENT,
       params: {
         name: "PermissionsErc20",
+        contractURI: TEST_CONTRACT_URI,
       },
       type: "TokenERC20",
     });

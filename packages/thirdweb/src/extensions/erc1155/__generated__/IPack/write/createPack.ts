@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -100,19 +99,19 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `createPack` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `createPack` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `createPack` method is supported.
  * @extension ERC1155
  * @example
  * ```ts
  * import { isCreatePackSupported } from "thirdweb/extensions/erc1155";
  *
- * const supported = await isCreatePackSupported(contract);
+ * const supported = isCreatePackSupported(["0x..."]);
  * ```
  */
-export async function isCreatePackSupported(contract: ThirdwebContract<any>) {
+export function isCreatePackSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -124,7 +123,7 @@ export async function isCreatePackSupported(contract: ThirdwebContract<any>) {
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeCreatePackParams } "thirdweb/extensions/erc1155";
+ * import { encodeCreatePackParams } from "thirdweb/extensions/erc1155";
  * const result = encodeCreatePackParams({
  *  contents: ...,
  *  numOfRewardUnits: ...,
@@ -153,7 +152,7 @@ export function encodeCreatePackParams(options: CreatePackParams) {
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeCreatePack } "thirdweb/extensions/erc1155";
+ * import { encodeCreatePack } from "thirdweb/extensions/erc1155";
  * const result = encodeCreatePack({
  *  contents: ...,
  *  numOfRewardUnits: ...,
@@ -180,6 +179,7 @@ export function encodeCreatePack(options: CreatePackParams) {
  * @extension ERC1155
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { createPack } from "thirdweb/extensions/erc1155";
  *
  * const transaction = createPack({
@@ -196,8 +196,7 @@ export function encodeCreatePack(options: CreatePackParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function createPack(

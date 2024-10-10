@@ -1,9 +1,11 @@
+import { getThirdwebClient } from "@/constants/thirdweb.server";
 import type { FrameRequest } from "@coinbase/onchainkit";
 import { CoinbaseKit } from "classes/CoinbaseKit";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { getContract } from "thirdweb";
+import { base } from "thirdweb/chains";
 import { errorResponse } from "utils/api";
 import {
-  getContractForErc721OpenEdition,
   getErc721PreparedEncodedData,
   getFarcasterAccountAddress,
 } from "utils/tx-frame";
@@ -34,11 +36,15 @@ export default async function handler(
   // Get the first verified account address or custody address
   const accountAddress = getFarcasterAccountAddress(message.interactor);
 
-  // Get the contract instnace
-  const contract = await getContractForErc721OpenEdition(contractAddress);
-
   // Get encoded data
-  const data = await getErc721PreparedEncodedData(accountAddress, contract);
+  const data = await getErc721PreparedEncodedData(
+    accountAddress,
+    getContract({
+      chain: base,
+      address: contractAddress,
+      client: getThirdwebClient(),
+    }),
+  );
 
   // Return transaction details response to farcaster
   return res.status(200).json({

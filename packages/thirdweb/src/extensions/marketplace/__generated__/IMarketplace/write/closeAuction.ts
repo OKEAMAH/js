@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -35,19 +34,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `closeAuction` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `closeAuction` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `closeAuction` method is supported.
  * @extension MARKETPLACE
  * @example
  * ```ts
  * import { isCloseAuctionSupported } from "thirdweb/extensions/marketplace";
  *
- * const supported = await isCloseAuctionSupported(contract);
+ * const supported = isCloseAuctionSupported(["0x..."]);
  * ```
  */
-export async function isCloseAuctionSupported(contract: ThirdwebContract<any>) {
+export function isCloseAuctionSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -59,7 +58,7 @@ export async function isCloseAuctionSupported(contract: ThirdwebContract<any>) {
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeCloseAuctionParams } "thirdweb/extensions/marketplace";
+ * import { encodeCloseAuctionParams } from "thirdweb/extensions/marketplace";
  * const result = encodeCloseAuctionParams({
  *  listingId: ...,
  *  closeFor: ...,
@@ -77,7 +76,7 @@ export function encodeCloseAuctionParams(options: CloseAuctionParams) {
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeCloseAuction } "thirdweb/extensions/marketplace";
+ * import { encodeCloseAuction } from "thirdweb/extensions/marketplace";
  * const result = encodeCloseAuction({
  *  listingId: ...,
  *  closeFor: ...,
@@ -100,6 +99,7 @@ export function encodeCloseAuction(options: CloseAuctionParams) {
  * @extension MARKETPLACE
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { closeAuction } from "thirdweb/extensions/marketplace";
  *
  * const transaction = closeAuction({
@@ -112,8 +112,7 @@ export function encodeCloseAuction(options: CloseAuctionParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function closeAuction(

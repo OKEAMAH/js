@@ -1,67 +1,45 @@
 import { Flex, useBreakpointValue } from "@chakra-ui/react";
-import { SupplyCards } from "contract-ui/tabs/nfts/components/supply-cards";
-import { useTabHref } from "contract-ui/utils";
-import { thirdwebClient } from "lib/thirdweb-client";
-import { useV5DashboardChain } from "lib/v5-adapter";
-import { useMemo } from "react";
-import { getContract } from "thirdweb";
-import { getNFTs } from "thirdweb/extensions/erc721";
+import type { ThirdwebContract } from "thirdweb";
+import * as ERC721 from "thirdweb/extensions/erc721";
+import * as ERC1155 from "thirdweb/extensions/erc1155";
 import { useReadContract } from "thirdweb/react";
-import { Heading, TrackedLink, type TrackedLinkProps } from "tw-components";
+import { TrackedLink, type TrackedLinkProps } from "tw-components";
 import { NFTCards } from "./NFTCards";
 
 interface NFTDetailsProps {
-  contractAddress: string;
-  chainId: number;
+  contract: ThirdwebContract;
   trackingCategory: TrackedLinkProps["category"];
-  features: string[];
+  isErc721: boolean;
+  chainSlug: string;
 }
 
 export const NFTDetails: React.FC<NFTDetailsProps> = ({
-  contractAddress,
-  chainId,
+  contract,
   trackingCategory,
-  features,
+  isErc721,
+  chainSlug,
 }) => {
   const isMobile = useBreakpointValue({ base: true, md: false });
-  const nftsHref = useTabHref("nfts");
-  const chain = useV5DashboardChain(chainId);
+  const nftsHref = `/${chainSlug}/${contract.address}/nfts`;
 
-  const contract = useMemo(
-    () =>
-      getContract({
-        client: thirdwebClient,
-        address: contractAddress,
-        chain,
-      }),
-    [contractAddress, chain],
+  const nftQuery = useReadContract(
+    isErc721 ? ERC721.getNFTs : ERC1155.getNFTs,
+    {
+      contract,
+      count: 5,
+      includeOwners: false,
+    },
   );
-
-  const nftQuery = useReadContract(getNFTs, {
-    contract,
-    count: 5,
-    includeOwners: true,
-  });
 
   const displayableNFTs =
     nftQuery.data
       ?.filter((token) => token.metadata.image || token.metadata.animation_url)
       .slice(0, isMobile ? 2 : 3) || [];
 
-  const showSupplyCards = [
-    "ERC721ClaimPhasesV1",
-    "ERC721ClaimPhasesV2",
-    "ERC721ClaimConditionsV1",
-    "ERC721ClaimConditionsV2",
-    "ERC721ClaimCustom",
-  ].some((type) => features.includes(type));
-
-  return displayableNFTs.length === 0 &&
-    !showSupplyCards &&
-    !nftQuery.isLoading ? null : (
+  return displayableNFTs.length === 0 && !nftQuery.isPending ? null : (
     <Flex direction="column" gap={{ base: 3, md: 6 }}>
       <Flex align="center" justify="space-between" w="full">
-        <Heading size="title.sm">NFT Details</Heading>
+        <h2 className="font-semibold text-2xl tracking-tight">NFT Details</h2>
         <TrackedLink
           category={trackingCategory}
           label="view_all_nfts"
@@ -75,12 +53,14 @@ export const NFTDetails: React.FC<NFTDetailsProps> = ({
           View all -&gt;
         </TrackedLink>
       </Flex>
-      {showSupplyCards && contract && <SupplyCards contract={contract} />}
       <NFTCards
-        contractAddress={contractAddress}
-        nfts={displayableNFTs}
+        nfts={displayableNFTs.map((t) => ({
+          ...t,
+          contractAddress: contract.address,
+          chainId: contract.chain.id,
+        }))}
         trackingCategory={trackingCategory}
-        isLoading={nftQuery.isLoading}
+        isPending={nftQuery.isPending}
       />
     </Flex>
   );

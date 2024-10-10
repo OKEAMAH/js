@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -32,21 +31,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `setApprovalForAll` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `setApprovalForAll` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `setApprovalForAll` method is supported.
  * @extension ERC1155
  * @example
  * ```ts
  * import { isSetApprovalForAllSupported } from "thirdweb/extensions/erc1155";
  *
- * const supported = await isSetApprovalForAllSupported(contract);
+ * const supported = isSetApprovalForAllSupported(["0x..."]);
  * ```
  */
-export async function isSetApprovalForAllSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isSetApprovalForAllSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -58,7 +55,7 @@ export async function isSetApprovalForAllSupported(
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeSetApprovalForAllParams } "thirdweb/extensions/erc1155";
+ * import { encodeSetApprovalForAllParams } from "thirdweb/extensions/erc1155";
  * const result = encodeSetApprovalForAllParams({
  *  operator: ...,
  *  approved: ...,
@@ -78,7 +75,7 @@ export function encodeSetApprovalForAllParams(
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeSetApprovalForAll } "thirdweb/extensions/erc1155";
+ * import { encodeSetApprovalForAll } from "thirdweb/extensions/erc1155";
  * const result = encodeSetApprovalForAll({
  *  operator: ...,
  *  approved: ...,
@@ -101,6 +98,7 @@ export function encodeSetApprovalForAll(options: SetApprovalForAllParams) {
  * @extension ERC1155
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { setApprovalForAll } from "thirdweb/extensions/erc1155";
  *
  * const transaction = setApprovalForAll({
@@ -113,8 +111,7 @@ export function encodeSetApprovalForAll(options: SetApprovalForAllParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function setApprovalForAll(

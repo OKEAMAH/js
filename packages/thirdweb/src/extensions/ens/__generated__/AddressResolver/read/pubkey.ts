@@ -4,7 +4,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -34,19 +33,18 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `pubkey` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `pubkey` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `pubkey` method is supported.
  * @extension ENS
  * @example
  * ```ts
  * import { isPubkeySupported } from "thirdweb/extensions/ens";
- *
- * const supported = await isPubkeySupported(contract);
+ * const supported = isPubkeySupported(["0x..."]);
  * ```
  */
-export async function isPubkeySupported(contract: ThirdwebContract<any>) {
+export function isPubkeySupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -58,7 +56,7 @@ export async function isPubkeySupported(contract: ThirdwebContract<any>) {
  * @extension ENS
  * @example
  * ```ts
- * import { encodePubkeyParams } "thirdweb/extensions/ens";
+ * import { encodePubkeyParams } from "thirdweb/extensions/ens";
  * const result = encodePubkeyParams({
  *  name: ...,
  * });
@@ -75,7 +73,7 @@ export function encodePubkeyParams(options: PubkeyParams) {
  * @extension ENS
  * @example
  * ```ts
- * import { encodePubkey } "thirdweb/extensions/ens";
+ * import { encodePubkey } from "thirdweb/extensions/ens";
  * const result = encodePubkey({
  *  name: ...,
  * });
@@ -96,7 +94,7 @@ export function encodePubkey(options: PubkeyParams) {
  * @example
  * ```ts
  * import { decodePubkeyResult } from "thirdweb/extensions/ens";
- * const result = decodePubkeyResult("...");
+ * const result = decodePubkeyResultResult("...");
  * ```
  */
 export function decodePubkeyResult(result: Hex) {

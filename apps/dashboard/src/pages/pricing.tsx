@@ -1,25 +1,29 @@
+import { Button } from "@/components/ui/button";
 import {
-  Box,
   Container,
   Flex,
   GridItem,
-  Icon,
   SimpleGrid,
   Tooltip,
   useBreakpointValue,
 } from "@chakra-ui/react";
-import { EngineTierCard } from "components/engine/tier-card";
+import { EngineTierCard } from "components/engine/create/tier-card";
 import { PricingSection } from "components/homepage/sections/PricingSection";
 import { LandingFAQ } from "components/landing-pages/faq";
 import { LandingLayout } from "components/landing-pages/layout";
 import { useTrack } from "hooks/analytics/useTrack";
 import { getAbsoluteUrl } from "lib/vercel-utils";
+import {
+  ArrowRightIcon,
+  ChevronRight,
+  CircleCheckIcon,
+  CircleDollarSignIcon,
+  InfoIcon,
+  MoveUpRightIcon,
+} from "lucide-react";
+import NextLink from "next/link";
 import { useRouter } from "next/router";
 import { PageId } from "page-id";
-import { AiOutlineDollarCircle } from "react-icons/ai";
-import { FiExternalLink } from "react-icons/fi";
-import { IoIosInformationCircleOutline } from "react-icons/io";
-import { IoCheckmarkCircle } from "react-icons/io5";
 import {
   Card,
   Heading,
@@ -28,8 +32,9 @@ import {
   TrackedIconButton,
   TrackedLink,
 } from "tw-components";
-import { FAQ_GENERAL, FAQ_PRICING, PRICING_SECTIONS } from "utils/pricing";
-import type { ThirdwebNextPage } from "utils/types";
+import { EcosystemWalletPricingCard } from "../app/(dashboard)/dashboard/connect/ecosystem/create/components/pricing-card";
+import { FAQ_GENERAL, FAQ_PRICING, PRICING_SECTIONS } from "../utils/pricing";
+import type { ThirdwebNextPage } from "../utils/types";
 
 const TRACKING_CATEGORY = "pricing-page";
 
@@ -130,46 +135,39 @@ const Pricing: ThirdwebNextPage = () => {
                                 trackingProps={{
                                   title: item.title,
                                 }}
-                                icon={<Icon as={FiExternalLink} />}
+                                icon={<MoveUpRightIcon className="size-5" />}
                                 variant="ghost"
                                 aria-label="Learn More"
                               >
                                 Learn More
                               </TrackedIconButton>
                             )}
-                            {item?.hint && (
-                              <>
-                                {isMobile ? (
-                                  <Text color="gray.700">{item.hint}</Text>
-                                ) : (
-                                  <Tooltip
-                                    label={
-                                      <Card
-                                        py={2}
-                                        px={4}
-                                        bgColor="backgroundHighlight"
-                                        borderRadius="lg"
-                                      >
-                                        <Text size="label.sm" lineHeight={1.5}>
-                                          {item.hint}
-                                        </Text>
-                                      </Card>
-                                    }
-                                    p={0}
-                                    bg="transparent"
-                                    boxShadow="none"
-                                  >
-                                    <Box pt={0.5}>
-                                      <Icon
-                                        as={IoIosInformationCircleOutline}
-                                        boxSize={4}
-                                        color="blue.500"
-                                      />
-                                    </Box>
-                                  </Tooltip>
-                                )}
-                              </>
-                            )}
+                            {item?.hint &&
+                              (isMobile ? (
+                                <Text className="text-muted-foreground">
+                                  {item.hint}
+                                </Text>
+                              ) : (
+                                <Tooltip
+                                  label={
+                                    <Card
+                                      py={2}
+                                      px={4}
+                                      bgColor="backgroundHighlight"
+                                      borderRadius="lg"
+                                    >
+                                      <Text size="label.sm" lineHeight={1.5}>
+                                        {item.hint}
+                                      </Text>
+                                    </Card>
+                                  }
+                                  p={0}
+                                  bg="transparent"
+                                  boxShadow="none"
+                                >
+                                  <InfoIcon className="size-5 text-blue-500" />
+                                </Tooltip>
+                              ))}
                           </Flex>
                         </Card>
                       </Flex>
@@ -204,7 +202,7 @@ const Pricing: ThirdwebNextPage = () => {
           ))}
         </Flex>
 
-        <Flex gap={4} flexDir="column" alignItems="center">
+        <Flex gap={{ base: 4, lg: 6 }} flexDir="column" alignItems="center">
           <Heading as="h2" size="title.xl" color="white">
             Add-ons
           </Heading>
@@ -214,6 +212,8 @@ const Pricing: ThirdwebNextPage = () => {
             </Heading>
             <EnginePricing isMobile={isMobile} />
           </Flex>
+
+          <EcosystemPricing />
         </Flex>
 
         <Flex gap={4} flexDir="column" alignItems="center">
@@ -254,7 +254,7 @@ const Item = ({
       textAlign={{ base: "right", lg: "center" }}
     >
       {titleStr === "checkmark" ? (
-        <Icon as={IoCheckmarkCircle} boxSize={4} color="blue.500" />
+        <CircleCheckIcon className="inline-block size-5 fill-blue-500 align-middle text-black" />
       ) : (
         titleStr
       )}
@@ -291,7 +291,7 @@ const Item = ({
           >
             {titleEl}
             {isMobile ? (
-              <Text color="gray.700" minW="max-content">
+              <Text className="text-muted-foreground" minW="max-content">
                 {title[1]}
               </Text>
             ) : (
@@ -312,13 +312,7 @@ const Item = ({
                 bg="transparent"
                 boxShadow="none"
               >
-                <Box pt={1}>
-                  <Icon
-                    as={AiOutlineDollarCircle}
-                    boxSize={4}
-                    color="blue.500"
-                  />
-                </Box>
+                <CircleDollarSignIcon className="size-5 text-blue-400" />
               </Tooltip>
             )}
           </Flex>
@@ -394,6 +388,49 @@ const EnginePricing = ({ isMobile }: { isMobile: boolean }) => {
         />
       </SimpleGrid>
     </Flex>
+  );
+};
+
+const EcosystemPricing = () => {
+  return (
+    <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <h3 className="order-1 col-span-1 row-start-1 flex font-medium text-3xl lg:col-span-2 lg:hidden">
+        Ecosystem Wallets
+      </h3>
+      <div className="order-3 col-span-1 flex flex-col gap-4 lg:order-2 lg:col-span-2">
+        <h3 className="col-span-1 row-start-1 hidden font-medium text-3xl lg:col-span-2 lg:flex">
+          Ecosystem Wallets
+        </h3>
+        <p>
+          Your own managed in-app wallet service that allows you to create a
+          branded wallet and login system, and allow any number of partners to
+          spin up in-app wallets.
+        </p>
+        <p>
+          Ecosystem Wallets start at $250/mo per instance. Instances allow for
+          up to 30,000 monthly active in-app wallets and $0.02 per additional
+          monthly active in-app wallet.
+        </p>
+        <div className="flex flex-row gap-4">
+          <Button size="lg" asChild className="gap-2">
+            <NextLink href="/dashboard/connect/ecosystem/create">
+              <span>Get Started</span>
+              <ChevronRight className="size-4" />
+            </NextLink>
+          </Button>
+          <Button size="lg" variant="outline" className="gap-2" asChild>
+            <NextLink
+              href="https://portal.thirdweb.com/connect/ecosystems/overview"
+              target="_blank"
+            >
+              <span>Learn More</span>
+              <ArrowRightIcon className="-rotate-45 size-4 opacity-50" />
+            </NextLink>
+          </Button>
+        </div>
+      </div>
+      <EcosystemWalletPricingCard className="order-2 col-span-1 lg:order-3" />
+    </div>
   );
 };
 

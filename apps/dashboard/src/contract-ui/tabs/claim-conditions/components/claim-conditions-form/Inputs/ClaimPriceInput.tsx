@@ -1,6 +1,6 @@
 import { Box, Flex } from "@chakra-ui/react";
-import { NATIVE_TOKEN_ADDRESS } from "@thirdweb-dev/sdk";
 import { CurrencySelector } from "components/shared/CurrencySelector";
+import { NATIVE_TOKEN_ADDRESS } from "thirdweb";
 import { useClaimConditionsFormContext } from "..";
 import { PriceInput } from "../../price-input";
 import { CustomFormControl } from "../common";
@@ -8,7 +8,9 @@ import { CustomFormControl } from "../common";
 /**
  * Allows the user to select how much they want to charge to claim each NFT
  */
-export const ClaimPriceInput = () => {
+export const ClaimPriceInput = (props: {
+  contractChainId: number;
+}) => {
   const {
     formDisabled,
     isErc20,
@@ -17,10 +19,9 @@ export const ClaimPriceInput = () => {
     field,
     isColumn,
     claimConditionType,
-    isClaimPhaseV1,
   } = useClaimConditionsFormContext();
 
-  if (!isClaimPhaseV1 && claimConditionType === "creator") {
+  if (claimConditionType === "creator") {
     return null;
   }
 
@@ -44,6 +45,7 @@ export const ClaimPriceInput = () => {
         </Box>
         <Box w={{ base: "100%", md: isColumn ? "50%" : "100%" }}>
           <CurrencySelector
+            contractChainId={props.contractChainId}
             isDisabled={formDisabled}
             value={field?.currencyAddress || NATIVE_TOKEN_ADDRESS}
             onChange={(e) =>

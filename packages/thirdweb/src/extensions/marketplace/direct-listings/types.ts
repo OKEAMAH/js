@@ -3,6 +3,9 @@ import type { NFT } from "../../../utils/nft/parseNft.js";
 import type { GetBalanceResult } from "../../erc20/read/getBalance.js";
 import type { ListingStatus } from "../types.js";
 
+/**
+ * @extension MARKETPLACE
+ */
 export type DirectListing = {
   id: bigint;
   creatorAddress: Address;
@@ -17,4 +20,5 @@ export type DirectListing = {
   endTimeInSeconds: bigint;
   isReservedListing: boolean;
   status: ListingStatus;
+  type: "direct-listing";
 };

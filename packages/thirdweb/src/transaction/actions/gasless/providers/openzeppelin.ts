@@ -8,6 +8,9 @@ import type { PreparedTransaction } from "../../../prepare-transaction.js";
 import { readContract } from "../../../read-contract.js";
 import type { WaitForReceiptOptions } from "../../wait-for-tx-receipt.js";
 
+/**
+ * @transaction
+ */
 export type OpenZeppelinOptions = {
   provider: "openzeppelin";
   relayerUrl: string;
@@ -115,7 +118,7 @@ export async function prepareOpenZeppelinTransaction({
   return { message, signature, messageType } as const;
 }
 
-export const ForwardRequest = [
+const ForwardRequest = [
   { name: "from", type: "address" },
   { name: "to", type: "address" },
   { name: "value", type: "uint256" },
@@ -124,7 +127,7 @@ export const ForwardRequest = [
   { name: "data", type: "bytes" },
 ] as const;
 
-export const ChainAwareForwardRequest = [
+const ChainAwareForwardRequest = [
   { name: "from", type: "address" },
   { name: "to", type: "address" },
   { name: "value", type: "uint256" },

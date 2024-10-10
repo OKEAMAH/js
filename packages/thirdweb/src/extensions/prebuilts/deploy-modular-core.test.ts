@@ -1,15 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { ANVIL_CHAIN } from "../../../test/src/chains.js";
 import { TEST_CLIENT } from "../../../test/src/test-clients.js";
 import { TEST_ACCOUNT_A } from "../../../test/src/test-wallets.js";
 import { ZERO_ADDRESS } from "../../constants/addresses.js";
 import { getContract } from "../../contract/contract.js";
+import { fetchPublishedContractMetadata } from "../../contract/deployment/publisher.js";
 import { sendAndConfirmTransaction } from "../../transaction/actions/send-and-confirm-transaction.js";
-import { installPublishedExtension } from "../modular/ModularCore/write/installPublishedExtension.js";
-import { uninstallExtensionByProxy } from "../modular/ModularCore/write/uninstallExtensionByProxy.js";
-import { uninstallPublishedExtension } from "../modular/ModularCore/write/uninstallPublishedExtension.js";
-import { getInstalledExtensions } from "../modular/__generated__/ModularCore/read/getInstalledExtensions.js";
-import { deployPublishedContract } from "./deploy-published.js";
+import * as ERC20Claimable from "../modules/ClaimableERC20/index.js";
+import { getInstalledModules } from "../modules/__generated__/IModularCore/read/getInstalledModules.js";
+import { installPublishedModule } from "../modules/common/installPublishedModule.js";
+import { uninstallModuleByProxy } from "../modules/common/uninstallModuleByProxy.js";
+import { uninstallPublishedModule } from "../modules/common/uninstallPublishedModule.js";
+import { deployModularContract } from "./deploy-modular.js";
+import {
+  deployContractfromDeployMetadata,
+  deployPublishedContract,
+} from "./deploy-published.js";
 
 describe.runIf(process.env.TW_SECRET_KEY)(
   "deployModularCore",
@@ -17,142 +23,204 @@ describe.runIf(process.env.TW_SECRET_KEY)(
     timeout: 120000,
   },
   () => {
-    it("should deploy a published autofactory modular core contract", async () => {
-      const address = await deployPublishedContract({
+    let address: string;
+
+    beforeAll(async () => {
+      address = await deployPublishedContract({
         client: TEST_CLIENT,
         chain: ANVIL_CHAIN,
         account: TEST_ACCOUNT_A,
         contractId: "DemoCore",
-        contractParams: [TEST_ACCOUNT_A.address, [], ["0x"]],
+        contractParams: {
+          _owner: TEST_ACCOUNT_A.address,
+        },
         publisher: "0xFD78F7E2dF2B8c3D5bff0413c96f3237500898B3",
       });
+    }, 120000);
+
+    it("should deploy a published autofactory modular core contract", async () => {
       expect(address).toBeDefined();
       expect(address.length).toBe(42);
 
-      const installedExtensions = await getInstalledExtensions({
+      const installedModules = await getInstalledModules({
         contract: getContract({
           client: TEST_CLIENT,
           chain: ANVIL_CHAIN,
           address,
         }),
       });
-      expect(installedExtensions.length).toBe(0);
+      expect(installedModules.length).toBe(0);
     });
 
-    it("should install and uninstall an extension by proxy address", async () => {
-      // deploy core contract with extension
-      const address = await deployPublishedContract({
-        client: TEST_CLIENT,
-        chain: ANVIL_CHAIN,
-        account: TEST_ACCOUNT_A,
-        contractId: "DemoCore",
-        contractParams: [TEST_ACCOUNT_A.address, [], ["0x"]],
-        publisher: "0xFD78F7E2dF2B8c3D5bff0413c96f3237500898B3",
-      });
-
+    it("should install and uninstall an module by proxy address", async () => {
       const core = getContract({
         client: TEST_CLIENT,
         chain: ANVIL_CHAIN,
         address,
       });
 
-      // install extension with published name
-      const installTransaction = installPublishedExtension({
+      // install module with published name
+      const installTransaction = installPublishedModule({
         contract: core,
-        chain: ANVIL_CHAIN,
-        client: TEST_CLIENT,
         account: TEST_ACCOUNT_A,
-        extensionName: "DemoExtensionWithFunctions",
-        publisherAddress: "0xFD78F7E2dF2B8c3D5bff0413c96f3237500898B3",
+        moduleName: "DemoModuleWithFunctions",
+        publisher: "0xFD78F7E2dF2B8c3D5bff0413c96f3237500898B3",
       });
       await sendAndConfirmTransaction({
         transaction: installTransaction,
         account: TEST_ACCOUNT_A,
       });
 
-      // get installed extension proxy address
-      let installedExtensions = await getInstalledExtensions({
+      // get installed module proxy address
+      let installedModules = await getInstalledModules({
         contract: core,
       });
-      const extensionAddress = installedExtensions[0]?.implementation;
-      expect(extensionAddress).to.not.equal(ZERO_ADDRESS);
+      const moduleAddress = installedModules[0]?.implementation;
+      expect(moduleAddress).to.not.equal(ZERO_ADDRESS);
 
-      // uninstall extension
-      const uninstallTransaction = uninstallExtensionByProxy({
+      // uninstall module
+      const uninstallTransaction = uninstallModuleByProxy({
         contract: core,
         chain: ANVIL_CHAIN,
         client: TEST_CLIENT,
-        extensionProxyAddress: extensionAddress as string,
-        extensionData: "0x",
+        moduleProxyAddress: moduleAddress as string,
+        moduleData: "0x",
       });
       await sendAndConfirmTransaction({
         transaction: uninstallTransaction,
         account: TEST_ACCOUNT_A,
       });
 
-      installedExtensions = await getInstalledExtensions({
+      installedModules = await getInstalledModules({
         contract: core,
       });
 
-      expect(installedExtensions.length).toBe(0);
+      expect(installedModules.length).toBe(0);
     });
 
-    it("should install and uninstall extensions by publish name", async () => {
-      // deploy core contract with extension
-      const address = await deployPublishedContract({
-        client: TEST_CLIENT,
-        chain: ANVIL_CHAIN,
-        account: TEST_ACCOUNT_A,
-        contractId: "DemoCore",
-        contractParams: [TEST_ACCOUNT_A.address, [], ["0x"]],
-        publisher: "0xFD78F7E2dF2B8c3D5bff0413c96f3237500898B3",
-      });
-
+    it("should install and uninstall modules by publish name", async () => {
       const core = getContract({
         client: TEST_CLIENT,
         chain: ANVIL_CHAIN,
         address,
       });
 
-      // install extension with published name
-      const installTransaction = installPublishedExtension({
+      // install module with published name
+      const installTransaction = installPublishedModule({
         contract: core,
-        chain: ANVIL_CHAIN,
-        client: TEST_CLIENT,
         account: TEST_ACCOUNT_A,
-        extensionName: "DemoExtensionWithFunctions",
-        publisherAddress: "0xFD78F7E2dF2B8c3D5bff0413c96f3237500898B3",
+        moduleName: "DemoModuleWithFunctions",
+        publisher: "0xFD78F7E2dF2B8c3D5bff0413c96f3237500898B3",
       });
       await sendAndConfirmTransaction({
         transaction: installTransaction,
         account: TEST_ACCOUNT_A,
       });
 
-      let installedExtensions = await getInstalledExtensions({
+      let installedModules = await getInstalledModules({
         contract: core,
       });
 
-      expect(installedExtensions.length).toBe(1);
+      expect(installedModules.length).toBe(1);
 
-      // uninstall extension
-      const uninstallTransaction = uninstallPublishedExtension({
+      // uninstall module
+      const uninstallTransaction = uninstallPublishedModule({
         contract: core,
-        chain: ANVIL_CHAIN,
-        client: TEST_CLIENT,
-        extensionName: "DemoExtensionWithFunctions",
+        moduleName: "DemoModuleWithFunctions",
         publisherAddress: "0xFD78F7E2dF2B8c3D5bff0413c96f3237500898B3",
-        extensionData: "0x",
+        moduleData: "0x",
       });
       await sendAndConfirmTransaction({
         transaction: uninstallTransaction,
         account: TEST_ACCOUNT_A,
       });
 
-      installedExtensions = await getInstalledExtensions({
+      installedModules = await getInstalledModules({
         contract: core,
       });
 
-      expect(installedExtensions.length).toBe(0);
+      expect(installedModules.length).toBe(0);
+    });
+
+    it("should deploy a modular contract with a module", async () => {
+      const address = await deployModularContract({
+        chain: ANVIL_CHAIN,
+        client: TEST_CLIENT,
+        account: TEST_ACCOUNT_A,
+        core: "ERC20",
+        params: {
+          name: "TestModularERC20",
+          symbol: "TT",
+        },
+        modules: [
+          ERC20Claimable.module({
+            primarySaleRecipient: TEST_ACCOUNT_A.address,
+          }),
+        ],
+      });
+      const installedModules = await getInstalledModules({
+        contract: getContract({
+          client: TEST_CLIENT,
+          chain: ANVIL_CHAIN,
+          address,
+        }),
+      });
+      expect(installedModules.length).toBe(1);
+    });
+
+    it("should deploy a modular contract with dynamic modules", async () => {
+      const modules = await Promise.all([
+        fetchPublishedContractMetadata({
+          client: TEST_CLIENT,
+          contractId: "ClaimableERC721",
+        }).then((m) => ({
+          deployMetadata: m,
+          initializeParams: {
+            primarySaleRecipient: TEST_ACCOUNT_A.address,
+          },
+        })),
+        fetchPublishedContractMetadata({
+          client: TEST_CLIENT,
+          contractId: "BatchMetadataERC721",
+        }).then((m) => ({
+          deployMetadata: m,
+        })),
+        fetchPublishedContractMetadata({
+          client: TEST_CLIENT,
+          contractId: "RoyaltyERC721",
+        }).then((m) => ({
+          deployMetadata: m,
+          initializeParams: {
+            royaltyRecipient: TEST_ACCOUNT_A.address,
+            royaltyBps: 10000,
+            transferValidator: ZERO_ADDRESS,
+          },
+        })),
+      ]);
+      const address = await deployContractfromDeployMetadata({
+        chain: ANVIL_CHAIN,
+        client: TEST_CLIENT,
+        account: TEST_ACCOUNT_A,
+        deployMetadata: await fetchPublishedContractMetadata({
+          client: TEST_CLIENT,
+          contractId: "ERC721CoreInitializable",
+        }),
+        initializeParams: {
+          owner: TEST_ACCOUNT_A.address,
+          name: "TestModularDynamic",
+          symbol: "TT",
+          contractURI: "",
+        },
+        modules,
+      });
+      const installedModules = await getInstalledModules({
+        contract: getContract({
+          client: TEST_CLIENT,
+          chain: ANVIL_CHAIN,
+          address,
+        }),
+      });
+      expect(installedModules.length).toBe(3);
     });
   },
 );

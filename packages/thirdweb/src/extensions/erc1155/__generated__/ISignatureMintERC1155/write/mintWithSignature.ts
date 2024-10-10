@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -99,21 +98,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `mintWithSignature` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `mintWithSignature` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `mintWithSignature` method is supported.
  * @extension ERC1155
  * @example
  * ```ts
  * import { isMintWithSignatureSupported } from "thirdweb/extensions/erc1155";
  *
- * const supported = await isMintWithSignatureSupported(contract);
+ * const supported = isMintWithSignatureSupported(["0x..."]);
  * ```
  */
-export async function isMintWithSignatureSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isMintWithSignatureSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -125,7 +122,7 @@ export async function isMintWithSignatureSupported(
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeMintWithSignatureParams } "thirdweb/extensions/erc1155";
+ * import { encodeMintWithSignatureParams } from "thirdweb/extensions/erc1155";
  * const result = encodeMintWithSignatureParams({
  *  payload: ...,
  *  signature: ...,
@@ -145,7 +142,7 @@ export function encodeMintWithSignatureParams(
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeMintWithSignature } "thirdweb/extensions/erc1155";
+ * import { encodeMintWithSignature } from "thirdweb/extensions/erc1155";
  * const result = encodeMintWithSignature({
  *  payload: ...,
  *  signature: ...,
@@ -168,6 +165,7 @@ export function encodeMintWithSignature(options: MintWithSignatureParams) {
  * @extension ERC1155
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { mintWithSignature } from "thirdweb/extensions/erc1155";
  *
  * const transaction = mintWithSignature({
@@ -180,8 +178,7 @@ export function encodeMintWithSignature(options: MintWithSignatureParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function mintWithSignature(

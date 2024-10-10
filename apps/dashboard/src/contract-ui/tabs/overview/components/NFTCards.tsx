@@ -1,6 +1,4 @@
-import { useDashboardEVMChainId } from "@3rdweb-sdk/react";
 import {
-  AspectRatio,
   Flex,
   GridItem,
   SimpleGrid,
@@ -8,20 +6,16 @@ import {
   SkeletonText,
   useBreakpointValue,
 } from "@chakra-ui/react";
-import { useChainSlug } from "hooks/chains/chainSlug";
-import type { WalletNFT } from "lib/wallet/nfts/types";
 import { useMemo } from "react";
-import type { NFT } from "thirdweb";
-import {
-  Card,
-  Heading,
-  Text,
-  TrackedLink,
-  type TrackedLinkProps,
-} from "tw-components";
+import { type NFT, ZERO_ADDRESS } from "thirdweb";
+import { Card, TrackedLink, type TrackedLinkProps } from "tw-components";
 import { NFTMediaWithEmptyState } from "tw-components/nft-media";
 
-const dummyMetadata: (idx: number) => NFT = (idx) => ({
+type NFTWithContract = NFT & { contractAddress: string; chainId: number };
+
+const dummyMetadata: (idx: number) => NFTWithContract = (idx) => ({
+  chainId: 1,
+  contractAddress: ZERO_ADDRESS,
   id: BigInt(idx || 0),
   tokenURI: `1-0x123-${idx}`,
   metadata: {
@@ -35,27 +29,20 @@ const dummyMetadata: (idx: number) => NFT = (idx) => ({
   supply: 1n,
 });
 
-function isOnlyNumbers(str: string) {
-  return /^\d+$/.test(str);
-}
-
 interface NFTCardsProps {
-  nfts: NFT[] | WalletNFT[];
+  nfts: Array<NFTWithContract>;
   trackingCategory: TrackedLinkProps["category"];
-  isLoading: boolean;
-  contractAddress?: string;
+  isPending: boolean;
   allNfts?: boolean;
 }
 
 export const NFTCards: React.FC<NFTCardsProps> = ({
   nfts,
-  contractAddress,
   trackingCategory,
-  isLoading,
+  isPending,
   allNfts,
 }) => {
   const isMobile = useBreakpointValue({ base: true, md: false });
-  const chainId = useDashboardEVMChainId();
 
   const dummyData = useMemo(() => {
     return Array.from({
@@ -63,36 +50,25 @@ export const NFTCards: React.FC<NFTCardsProps> = ({
     }).map((_, idx) => dummyMetadata(idx));
   }, [nfts.length, isMobile, allNfts]);
 
-  const chainSlug = useChainSlug(chainId || 1);
-
   return (
     <SimpleGrid
       gap={{ base: 3, md: 6 }}
       columns={allNfts ? { base: 2, md: 4 } : { base: 2, md: 3 }}
     >
-      {(isLoading ? dummyData : nfts).map((token) => {
-        const tokenId = (token as WalletNFT)?.tokenId || (token as NFT).id;
-        const ctrAddress =
-          (token as WalletNFT)?.contractAddress || contractAddress;
-
-        if (
-          (!tokenId && tokenId !== 0n) ||
-          !isOnlyNumbers(tokenId.toString())
-        ) {
-          return null;
-        }
+      {(isPending ? dummyData : nfts).map((token) => {
+        const tokenId = token.id.toString();
 
         return (
           <GridItem
-            key={`${chainId}-${ctrAddress}-${tokenId}`}
+            key={`${token.chainId}_${token.contractAddress}_${tokenId}`}
             as={TrackedLink}
             category={trackingCategory}
-            href={`/${chainSlug}/${ctrAddress}/nfts/${tokenId.toString()}`}
+            href={`/${token.chainId}/${token.contractAddress}/nfts/${tokenId}`}
             _hover={{ opacity: 0.75, textDecoration: "none" }}
           >
             <Card p={0} h="full">
-              <AspectRatio w="100%" ratio={1} overflow="hidden" rounded="xl">
-                <Skeleton isLoaded={!isLoading}>
+              <div className="relative aspect-square w-full overflow-hidden rounded-xl">
+                <Skeleton isLoaded={!isPending}>
                   <NFTMediaWithEmptyState
                     metadata={token.metadata}
                     requireInteraction
@@ -100,19 +76,21 @@ export const NFTCards: React.FC<NFTCardsProps> = ({
                     height="100%"
                   />
                 </Skeleton>
-              </AspectRatio>
-              <Flex p={4} pb={3} gap={3} direction="column">
-                <Skeleton w={!isLoading ? "100%" : "50%"} isLoaded={!isLoading}>
-                  <Heading size="label.md">{token.metadata.name}</Heading>
+              </div>
+              <Flex p={4} pb={3} gap={1} direction="column">
+                <Skeleton w={!isPending ? "100%" : "50%"} isLoaded={!isPending}>
+                  <h2 className="font-semibold tracking-tight">
+                    {token.metadata.name}
+                  </h2>
                 </Skeleton>
-                <SkeletonText isLoaded={!isLoading}>
-                  <Text noOfLines={3}>
+                <SkeletonText isLoaded={!isPending}>
+                  <p className="line-clamp-3 text-muted-foreground text-sm">
                     {token.metadata.description ? (
                       token.metadata.description
                     ) : (
                       <i>No description</i>
                     )}
-                  </Text>
+                  </p>
                 </SkeletonText>
               </Flex>
             </Card>

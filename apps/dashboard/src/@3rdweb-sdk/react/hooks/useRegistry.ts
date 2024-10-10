@@ -1,46 +1,34 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSigner } from "@thirdweb-dev/react";
+import { addContractToMultiChainRegistry } from "components/contract-components/utils";
+import { MULTICHAIN_REGISTRY_CONTRACT } from "constants/contracts";
 import {
-  addContractToMultiChainRegistry,
-  getGaslessPolygonSDK,
-} from "components/contract-components/utils";
+  DASHBOARD_ENGINE_RELAYER_URL,
+  DASHBOARD_FORWARDER_ADDRESS,
+} from "constants/misc";
 import type { BasicContract } from "contract-ui/types/types";
 import { getAllMultichainRegistry } from "dashboard-extensions/common/read/getAllMultichainRegistry";
 import { useAllChainsData } from "hooks/chains/allChains";
-import { useSupportedChainsRecord } from "hooks/chains/configureChains";
-import { thirdwebClient } from "lib/thirdweb-client";
-import { defineDashboardChain } from "lib/v5-adapter";
 import { useMemo } from "react";
-import { getContract } from "thirdweb";
-import { polygon } from "thirdweb/chains";
+import { sendAndConfirmTransaction } from "thirdweb";
+import { remove } from "thirdweb/extensions/thirdweb";
 import { useActiveAccount } from "thirdweb/react";
 import invariant from "tiny-invariant";
 
-const MULTICHAIN_REGISTRY_ADDRESS =
-  "0xcdAD8FA86e18538aC207872E8ff3536501431B73";
-
-const registryContract = getContract({
-  client: thirdwebClient,
-  address: MULTICHAIN_REGISTRY_ADDRESS,
-  chain: defineDashboardChain(polygon.id),
-});
-
-function useMultiChainRegContractList(walletAddress?: string) {
-  return useQuery(
-    ["dashboard-registry", walletAddress, "multichain-contract-list"],
-    async () => {
+export function useMultiChainRegContractList(walletAddress?: string) {
+  return useQuery({
+    queryKey: ["dashboard-registry", walletAddress, "multichain-contract-list"],
+    queryFn: async () => {
       invariant(walletAddress, "walletAddress is required");
       const contracts = await getAllMultichainRegistry({
-        contract: registryContract,
+        contract: MULTICHAIN_REGISTRY_CONTRACT,
         address: walletAddress,
       });
 
       return contracts;
     },
-    {
-      enabled: !!walletAddress,
-    },
-  );
+
+    enabled: !!walletAddress,
+  });
 }
 
 interface Options {
@@ -53,7 +41,8 @@ export const useAllContractList = (
 ) => {
   const multiChainQuery = useMultiChainRegContractList(walletAddress);
 
-  const configuredChainsRecord = useSupportedChainsRecord();
+  // TODO - instead of using ALL chains, fetch only the ones used here
+  const { idToChain } = useAllChainsData();
   const contractList = useMemo(() => {
     const data = multiChainQuery.data || [];
 
@@ -62,14 +51,12 @@ export const useAllContractList = (
 
     // biome-ignore lint/complexity/noForEach: FIXME
     data.forEach((net) => {
-      if (net.chainId in configuredChainsRecord) {
-        const chainRecord = configuredChainsRecord[net.chainId];
-        if (chainRecord.status !== "deprecated") {
-          if (chainRecord.testnet) {
-            testnets.push(net);
-          } else {
-            mainnets.push(net);
-          }
+      const chn = idToChain.get(net.chainId);
+      if (chn && chn.status !== "deprecated") {
+        if (chn.testnet) {
+          testnets.push(net);
+        } else {
+          mainnets.push(net);
         }
       }
     });
@@ -82,7 +69,7 @@ export const useAllContractList = (
 
     testnets.sort((a, b) => a.chainId - b.chainId);
     return mainnets.concat(testnets);
-  }, [multiChainQuery.data, onlyMainnet, configuredChainsRecord]);
+  }, [multiChainQuery.data, onlyMainnet, idToChain]);
 
   return {
     ...multiChainQuery,
@@ -96,36 +83,37 @@ type RemoveContractParams = {
 };
 
 export function useRemoveContractMutation() {
-  const walletAddress = useActiveAccount()?.address;
-  const signer = useSigner();
-  const { chainIdToChainRecord } = useAllChainsData();
-
   const queryClient = useQueryClient();
-
-  return useMutation(
-    async (data: RemoveContractParams) => {
-      invariant(
-        walletAddress,
-        "cannot add a contract without a wallet address",
-      );
-      invariant(chainIdToChainRecord, "chains not initialzed yet");
-      invariant(signer, "no wallet connected");
+  const account = useActiveAccount();
+  return useMutation({
+    mutationFn: async (data: RemoveContractParams) => {
       invariant(data.chainId, "chainId not provided");
-
+      invariant(account, "No wallet connected");
       const { contractAddress, chainId } = data;
-
-      const gaslessPolygonSDK = getGaslessPolygonSDK(signer);
-      return await gaslessPolygonSDK.multiChainRegistry?.removeContract({
-        address: contractAddress,
-        chainId,
+      const transaction = remove({
+        contract: MULTICHAIN_REGISTRY_CONTRACT,
+        deployer: account.address,
+        deployment: contractAddress,
+        chainId: BigInt(chainId),
+      });
+      return await sendAndConfirmTransaction({
+        transaction,
+        account,
+        gasless: {
+          experimentalChainlessSupport: true,
+          provider: "engine",
+          relayerUrl: DASHBOARD_ENGINE_RELAYER_URL,
+          relayerForwarderAddress: DASHBOARD_FORWARDER_ADDRESS,
+        },
       });
     },
-    {
-      onSettled: () => {
-        return queryClient.invalidateQueries(["dashboard-registry"]);
-      },
+
+    onSettled: () => {
+      return queryClient.invalidateQueries({
+        queryKey: ["dashboard-registry"],
+      });
     },
-  );
+  });
 }
 
 type AddContractParams = {
@@ -138,8 +126,8 @@ export function useAddContractMutation() {
 
   const queryClient = useQueryClient();
 
-  return useMutation(
-    async (data: AddContractParams) => {
+  return useMutation({
+    mutationFn: async (data: AddContractParams) => {
       invariant(account, "cannot add a contract without an address");
 
       return await addContractToMultiChainRegistry(
@@ -148,12 +136,14 @@ export function useAddContractMutation() {
           chainId: data.chainId,
         },
         account,
+        300000n,
       );
     },
-    {
-      onSettled: () => {
-        return queryClient.invalidateQueries(["dashboard-registry"]);
-      },
+
+    onSettled: () => {
+      return queryClient.invalidateQueries({
+        queryKey: ["dashboard-registry"],
+      });
     },
-  );
+  });
 }

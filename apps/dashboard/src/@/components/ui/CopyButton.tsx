@@ -1,8 +1,8 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+import { useClipboard } from "hooks/useClipboard";
 import { CheckIcon, CopyIcon } from "lucide-react";
-import { useState } from "react";
-import { cn } from "../../lib/utils";
 import { Button } from "./button";
 import { ToolTipLabel } from "./tooltip";
 
@@ -10,21 +10,18 @@ export function CopyButton(props: {
   text: string;
   className?: string;
   iconClassName?: string;
+  variant?: "ghost" | "primary" | "secondary";
 }) {
-  const [isCopied, setIsCopied] = useState(false);
+  const { hasCopied, onCopy } = useClipboard(props.text, 1000);
   return (
     <ToolTipLabel label="Copy">
       <Button
-        variant="ghost"
+        variant={props.variant || "ghost"}
         aria-label="Copy"
         className={cn("h-auto w-auto p-1", props.className)}
-        onClick={() => {
-          navigator.clipboard.writeText(props.text);
-          setIsCopied(true);
-          setTimeout(() => setIsCopied(false), 1000);
-        }}
+        onClick={onCopy}
       >
-        {isCopied ? (
+        {hasCopied ? (
           <CheckIcon
             className={cn("size-4 text-green-500", props.iconClassName)}
           />

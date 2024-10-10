@@ -1,8 +1,14 @@
 import type { Chain } from "../../../../chains/types.js";
 import type { ThirdwebClient } from "../../../../client/client.js";
+import type { BuyWithCryptoStatus } from "../../../../pay/buyWithCrypto/getStatus.js";
+import type { BuyWithFiatStatus } from "../../../../pay/buyWithFiat/getStatus.js";
+import type { FiatProvider } from "../../../../pay/utils/commonTypes.js";
+import type { PreparedTransaction } from "../../../../transaction/prepare-transaction.js";
+import type { Prettify } from "../../../../utils/type-utils.js";
 import type { Account, Wallet } from "../../../../wallets/interfaces/wallet.js";
 import type { SmartWalletOptions } from "../../../../wallets/smart/types.js";
 import type { AppMetadata } from "../../../../wallets/types.js";
+import type { WalletId } from "../../../../wallets/wallet-types.js";
 import type { NetworkSelectorProps } from "../../../web/ui/ConnectWallet/NetworkSelector.js";
 import type { WelcomeScreen } from "../../../web/ui/ConnectWallet/screens/types.js";
 import type { LocaleId } from "../../../web/ui/types.js";
@@ -10,10 +16,115 @@ import type { Theme } from "../../design-system/index.js";
 import type {
   SupportedNFTs,
   SupportedTokens,
+  TokenInfo,
 } from "../../utils/defaultTokens.js";
 import type { SiweAuthOptions } from "../auth/useSiweAuth.js";
 
-export type PayUIOptions = {
+export type PaymentInfo = {
+  /**
+   * The chain to receive the payment on.
+   */
+  chain: Chain;
+  /**
+   * The address of the seller wallet to receive the payment on.
+   */
+  sellerAddress: string;
+  /**
+   * Optional ERC20 token to receive the payment on.
+   * If not provided, the native token will be used.
+   */
+  token?: TokenInfo;
+} & (
+  | {
+      /**
+       * The amount of tokens to receive in ETH or tokens.
+       * ex: 0.1 ETH or 100 USDC
+       */
+      amount: string;
+    }
+  | {
+      /**
+       * The amount of tokens to receive in wei.
+       * ex: 1000000000000000000 wei
+       */
+      amountWei: bigint;
+    }
+);
+
+export type PayUIOptions = Prettify<
+  {
+    /**
+     * Configure options for buying tokens using other token ( aka Swap )
+     *
+     * By default, the "Crypto" option is enabled. You can disable it by setting `buyWithCrypto` to `false`
+     *
+     * You can prefill the source token and chain using `prefillSource`
+     * You can also disable the edits for the prefilled values by setting `prefillSource.allowEdits` - By default all are editable
+     *
+     * For example, if you want to allow selecting chain and but disable selecting token, you can set `allowEdits` to `{ token: false, chain: true }`
+     */
+    buyWithCrypto?:
+      | false
+      | {
+          testMode?: boolean;
+          prefillSource?: {
+            chain: Chain;
+            token?: TokenInfo;
+            allowEdits?: {
+              token: boolean;
+              chain: boolean;
+            };
+          };
+        };
+
+    /**
+     * By default "Credit card" option is enabled. you can disable it by setting `buyWithFiat` to `false`
+     *
+     * You can also enable the test mode for the on-ramp provider to test on-ramp without using real credit card.
+     */
+    buyWithFiat?:
+      | {
+          testMode?: boolean;
+          prefillSource?: {
+            currency?: "USD" | "CAD" | "GBP" | "EUR" | "JPY";
+          };
+          preferredProvider?: FiatProvider;
+        }
+      | false;
+
+    /**
+     * Extra details to store with the purchase.
+     *
+     * This details will be stored with the purchase and can be retrieved later via the status API or Webhook
+     */
+    purchaseData?: object;
+
+    /**
+     * Callback to be called when the user successfully completes the purchase.
+     */
+    onPurchaseSuccess?: (
+      info:
+        | {
+            type: "crypto";
+            status: BuyWithCryptoStatus;
+          }
+        | {
+            type: "fiat";
+            status: BuyWithFiatStatus;
+          },
+    ) => void;
+    /**
+     * Customize the display of the PayEmbed UI.
+     */
+    metadata?: {
+      name?: string;
+      image?: string;
+    };
+  } & (FundWalletOptions | DirectPaymentOptions | TranasctionOptions)
+>;
+
+export type FundWalletOptions = {
+  mode?: "fund_wallet";
   /**
    * Prefill the Buy Token amount, chain and/or token.
    * You can also disable the edits for the prefilled values using `allowEdits` - By default all are editable
@@ -25,12 +136,7 @@ export type PayUIOptions = {
    */
   prefillBuy?: {
     chain: Chain;
-    token?: {
-      name: string;
-      symbol: string;
-      address: string;
-      icon?: string;
-    };
+    token?: TokenInfo;
     amount?: string;
     allowEdits?: {
       amount: boolean;
@@ -38,59 +144,22 @@ export type PayUIOptions = {
       chain: boolean;
     };
   };
+};
 
+export type DirectPaymentOptions = {
+  mode: "direct_payment";
   /**
-   * Configure options for buying tokens using other token ( aka Swap )
-   *
-   * By default, the "Crypto" option is enabled. You can disable it by setting `buyWithCrypto` to `false`
-   *
-   * You can prefill the source token and chain using `prefillSource`
-   * You can also disable the edits for the prefilled values by setting `prefillSource.allowEdits` - By default all are editable
-   *
-   * For example, if you want to allow selecting chain and but disable selecting token, you can set `allowEdits` to `{ token: false, chain: true }`
+   * The payment information
    */
-  buyWithCrypto?:
-    | false
-    | {
-        prefillSource?: {
-          chain: Chain;
-          token?: {
-            name: string;
-            symbol: string;
-            address: string;
-            icon?: string;
-          };
-          allowEdits?: {
-            token: boolean;
-            chain: boolean;
-          };
-        };
-      };
+  paymentInfo: PaymentInfo;
+};
 
+export type TranasctionOptions = {
+  mode: "transaction";
   /**
-   * By default "Credit card" option is enabled. you can disable it by setting `buyWithFiat` to `false`
-   *
-   * You can also enable the test mode for the on-ramp provider to test on-ramp without using real credit card.
+   * The transaction to be executed.
    */
-  buyWithFiat?:
-    | {
-        testMode?: boolean;
-      }
-    | false;
-
-  /**
-   * Extra details to store with the purchase.
-   *
-   * This details will be stored with the purchase and can be retrieved later via the status API or Webhook
-   */
-  purchaseData?: object;
-
-  /**
-   * The address of the recipient of the purchase.
-   *
-   * This address will be used to send the purchased tokens to.
-   */
-  recipientAddress?: string;
+  transaction: PreparedTransaction;
 };
 
 /**
@@ -158,6 +227,19 @@ export type ConnectButton_detailsModalOptions = {
   networkSelector?: NetworkSelectorProps;
 
   /**
+   * Hide the "Switch Wallet" button in the `ConnectButton` Details Modal.
+   *
+   * By default it is `false`
+   * @example
+   * ```tsx
+   * <ConnectButton detailsModal={{
+   *  hideSwitchWallet: true
+   * }} />
+   * ```
+   */
+  hideSwitchWallet?: boolean;
+
+  /**
    * Hide the "Disconnect Wallet" button in the `ConnectButton` Details Modal.
    *
    * By default it is `false`
@@ -192,7 +274,43 @@ export type ConnectButton_detailsModalOptions = {
    *
    * thirdweb Pay allows users to buy tokens using crypto or fiat currency.
    */
-  payOptions?: PayUIOptions;
+  payOptions?: Extract<PayUIOptions, { mode?: "fund_wallet" }>;
+
+  /**
+   * Render custom UI for the connected wallet name in the `ConnectButton` Details Modal, overriding ENS name or wallet address.
+   */
+  connectedAccountName?: React.ReactNode;
+
+  /**
+   * Use custom avatar URL for the connected wallet image in the `ConnectButton` Details Modal, overriding ENS avatar or Blobbie icon.
+   */
+  connectedAccountAvatarUrl?: string;
+
+  /**
+   * Hide the "Send Funds" button in the `ConnectButton` Details Modal.
+   *
+   * By default the "Send Funds" button is shown.
+   */
+  hideSendFunds?: boolean;
+
+  /**
+   * Hide the "Receive Funds" button in the `ConnectButton` Details Modal.
+   *
+   * By default the "Receive Funds" button is shown.
+   */
+  hideReceiveFunds?: boolean;
+
+  /**
+   * Hide the "Buy Funds" button in the `ConnectButton` Details Modal.
+   *
+   * By default the "Buy Funds" button is shown.
+   */
+  hideBuyFunds?: boolean;
+
+  /**
+   * All wallet IDs included in this array will be hidden from wallet selection when connected.
+   */
+  hiddenWallets?: WalletId[];
 };
 
 /**
@@ -240,6 +358,16 @@ export type ConnectButton_detailsButtonOptions = {
    * ```
    */
   displayBalanceToken?: Record<number, string>;
+
+  /**
+   * Render custom UI for the connected wallet name in the `ConnectButton` details button, overriding ENS name or wallet address.
+   */
+  connectedAccountName?: React.ReactNode;
+
+  /**
+   * Use custom avatar URL for the connected wallet image in the `ConnectButton` details button, overriding ENS avatar or Blobbie icon.
+   */
+  connectedAccountAvatarUrl?: string;
 };
 
 /**
@@ -301,6 +429,19 @@ export type ConnectButton_connectModalOptions = {
    * ```
    */
   privacyPolicyUrl?: string;
+
+  /**
+   * Require terms of service and privacy policy to be accepted before connecting an in-app wallet.
+   *
+   * By default it's `false`
+   * @example
+   * ```tsx
+   * <ConnectButton connectModal={{
+   *  requireApproval: true
+   * }} />
+   * ```
+   */
+  requireApproval?: boolean;
 
   /**
    * Customize the welcome screen. This prop is only applicable when modalSize prop is set to "wide". On "wide" Modal size, a welcome screen is shown on the right side of the modal.

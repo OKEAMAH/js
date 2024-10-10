@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -27,21 +26,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `depositRewardTokens` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `depositRewardTokens` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `depositRewardTokens` method is supported.
  * @extension ERC20
  * @example
  * ```ts
  * import { isDepositRewardTokensSupported } from "thirdweb/extensions/erc20";
  *
- * const supported = await isDepositRewardTokensSupported(contract);
+ * const supported = isDepositRewardTokensSupported(["0x..."]);
  * ```
  */
-export async function isDepositRewardTokensSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isDepositRewardTokensSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -53,7 +50,7 @@ export async function isDepositRewardTokensSupported(
  * @extension ERC20
  * @example
  * ```ts
- * import { encodeDepositRewardTokensParams } "thirdweb/extensions/erc20";
+ * import { encodeDepositRewardTokensParams } from "thirdweb/extensions/erc20";
  * const result = encodeDepositRewardTokensParams({
  *  amount: ...,
  * });
@@ -72,7 +69,7 @@ export function encodeDepositRewardTokensParams(
  * @extension ERC20
  * @example
  * ```ts
- * import { encodeDepositRewardTokens } "thirdweb/extensions/erc20";
+ * import { encodeDepositRewardTokens } from "thirdweb/extensions/erc20";
  * const result = encodeDepositRewardTokens({
  *  amount: ...,
  * });
@@ -94,6 +91,7 @@ export function encodeDepositRewardTokens(options: DepositRewardTokensParams) {
  * @extension ERC20
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { depositRewardTokens } from "thirdweb/extensions/erc20";
  *
  * const transaction = depositRewardTokens({
@@ -105,8 +103,7 @@ export function encodeDepositRewardTokens(options: DepositRewardTokensParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function depositRewardTokens(

@@ -3,12 +3,14 @@
 import { Linking } from "react-native";
 import { trackConnect } from "../../analytics/track.js";
 import type { Chain } from "../../chains/types.js";
+import { getCachedChainIfExists } from "../../chains/utils.js";
 import { nativeLocalStorage } from "../../utils/storage/nativeStorage.js";
 import type { WCSupportedWalletIds } from "../__generated__/wallet-ids.js";
 import { coinbaseWalletSDK } from "../coinbase/coinbase-wallet.js";
 import { getCoinbaseMobileProvider } from "../coinbase/coinbaseMobileSDK.js";
 import { COINBASE } from "../constants.js";
 import { isEcosystemWallet } from "../ecosystem/is-ecosystem-wallet.js";
+import { ecosystemWallet } from "../in-app/native/ecosystem.js";
 import { inAppWallet } from "../in-app/native/in-app.js";
 import type { Account, Wallet } from "../interfaces/wallet.js";
 import { smartWallet } from "../smart/smart-wallet.js";
@@ -16,6 +18,7 @@ import type { WCConnectOptions } from "../wallet-connect/types.js";
 import { createWalletEmitter } from "../wallet-emitter.js";
 import type {
   CreateWalletArgs,
+  EcosystemWalletId,
   WalletAutoConnectionOption,
   WalletId,
 } from "../wallet-types.js";
@@ -65,9 +68,9 @@ export function createWallet<const ID extends WalletId>(
      * ECOSYSTEM WALLETS
      */
     case isEcosystemWallet(id): {
-      throw new Error(
-        "Ecosystem wallets are not yet supported in the React Native SDK",
-      );
+      return ecosystemWallet(
+        ...(args as CreateWalletArgs<EcosystemWalletId>),
+      ) as Wallet<ID>;
     }
 
     /**
@@ -115,13 +118,28 @@ export function createWallet<const ID extends WalletId>(
         throw new Error("Not implemented yet");
       };
 
-      const sessionHandler = (uri: string) => Linking.openURL(uri);
+      const sessionHandler = async (uri: string) => {
+        try {
+          await Linking.openURL(uri);
+        } catch {
+          console.error(`Failed to open URI: ${uri} - is the app installed?`);
+          // TODO: figure out how to propage this error to the UI
+          throw new Error(`Failed to open URI: ${uri} - is the app installed?`);
+        }
+      };
 
       const wallet: Wallet<ID> = {
         id,
         subscribe: emitter.subscribe,
         getConfig: () => args[1],
-        getChain: () => chain,
+        getChain() {
+          if (!chain) {
+            return undefined;
+          }
+
+          chain = getCachedChainIfExists(chain.id) || chain;
+          return chain;
+        },
         getAccount: () => account,
         autoConnect: async (
           options: WalletAutoConnectionOption<WCSupportedWalletIds>,

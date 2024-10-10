@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { THIRDWEB_ANALYTICS_API_HOSTNAME } from "./constants";
 
 export type AnalyticsQueryParams = {
   chainId: number;
@@ -17,7 +16,7 @@ async function makeQuery(
     .filter(([, value]) => !!value)
     .map(([key, value]) => `${key}=${value}`)
     .join("&")}`;
-  return fetch(`${THIRDWEB_ANALYTICS_API_HOSTNAME}${path}${queryString}`, {
+  return fetch(`/api/server-proxy/chainsaw/${path}${queryString}`, {
     method: "GET",
   });
 }
@@ -372,19 +371,4 @@ export function useTotalWalletsAnalytics(params: AnalyticsQueryParams) {
     },
     enabled: !!params.contractAddress && !!params.chainId,
   });
-}
-
-export function useAnalyticsSupportedChains() {
-  return useQuery(
-    ["analytics-supported-chains"] as const,
-    async (): Promise<number[]> => {
-      const res = await makeQuery("/api/v1/supported-chains", {});
-      if (!res.ok) {
-        throw new Error(`Unexpected status ${res.status}`);
-      }
-
-      const { results } = await res.json();
-      return results;
-    },
-  );
 }

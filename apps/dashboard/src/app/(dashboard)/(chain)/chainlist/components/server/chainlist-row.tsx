@@ -1,3 +1,5 @@
+import { CopyTextButton } from "@/components/ui/CopyTextButton";
+import { TableCell, TableRow } from "@/components/ui/table";
 import { ToolTipLabel } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
@@ -7,7 +9,6 @@ import {
   XIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { CopyTextButton } from "../../../../../../@/components/ui/CopyTextButton";
 import { ChainIcon } from "../../../components/server/chain-icon";
 import { products } from "../../../components/server/products";
 import type { ChainSupportedService } from "../../../types/chain";
@@ -35,73 +36,91 @@ export async function ChainListRow({
   iconUrl,
 }: ChainListRowProps) {
   const chainMetadata = await getChainMetadata(chainId);
-  const productsWithoutFaucet = products.filter((p) => p.id !== "faucet");
   return (
-    <tr className="border-b relative hover:bg-secondary">
-      <TableData>{favoriteButton}</TableData>
+    <TableRow className="relative hover:bg-muted/50">
+      <TableCell>{favoriteButton}</TableCell>
       {/* Name */}
-      <TableData>
-        <div className="flex flex-row items-center gap-4 w-[370px]">
+      <TableCell>
+        <div className="flex w-[370px] flex-row items-center gap-4">
           <div className="flex items-center gap-2">
             <ChainIcon iconUrl={iconUrl} className="size-6" />
             <Link
               href={`/${chainSlug}`}
-              className="static group before:content-[''] before:absolute before:top-0 before:bottom-0 before:left-0 before:right-0 before:z-0"
+              className="group static before:absolute before:top-0 before:right-0 before:bottom-0 before:left-0 before:z-0 before:content-['']"
             >
               {chainName}
             </Link>
 
             {!isDeprecated && chainMetadata?.gasSponsored && (
               <ToolTipLabel label="Gas Sponsored">
-                <TicketCheckIcon className="text-link-foreground size-5 z-10 " />
+                <TicketCheckIcon className="z-10 size-5 text-link-foreground " />
               </ToolTipLabel>
             )}
 
             {isDeprecated && (
               <ToolTipLabel label="Deprecated">
-                <CircleAlertIcon className="text-destructive-foreground size-5 z-10 " />
+                <CircleAlertIcon className="z-10 size-5 text-destructive-text " />
               </ToolTipLabel>
             )}
           </div>
         </div>
-      </TableData>
+      </TableCell>
 
-      <TableData>
+      <TableCell>
         <CopyTextButton
           textToCopy={chainId.toString()}
           textToShow={chainId.toString()}
           tooltip="Copy Chain ID"
-          className="z-10 relative text-base"
+          className="relative z-10 text-base"
           variant="ghost"
           copyIconPosition="right"
         />
-      </TableData>
+      </TableCell>
 
-      <TableData>{currencySymbol}</TableData>
+      <TableCell>{currencySymbol}</TableCell>
 
-      <TableData>
-        <div className="flex flex-row gap-14 items-center w-[520px] ">
-          <div className="flex items-center gap-7 z-10">
-            {productsWithoutFaucet.map((p) => {
+      <TableCell>
+        <div className="flex w-[520px] flex-row items-center gap-14 ">
+          <div className="z-10 flex items-center gap-7">
+            {products.map((p) => {
               return (
                 <ProductIcon
                   key={p.name}
                   icon={p.icon}
                   label={p.name}
-                  href={`/${chainSlug}/${p.id === "contracts" ? "" : p.id}`}
+                  href={pidToHref(p.id)}
                   isEnabled={enabledServices.includes(p.id)}
                 />
               );
             })}
           </div>
         </div>
-      </TableData>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
-function TableData({ children }: { children: React.ReactNode }) {
-  return <td className="p-4">{children}</td>;
+function pidToHref(pid: (typeof products)[number]["id"]) {
+  switch (pid) {
+    case "account-abstraction": {
+      return "https://portal.thirdweb.com/connect/account-abstraction/overview";
+    }
+    case "contracts": {
+      return "https://portal.thirdweb.com/contracts";
+    }
+    case "connect-sdk": {
+      return "https://portal.thirdweb.com/connect";
+    }
+    case "engine": {
+      return "https://portal.thirdweb.com/engine";
+    }
+    case "pay": {
+      return "https://portal.thirdweb.com/connect/pay/overview";
+    }
+    case "rpc-edge": {
+      return "https://portal.thirdweb.com/infrastructure/rpc-edge/overview";
+    }
+  }
 }
 
 function ProductIcon(props: {
@@ -115,13 +134,16 @@ function ProductIcon(props: {
       label={props.label}
       leftIcon={
         props.isEnabled ? (
-          <CheckIcon className="text-success-foreground size-4" />
+          <CheckIcon className="size-4 text-success-text" />
         ) : (
-          <XIcon className="text-destructive-foreground size-4" />
+          <XIcon className="size-4 text-destructive-text" />
         )
       }
     >
-      <Link href={props.href}>
+      <Link
+        href={props.href}
+        target={props.href.startsWith("http") ? "_blank" : undefined}
+      >
         <props.icon className={cn("size-8", !props.isEnabled && "grayscale")} />
       </Link>
     </ToolTipLabel>

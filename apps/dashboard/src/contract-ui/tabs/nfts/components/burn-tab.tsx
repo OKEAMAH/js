@@ -1,11 +1,19 @@
-import { FormControl, Input, Stack } from "@chakra-ui/react";
-import { type NFTContract, useBurnNFT } from "@thirdweb-dev/react";
+"use client";
+
+import { FormControl, Input } from "@chakra-ui/react";
 import { TransactionButton } from "components/buttons/TransactionButton";
-import { detectFeatures } from "components/contract-components/utils";
 import { useTrack } from "hooks/analytics/useTrack";
 import { useTxNotifications } from "hooks/useTxNotifications";
 import { useForm } from "react-hook-form";
-import { useInvalidateContractQuery } from "thirdweb/react";
+import type { ThirdwebContract } from "thirdweb";
+import { burn as burn721, isERC721 } from "thirdweb/extensions/erc721";
+import { burn as burn1155, isERC1155 } from "thirdweb/extensions/erc1155";
+import {
+  useActiveAccount,
+  useInvalidateContractQuery,
+  useReadContract,
+  useSendAndConfirmTransaction,
+} from "thirdweb/react";
 import {
   FormErrorMessage,
   FormHelperText,
@@ -14,11 +22,12 @@ import {
 } from "tw-components";
 
 interface BurnTabProps {
-  contract: NFTContract;
   tokenId: string;
+  contract: ThirdwebContract;
 }
 
 const BurnTab: React.FC<BurnTabProps> = ({ contract, tokenId }) => {
+  const account = useActiveAccount();
   const trackEvent = useTrack();
   const {
     register,
@@ -31,18 +40,21 @@ const BurnTab: React.FC<BurnTabProps> = ({ contract, tokenId }) => {
   });
   const invalidateContractQuery = useInvalidateContractQuery();
 
-  const burn = useBurnNFT(contract);
-
   const { onSuccess, onError } = useTxNotifications(
     "Burn successful",
     "Error burning",
   );
-
-  const isErc721 = detectFeatures(contract, ["ERC721"]);
-  const isErc1155 = detectFeatures(contract, ["ERC1155"]);
+  const { data: isErc721, isPending: checking721 } = useReadContract(isERC721, {
+    contract,
+  });
+  const { data: isErc1155, isPending: checking1155 } = useReadContract(
+    isERC1155,
+    { contract },
+  );
+  const { mutate, isPending } = useSendAndConfirmTransaction();
 
   return (
-    <Stack w="full">
+    <div className="flex w-full flex-col gap-2">
       <form
         onSubmit={handleSubmit((data) => {
           trackEvent({
@@ -50,56 +62,54 @@ const BurnTab: React.FC<BurnTabProps> = ({ contract, tokenId }) => {
             action: "burn",
             label: "attempt",
           });
-          burn.mutate(
-            {
-              tokenId,
-              amount: data.amount,
-            },
-            {
-              onSuccess: () => {
-                trackEvent({
-                  category: "nft",
-                  action: "burn",
-                  label: "success",
+          const transaction = isErc721
+            ? burn721({ contract, tokenId: BigInt(tokenId) })
+            : burn1155({
+                contract,
+                id: BigInt(tokenId),
+                value: BigInt(data.amount),
+                account: account?.address ?? "",
+              });
+          mutate(transaction, {
+            onSuccess: () => {
+              trackEvent({
+                category: "nft",
+                action: "burn",
+                label: "success",
+              });
+              onSuccess();
+              if (contract) {
+                invalidateContractQuery({
+                  chainId: contract.chain.id,
+                  contractAddress: contract.address,
                 });
-                onSuccess();
-                if (contract) {
-                  invalidateContractQuery({
-                    chainId: contract.chainId,
-                    contractAddress: contract.getAddress(),
-                  });
-                }
-                reset();
-              },
-              onError: (error) => {
-                trackEvent({
-                  category: "nft",
-                  action: "burn",
-                  label: "error",
-                  error,
-                });
-                onError(error);
-              },
+              }
+              reset();
             },
-          );
+            onError: (error) => {
+              trackEvent({
+                category: "nft",
+                action: "burn",
+                label: "error",
+                error,
+              });
+              onError(error);
+            },
+          });
         })}
       >
-        <Stack gap={3}>
+        <div className="flex flex-col gap-3">
           {isErc1155 && (
-            <Stack
-              spacing={6}
-              w="100%"
-              direction={{ base: "column", md: "row" }}
-            >
+            <div className="flex w-full flex-col gap-6 md:flex-row">
               <FormControl isRequired={isErc1155} isInvalid={!!errors.amount}>
                 <FormLabel>Amount</FormLabel>
-                <Input placeholder={"1"} {...register("amount")} />
+                <Input placeholder="1" {...register("amount")} />
                 <FormHelperText>
                   How many would you like to burn?
                 </FormHelperText>
                 <FormErrorMessage>{errors.amount?.message}</FormErrorMessage>
               </FormControl>
-            </Stack>
+            </div>
           )}
           {isErc721 && (
             <Text>
@@ -120,16 +130,18 @@ const BurnTab: React.FC<BurnTabProps> = ({ contract, tokenId }) => {
           )}
           <TransactionButton
             transactionCount={1}
-            isLoading={burn.isLoading}
+            isLoading={isPending}
+            isDisabled={checking1155 || checking721 || isPending || !account}
             type="submit"
             colorScheme="primary"
             alignSelf="flex-end"
+            txChainID={contract.chain.id}
           >
             Burn
           </TransactionButton>
-        </Stack>
+        </div>
       </form>
-    </Stack>
+    </div>
   );
 };
 

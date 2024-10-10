@@ -14,13 +14,13 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
-  Stack,
   useDisclosure,
 } from "@chakra-ui/react";
 import { useTrack } from "hooks/analytics/useTrack";
 import { useTxNotifications } from "hooks/useTxNotifications";
 import { useForm } from "react-hook-form";
 import { AiOutlinePlusCircle } from "react-icons/ai";
+import { isAddress } from "thirdweb";
 import { Button, FormLabel } from "tw-components";
 
 interface AddAdminButtonProps {
@@ -59,8 +59,12 @@ export const AddAdminButton: React.FC<AddAdminButtonProps> = ({
       <Modal isOpen={isOpen} onClose={onClose} isCentered>
         <ModalOverlay />
         <ModalContent
+          className="!bg-background rounded-lg border border-border"
           as="form"
           onSubmit={form.handleSubmit((data) => {
+            if (!isAddress(data.walletAddress)) {
+              onError(new Error("Invalid wallet address"));
+            }
             grantPermissions(data, {
               onSuccess: () => {
                 onSuccess();
@@ -88,7 +92,7 @@ export const AddAdminButton: React.FC<AddAdminButtonProps> = ({
           <ModalHeader>Add Admin</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <Stack spacing={4}>
+            <div className="flex flex-col gap-4">
               <FormControl isRequired>
                 <FormLabel>Wallet Address</FormLabel>
                 <Input
@@ -105,7 +109,7 @@ export const AddAdminButton: React.FC<AddAdminButtonProps> = ({
                   {...form.register("label")}
                 />
               </FormControl>
-            </Stack>
+            </div>
           </ModalBody>
 
           <ModalFooter as={Flex} gap={3}>

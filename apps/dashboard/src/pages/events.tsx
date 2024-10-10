@@ -1,4 +1,5 @@
-import { Box, DarkMode, Flex, SimpleGrid, Spinner } from "@chakra-ui/react";
+import { useForceDarkTheme } from "@/components/theme-provider";
+import { Box, Flex, SimpleGrid, Spinner } from "@chakra-ui/react";
 import {
   QueryClient,
   QueryClientProvider,
@@ -66,7 +67,7 @@ const Events = () => {
         <Aurora
           pos={{ left: "50%", top: "50%" }}
           size={{ width: "2000px", height: "2000px" }}
-          color={"hsl(280deg 78% 30% / 30%)"}
+          color="hsl(280deg 78% 30% / 30%)"
         />
 
         <Flex
@@ -80,7 +81,7 @@ const Events = () => {
           </Heading>
         </Flex>
 
-        {lumaEventsQuery.isLoading && (
+        {lumaEventsQuery.isPending && (
           <Flex justify="center" align="center" height={200}>
             <Spinner size="lg" />
           </Flex>
@@ -133,8 +134,9 @@ const Events = () => {
 const queryClient = new QueryClient();
 
 const EventsPage: ThirdwebNextPage = () => {
+  useForceDarkTheme();
   return (
-    <DarkMode>
+    <>
       <NextSeo title="events" />
       <Flex
         sx={{
@@ -153,7 +155,7 @@ const EventsPage: ThirdwebNextPage = () => {
         </QueryClientProvider>
         <HomepageFooter />
       </Flex>
-    </DarkMode>
+    </>
   );
 };
 

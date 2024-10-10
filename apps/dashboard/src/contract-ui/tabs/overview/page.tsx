@@ -1,121 +1,105 @@
-import { Divider, Flex, GridItem, SimpleGrid } from "@chakra-ui/react";
-import { contractType, useContract } from "@thirdweb-dev/react";
-import { type Abi, getAllDetectedFeatureNames } from "@thirdweb-dev/sdk";
+"use client";
+
 import { PublishedBy } from "components/contract-components/shared/published-by";
-import { RelevantDataSection } from "components/dashboard/RelevantDataSection";
-import { useMemo } from "react";
+import type { ThirdwebContract } from "thirdweb";
 import { AnalyticsOverview } from "./components/Analytics";
 import { BuildYourApp } from "./components/BuildYourApp";
 import { ContractChecklist } from "./components/ContractChecklist";
-import { Extensions } from "./components/Extensions";
 import { LatestEvents } from "./components/LatestEvents";
 import { MarketplaceDetails } from "./components/MarketplaceDetails";
 import { NFTDetails } from "./components/NFTDetails";
 import { PermissionsTable } from "./components/PermissionsTable";
 import { TokenDetails } from "./components/TokenDetails";
-import { getGuidesAndTemplates } from "./helpers/getGuidesAndTemplates";
 
 interface ContractOverviewPageProps {
-  contractAddress?: string;
+  contract: ThirdwebContract;
+  hasEnglishAuctions: boolean;
+  hasDirectListings: boolean;
+  isErc721: boolean;
+  isErc1155: boolean;
+  isErc20: boolean;
+  isPermissionsEnumerable: boolean;
+  chainSlug: string;
+  isAnalyticsSupported: boolean;
 }
 
 const TRACKING_CATEGORY = "contract_overview";
 
 export const ContractOverviewPage: React.FC<ContractOverviewPageProps> = ({
-  contractAddress,
+  contract,
+  isErc1155,
+  isErc20,
+  isErc721,
+  hasEnglishAuctions,
+  hasDirectListings,
+  isPermissionsEnumerable,
+  chainSlug,
+  isAnalyticsSupported,
 }) => {
-  const { contract } = useContract(contractAddress);
-  const contractTypeQuery = contractType.useQuery(contractAddress);
-  const contractTypeData = contractTypeQuery?.data || "custom";
-
-  const detectedFeatureNames = useMemo(
-    () =>
-      contract?.abi ? getAllDetectedFeatureNames(contract.abi as Abi) : [],
-    [contract?.abi],
-  );
-
-  const { guides, templates } = useMemo(
-    () => getGuidesAndTemplates(detectedFeatureNames, contractTypeData),
-    [detectedFeatureNames, contractTypeData],
-  );
-
-  if (!contractAddress) {
-    return <div>No contract address provided</div>;
-  }
-
   return (
-    <SimpleGrid columns={{ base: 1, xl: 10 }} gap={20}>
-      <GridItem as={Flex} colSpan={{ xl: 7 }} direction="column" gap={16}>
-        {contract && <ContractChecklist contract={contract} />}
-        {contract && (
+    <div className="flex flex-col gap-8 lg:flex-row">
+      <div className="flex flex-col gap-16">
+        <ContractChecklist
+          isErc721={isErc721}
+          isErc1155={isErc1155}
+          isErc20={isErc20}
+          contract={contract}
+          chainSlug={chainSlug}
+        />
+
+        {isAnalyticsSupported && (
           <AnalyticsOverview
-            contractAddress={contractAddress}
-            chainId={contract.chainId}
+            contractAddress={contract.address}
+            chainId={contract.chain.id}
             trackingCategory={TRACKING_CATEGORY}
+            chainSlug={chainSlug}
           />
         )}
-        {contract &&
-          (contractTypeData === "marketplace" ||
-            ["DirectListings", "EnglishAuctions"].some((type) =>
-              detectedFeatureNames.includes(type),
-            )) && (
-            <MarketplaceDetails
-              contractAddress={contractAddress}
-              trackingCategory={TRACKING_CATEGORY}
-              contractType={contractTypeData as "marketplace"}
-              features={detectedFeatureNames}
-            />
-          )}
-        {contract &&
-          ["ERC1155", "ERC721"].some((type) =>
-            detectedFeatureNames.includes(type),
-          ) && (
-            <NFTDetails
-              contractAddress={contract.getAddress()}
-              chainId={contract.chainId}
-              trackingCategory={TRACKING_CATEGORY}
-              features={detectedFeatureNames}
-            />
-          )}
-        {contract &&
-          ["ERC20"].some((type) => detectedFeatureNames.includes(type)) && (
-            <TokenDetails
-              contractAddress={contractAddress}
-              chainId={contract.chainId}
-            />
-          )}
+
+        {(hasEnglishAuctions || hasDirectListings) && (
+          <MarketplaceDetails
+            contract={contract}
+            trackingCategory={TRACKING_CATEGORY}
+            hasEnglishAuctions={hasEnglishAuctions}
+            hasDirectListings={hasDirectListings}
+            chainSlug={chainSlug}
+          />
+        )}
+
+        {(isErc1155 || isErc721) && (
+          <NFTDetails
+            contract={contract}
+            trackingCategory={TRACKING_CATEGORY}
+            isErc721={isErc721}
+            chainSlug={chainSlug}
+          />
+        )}
+
+        {isErc20 && <TokenDetails contract={contract} />}
+
         <LatestEvents
-          address={contractAddress}
+          contract={contract}
           trackingCategory={TRACKING_CATEGORY}
+          chainSlug={chainSlug}
         />
-        {contract &&
-          ["PermissionsEnumerable"].some((type) =>
-            detectedFeatureNames.includes(type),
-          ) && (
-            <PermissionsTable
-              contract={contract}
-              trackingCategory={TRACKING_CATEGORY}
-            />
-          )}
-        <BuildYourApp trackingCategory={TRACKING_CATEGORY} />
-      </GridItem>
-      <GridItem colSpan={{ xl: 3 }} as={Flex} direction="column" gap={6}>
-        <PublishedBy contractAddress={contractAddress} />
-        {contract?.abi && <Extensions abi={contract?.abi} />}
-        {(guides.length > 0 || templates.length > 0) && <Divider />}
-        <RelevantDataSection
-          data={guides}
-          title="guide"
-          TRACKING_CATEGORY={TRACKING_CATEGORY}
+
+        {isPermissionsEnumerable && (
+          <PermissionsTable
+            contract={contract}
+            trackingCategory={TRACKING_CATEGORY}
+            chainSlug={chainSlug}
+          />
+        )}
+
+        <BuildYourApp
+          trackingCategory={TRACKING_CATEGORY}
+          chainSlug={chainSlug}
+          contractAddress={contract.address}
         />
-        {guides.length > 0 && templates.length > 0 && <Divider />}
-        <RelevantDataSection
-          data={templates}
-          title="template"
-          TRACKING_CATEGORY={TRACKING_CATEGORY}
-        />
-        {templates.length > 0 && <Divider />}
-      </GridItem>
-    </SimpleGrid>
+      </div>
+      <div className="shrink-0 lg:w-[300px]">
+        <PublishedBy contract={contract} />
+      </div>
+    </div>
   );
 };

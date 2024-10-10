@@ -3,7 +3,8 @@ import type { ThirdwebClient } from "../../../../../client/client.js";
 import type { Wallet } from "../../../../../wallets/interfaces/wallet.js";
 import type { SmartWalletOptions } from "../../../../../wallets/smart/types.js";
 import type { AppMetadata } from "../../../../../wallets/types.js";
-import { useConnectedWallets } from "../../../hooks/wallets/useConnectedWallets.js";
+import type { WalletId } from "../../../../../wallets/wallet-types.js";
+import { useConnectedWallets } from "../../../../core/hooks/wallets/useConnectedWallets.js";
 import { getDefaultWallets } from "../../../wallets/defaultWallets.js";
 import { ConnectModalContent } from "../Modal/ConnectModalContent.js";
 import { useSetupScreen } from "../Modal/screen.js";
@@ -21,6 +22,7 @@ export type WalletSwitcherConnectionScreenProps = {
   onSelect: (wallet: Wallet) => void;
   recommendedWallets: Wallet[] | undefined;
   showAllWallets: boolean;
+  hiddenWallets?: WalletId[];
   walletConnect:
     | {
         projectId?: string;
@@ -38,7 +40,7 @@ export function WalletSwitcherConnectionScreen(
     getDefaultWallets({
       appMetadata: props.appMetadata,
       chains: props.chains,
-    });
+    }).filter((w) => w.id !== "inApp");
 
   const screenSetup = useSetupScreen({
     size: "compact",
@@ -54,7 +56,7 @@ export function WalletSwitcherConnectionScreen(
       chains={props.chains}
       client={props.client}
       connectLocale={props.connectLocale}
-      isEmbed={props.isEmbed}
+      hideHeader={props.isEmbed}
       isOpen={true}
       meta={{
         showThirdwebBranding: false,

@@ -2,6 +2,9 @@ import type { Abi } from "abitype";
 import { type Hex, decodeErrorResult } from "viem";
 import { resolveContractAbi } from "../contract/actions/resolve-abi.js";
 import type { ThirdwebContract } from "../contract/contract.js";
+import { isHex } from "../utils/encoding/hex.js";
+import { stringify } from "../utils/json.js";
+import { IS_DEV } from "../utils/process.js";
 
 /**
  * @internal
@@ -19,7 +22,7 @@ export async function extractError<abi extends Abi>(args: {
       data?: Hex;
     };
     if (errorObj.data) {
-      if (errorObj.data !== "0x") {
+      if (errorObj.data !== "0x" && isHex(errorObj.data)) {
         let abi = contract?.abi;
         if (contract && !abi) {
           abi = await resolveContractAbi(contract).catch(() => undefined);
@@ -35,13 +38,14 @@ export async function extractError<abi extends Abi>(args: {
           contract,
         );
       }
-      return new TransactionError("Execution Reverted", contract);
+      return new TransactionError(
+        `Execution Reverted: ${stringify(errorObj)}`,
+        contract,
+      );
     }
   }
   return error;
 }
-
-export const __DEV__ = process.env.NODE_ENV !== "production";
 
 class TransactionError<abi extends Abi> extends Error {
   public contractAddress: string | undefined;
@@ -49,7 +53,7 @@ class TransactionError<abi extends Abi> extends Error {
 
   constructor(reason: string, contract?: ThirdwebContract<abi>) {
     let message = reason;
-    if (__DEV__ && contract) {
+    if (IS_DEV && contract) {
       // show more infor in dev
       message = [
         reason,

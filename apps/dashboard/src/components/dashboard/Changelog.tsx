@@ -1,7 +1,8 @@
-import { Flex } from "@chakra-ui/react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistance } from "date-fns/formatDistance";
-import { BsArrowRight } from "react-icons/bs";
-import { Link, Text } from "tw-components";
+import { ArrowRightIcon } from "lucide-react";
+import { Link } from "tw-components";
+import { ClientOnly } from "../ClientOnly/ClientOnly";
 
 export interface ChangelogItem {
   published_at: string;
@@ -15,67 +16,37 @@ interface ChangelogProps {
 
 export const Changelog: React.FC<ChangelogProps> = ({ changelog }) => {
   return (
-    <Flex flexDir="column" gap={4} position="relative">
-      <Flex
-        position="absolute"
-        h="95%"
-        borderRight="1px solid"
-        borderColor="#24262D"
-        _light={{
-          borderColor: "gray.300",
-        }}
-        left={{ base: "5px", md: "6px" }}
-        top="15px"
-      />
+    <div className="relative flex flex-col gap-6 border-border border-l py-2">
       {changelog.map((item) => (
-        <Flex key={item.title} gap={4}>
-          <Text
-            userSelect="none"
-            mt="-5px"
-            color="#24262D"
-            _light={{
-              color: "gray.300",
-            }}
-            size="body.xl"
-          >
-            &#9679;
-          </Text>
-          <Flex flexDir="column">
+        <div className="flex flex-row gap-4" key={item.title}>
+          <div className="-translate-x-1/2 size-2.5 shrink-0 translate-y-1/2 rounded-full bg-border" />
+
+          <div className="flex flex-col">
             <Link
               isExternal
-              _hover={{
-                _light: { color: "blue.600" },
-                _dark: { color: "blue.400" },
-                textDecor: "underline",
-              }}
               href={`${item.url}?utm_source=thirdweb&utm_campaign=changelog`}
               role="group"
+              className="!text-muted-foreground hover:!text-foreground hover:!no-underline line-clamp-2 text-sm"
             >
-              <Text color="inherit" noOfLines={2}>
-                {item.title}
-              </Text>
+              {item.title}
             </Link>
-            <Text color="faded" size="body.sm">
-              {formatDistance(new Date(item.published_at), Date.now(), {
-                addSuffix: true,
-              })}
-            </Text>
-          </Flex>
-        </Flex>
+            <div className="mt-1 text-muted-foreground text-xs opacity-70">
+              <ClientOnly ssr={<Skeleton className="h-2" />}>
+                {formatDistance(new Date(item.published_at), Date.now(), {
+                  addSuffix: true,
+                })}
+              </ClientOnly>
+            </div>
+          </div>
+        </div>
       ))}
       <Link
         href="https://blog.thirdweb.com/changelog?utm_source=thirdweb&utm_campaign=changelog"
         isExternal
-        ml={7}
-        _hover={{ textDecor: "none", color: "blue.500" }}
-        role="group"
-        color="faded"
-        display="flex"
-        alignItems={"center"}
-        gap="0.5em"
+        className="!text-foreground flex items-center gap-2 pl-7 text-sm"
       >
-        View all changes <BsArrowRight />
+        View More <ArrowRightIcon className="size-4" />
       </Link>
-    </Flex>
+    </div>
   );
 };

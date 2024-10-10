@@ -17,7 +17,7 @@ import { useLocalStorage } from "hooks/useLocalStorage";
 import { useEffect, useMemo, useState } from "react";
 import { Badge, Button, Card, Heading, Text } from "tw-components";
 import { ApplyForOpCreditsForm } from "./ApplyForOpCreditsForm";
-import { OnboardingBilling } from "./Billing";
+import { LazyOnboardingBilling } from "./LazyOnboardingBilling";
 import { OnboardingModal } from "./Modal";
 import { PlanCard } from "./PlanCard";
 
@@ -117,14 +117,11 @@ export const ApplyForOpCreditsModal: React.FC = () => {
                   size="label.sm"
                   px={3}
                   bgColor={creditsRecord.color}
+                  color="#fff"
+                  textTransform="capitalize"
+                  fontWeight="bold"
                 >
-                  <Text
-                    color="#fff"
-                    textTransform="capitalize"
-                    fontWeight="bold"
-                  >
-                    {creditsRecord.title}
-                  </Text>
+                  {creditsRecord.title}
                 </Badge>
               </Box>
               <Flex alignItems="center" gap={2} flexDir="column">
@@ -219,11 +216,8 @@ export const ApplyForOpCreditsModal: React.FC = () => {
         />
       )}
       {/* // Add Payment Method Modal */}
-      <OnboardingModal
-        isOpen={paymentMethodModalState.isOpen}
-        onClose={paymentMethodModalState.onClose}
-      >
-        <OnboardingBilling
+      <OnboardingModal isOpen={paymentMethodModalState.isOpen}>
+        <LazyOnboardingBilling
           onSave={() => {
             setHasAddedPaymentMethod(true);
             paymentMethodModalState.onClose();

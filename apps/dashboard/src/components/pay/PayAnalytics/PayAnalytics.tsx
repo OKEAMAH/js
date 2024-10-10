@@ -1,14 +1,15 @@
-import type { ApiKey } from "@3rdweb-sdk/react/hooks/useApi";
-import { format } from "date-fns";
-import { useState } from "react";
-import { DatePickerWithRange } from "../../../@/components/ui/DatePickerWithRange";
+"use client";
+
+import { DatePickerWithRange } from "@/components/ui/DatePickerWithRange";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../../@/components/ui/select";
+} from "@/components/ui/select";
+import { format, subDays } from "date-fns";
+import { useState } from "react";
 import { PayCustomersTable } from "./components/PayCustomersTable";
 import { PayNewCustomers } from "./components/PayNewCustomers";
 import { PaymentHistory } from "./components/PaymentHistory";
@@ -49,8 +50,8 @@ type Range = {
   to: Date;
 };
 
-export function PayAnalytics(props: { apiKey: ApiKey }) {
-  const clientId = props.apiKey.key;
+export function PayAnalytics(props: { clientId: string }) {
+  const clientId = props.clientId;
   const [range, setRange] = useState<Range>(() =>
     getLastNDaysRange("last-120"),
   );
@@ -61,12 +62,12 @@ export function PayAnalytics(props: { apiKey: ApiKey }) {
 
   return (
     <div>
-      <div className="flex mb-2">
+      <div className="mb-2 flex">
         <Filters range={range} setRange={setRange} />
       </div>
       <div className="flex flex-col gap-10 lg:gap-4">
         <GridWithSeparator>
-          <div className="border-b border-border pb-6 xl:pb-0 xl:border-none flex items-center">
+          <div className="flex items-center border-border border-b pb-6 xl:border-none xl:pb-0">
             <TotalVolumePieChart
               clientId={clientId}
               from={range.from}
@@ -81,7 +82,7 @@ export function PayAnalytics(props: { apiKey: ApiKey }) {
           />
         </GridWithSeparator>
 
-        <div className="grid gap-4 grid-cols-1 xl:grid-cols-2 ">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 ">
           <CardContainer>
             <Payouts
               clientId={clientId}
@@ -100,7 +101,7 @@ export function PayAnalytics(props: { apiKey: ApiKey }) {
         </div>
 
         <GridWithSeparator>
-          <div className="border-b border-border pb-6 xl:pb-0 xl:border-none">
+          <div className="border-border border-b pb-6 xl:border-none xl:pb-0">
             <PayNewCustomers
               clientId={clientId}
               from={range.from}
@@ -124,19 +125,15 @@ export function PayAnalytics(props: { apiKey: ApiKey }) {
 }
 
 function getLastNDaysRange(id: DurationId) {
-  const todayDate = new Date();
-  const pastDate = new Date(todayDate);
-
   const durationInfo = durationPresets.find((preset) => preset.id === id);
   if (!durationInfo) {
     throw new Error("Invalid duration id");
   }
 
-  pastDate.setDate(todayDate.getDate() - durationInfo.days);
-
+  const todayDate = new Date();
   const value: Range = {
     type: id,
-    from: pastDate,
+    from: subDays(todayDate, durationInfo.days),
     to: todayDate,
     label: durationInfo.name,
   };
@@ -146,35 +143,6 @@ function getLastNDaysRange(id: DurationId) {
 
 function Filters(props: { range: Range; setRange: (range: Range) => void }) {
   const { range, setRange } = props;
-
-  const presets = (
-    <div className="p-4 border-b border-border mb-2">
-      <Select
-        value={range.type}
-        onValueChange={(id: DurationId) => {
-          setRange(getLastNDaysRange(id));
-        }}
-      >
-        <SelectTrigger className="bg-transparent flex">
-          <SelectValue placeholder="Select" />
-        </SelectTrigger>
-        <SelectContent position="popper">
-          {durationPresets.map((preset) => (
-            <SelectItem key={preset.id} value={preset.id}>
-              {preset.name}
-            </SelectItem>
-          ))}
-
-          {range.type === "custom" && (
-            <SelectItem value="custom">
-              {format(range.from, "LLL dd, y")} -{" "}
-              {format(range.to, "LLL dd, y")}
-            </SelectItem>
-          )}
-        </SelectContent>
-      </Select>
-    </div>
-  );
 
   return (
     <div className="flex gap-2">
@@ -195,9 +163,36 @@ function Filters(props: { range: Range; setRange: (range: Range) => void }) {
             type: "custom",
           })
         }
-        header={presets}
+        header={
+          <div className="mb-2 border-border border-b p-4">
+            <Select
+              value={range.type}
+              onValueChange={(id: DurationId) => {
+                setRange(getLastNDaysRange(id));
+              }}
+            >
+              <SelectTrigger className="flex bg-transparent">
+                <SelectValue placeholder="Select" />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                {durationPresets.map((preset) => (
+                  <SelectItem key={preset.id} value={preset.id}>
+                    {preset.name}
+                  </SelectItem>
+                ))}
+
+                {range.type === "custom" && (
+                  <SelectItem value="custom">
+                    {format(range.from, "LLL dd, y")} -{" "}
+                    {format(range.to, "LLL dd, y")}
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        }
         labelOverride={range.label}
-        className="p-0 border-none w-auto"
+        className="w-auto border-none p-0"
       />
     </div>
   );
@@ -205,17 +200,17 @@ function Filters(props: { range: Range; setRange: (range: Range) => void }) {
 
 function GridWithSeparator(props: { children: React.ReactNode }) {
   return (
-    <div className="p-4 xl:p-6 relative border border-border grid gap-6 lg:gap-12 grid-cols-1 xl:grid-cols-2 rounded-xl">
+    <div className="relative grid grid-cols-1 gap-6 rounded-xl border border-border p-4 lg:gap-12 xl:grid-cols-2 xl:p-6">
       {props.children}
       {/* Desktop - horizontal middle */}
-      <div className="absolute left-[50%] w-[1px] top-6 bottom-6 bg-border hidden xl:block" />
+      <div className="absolute top-6 bottom-6 left-[50%] hidden w-[1px] bg-border xl:block" />
     </div>
   );
 }
 
 function CardContainer(props: { children: React.ReactNode }) {
   return (
-    <div className="border border-border rounded-xl p-4 xl:p-6 flex">
+    <div className="flex rounded-xl border border-border p-4 xl:p-6">
       {props.children}
     </div>
   );

@@ -1,7 +1,9 @@
+"use client";
+
+import { WalletAddress } from "@/components/blocks/wallet-address";
+import { useDashboardRouter } from "@/lib/DashboardRouter";
 import {
-  Center,
   Flex,
-  Icon,
   IconButton,
   Select,
   Skeleton,
@@ -14,18 +16,15 @@ import {
   Thead,
   Tr,
 } from "@chakra-ui/react";
-import type { NFTContract } from "@thirdweb-dev/react";
-import { detectFeatures } from "components/contract-components/utils";
 import { MediaCell } from "components/contract-pages/table/table-columns/cells/media-cell";
-import { useRouter } from "next/router";
-import { useEffect, useMemo, useState } from "react";
-import { FiArrowRight } from "react-icons/fi";
 import {
-  MdFirstPage,
-  MdLastPage,
-  MdNavigateBefore,
-  MdNavigateNext,
-} from "react-icons/md";
+  ArrowRightIcon,
+  ChevronFirstIcon,
+  ChevronLastIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import {
   type CellProps,
   type Column,
@@ -33,30 +32,24 @@ import {
   useTable,
 } from "react-table";
 import type { NFT, ThirdwebContract } from "thirdweb";
-import {
-  nextTokenIdToMint as erc721NextTokenIdToMint,
-  totalSupply as erc721TotalSupply,
-  getNFTs as getErc721NFTs,
-} from "thirdweb/extensions/erc721";
-import {
-  nextTokenIdToMint as erc1155NextTokenIdToMint,
-  getNFTs as getErc1155NFTs,
-} from "thirdweb/extensions/erc1155";
+import * as ERC721Ext from "thirdweb/extensions/erc721";
+import * as ERC1155Ext from "thirdweb/extensions/erc1155";
 import { useReadContract } from "thirdweb/react";
 import { Heading, Text } from "tw-components";
-import { AddressCopyButton } from "tw-components/AddressCopyButton";
+import { useChainSlug } from "../../../../hooks/chains/chainSlug";
 
 interface ContractOverviewNFTGetAllProps {
-  oldContract: NFTContract;
   contract: ThirdwebContract;
+  isErc721: boolean;
 }
 export const NFTGetAllTable: React.FC<ContractOverviewNFTGetAllProps> = ({
-  oldContract,
   contract,
+  isErc721,
 }) => {
-  const isErc721 = detectFeatures(oldContract, ["ERC721"]);
-  const isErc1155 = detectFeatures(oldContract, ["ERC1155"]);
-  const router = useRouter();
+  // if it's not erc721, it's erc1155
+  const isErc1155 = !isErc721;
+
+  const router = useDashboardRouter();
 
   const tableColumns = useMemo(() => {
     const cols: Column<NFT>[] = [
@@ -72,10 +65,9 @@ export const NFTGetAllTable: React.FC<ContractOverviewNFTGetAllProps> = ({
       {
         Header: "Media",
         accessor: (row) => row.metadata,
-        Cell: (
-          cell: CellProps<NFT, NFT["metadata"]>,
-          // @ts-expect-error - types are not compatible yet until we have NFTRenderer in v5
-        ) => <MediaCell cell={cell} />,
+        Cell: (cell: CellProps<NFT, NFT["metadata"]>) => (
+          <MediaCell cell={cell} />
+        ),
       },
       {
         Header: "Name",
@@ -105,7 +97,7 @@ export const NFTGetAllTable: React.FC<ContractOverviewNFTGetAllProps> = ({
         Header: "Owner",
         accessor: (row) => row.owner,
         Cell: (cell: CellProps<NFT, string>) => (
-          <AddressCopyButton size="xs" address={cell.value} />
+          <WalletAddress address={cell.value} />
         ),
       });
     }
@@ -130,7 +122,7 @@ export const NFTGetAllTable: React.FC<ContractOverviewNFTGetAllProps> = ({
   const [queryParams, setQueryParams] = useState({ count: 50, start: 0 });
 
   const getNFTsQuery = useReadContract(
-    isErc1155 ? getErc1155NFTs : getErc721NFTs,
+    isErc1155 ? ERC1155Ext.getNFTs : ERC721Ext.getNFTs,
     {
       contract,
       start: queryParams.start,
@@ -141,14 +133,15 @@ export const NFTGetAllTable: React.FC<ContractOverviewNFTGetAllProps> = ({
 
   // TODO: Add support for ERC1155 total circulating supply
   const nextTokenIdToMintQuery = useReadContract(
-    isErc1155 ? erc1155NextTokenIdToMint : erc721NextTokenIdToMint,
+    isErc1155 ? ERC1155Ext.nextTokenIdToMint : ERC721Ext.nextTokenIdToMint,
     {
       contract,
     },
   );
-  const totalSupplyQuery = useReadContract(erc721TotalSupply, {
+  const totalSupplyQuery = useReadContract(ERC721Ext.totalSupply, {
     contract,
   });
+
   // Anything bigger and the table breaks
   const safeTotalCount = useMemo(() => {
     const computedSupply = (() => {
@@ -173,7 +166,9 @@ export const NFTGetAllTable: React.FC<ContractOverviewNFTGetAllProps> = ({
   const querySuccess =
     nextTokenIdToMintQuery.isSuccess || totalSupplyQuery.isSuccess;
   const queryLoading =
-    nextTokenIdToMintQuery.isLoading || totalSupplyQuery.isLoading;
+    nextTokenIdToMintQuery.isPending || totalSupplyQuery.isPending;
+
+  const chainSlug = useChainSlug(contract.chain.id);
 
   const {
     getTableProps,
@@ -215,7 +210,10 @@ export const NFTGetAllTable: React.FC<ContractOverviewNFTGetAllProps> = ({
 
   return (
     <Flex gap={4} direction="column">
-      <TableContainer maxW="100%">
+      <TableContainer
+        maxW="100%"
+        className="relative rounded-lg border border-border"
+      >
         {getNFTsQuery.isFetching && (
           <Spinner
             color="primary"
@@ -226,7 +224,7 @@ export const NFTGetAllTable: React.FC<ContractOverviewNFTGetAllProps> = ({
           />
         )}
         <Table {...getTableProps()}>
-          <Thead>
+          <Thead className="!bg-muted/50">
             {headerGroups.map((headerGroup, headerGroupIndex) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: FIXME
               <Tr {...headerGroup.getHeaderGroupProps()} key={headerGroupIndex}>
@@ -247,7 +245,11 @@ export const NFTGetAllTable: React.FC<ContractOverviewNFTGetAllProps> = ({
               </Tr>
             ))}
           </Thead>
-          <Tbody {...getTableBodyProps()} position="relative">
+          <Tbody
+            {...getTableBodyProps()}
+            position="relative"
+            className="!bg-background"
+          >
             {page.map((row, rowIndex) => {
               const failedToLoad = !row.original.tokenURI;
               prepareRow(row);
@@ -255,7 +257,7 @@ export const NFTGetAllTable: React.FC<ContractOverviewNFTGetAllProps> = ({
                 <Tr
                   {...row.getRowProps()}
                   role="group"
-                  _hover={{ bg: "accent.100" }}
+                  className="hover:bg-muted/50"
                   style={{ cursor: "pointer" }}
                   onClick={() => {
                     const tokenId = row.original.id;
@@ -263,8 +265,7 @@ export const NFTGetAllTable: React.FC<ContractOverviewNFTGetAllProps> = ({
                       return;
                     }
                     router.push(
-                      `${router.asPath}/${tokenId.toString()}`,
-                      undefined,
+                      `/${chainSlug}/${contract.address}/nfts/${tokenId.toString()}`,
                       {
                         scroll: true,
                       },
@@ -292,7 +293,7 @@ export const NFTGetAllTable: React.FC<ContractOverviewNFTGetAllProps> = ({
                     </Td>
                   ))}
                   <Td borderBottomWidth="inherit" borderColor="borderColor">
-                    {!failedToLoad && <Icon as={FiArrowRight} />}
+                    {!failedToLoad && <ArrowRightIcon className="size-4" />}
                   </Td>
                 </Tr>
               );
@@ -322,18 +323,18 @@ export const NFTGetAllTable: React.FC<ContractOverviewNFTGetAllProps> = ({
           </Tbody>
         </Table>
       </TableContainer>
-      <Center w="100%">
-        <Flex gap={2} direction="row" align="center">
+      <div className="flex w-full items-center justify-center">
+        <div className="flex flex-row items-center gap-1">
           <IconButton
             isDisabled={!canPreviousPage || queryLoading}
             aria-label="first page"
-            icon={<Icon as={MdFirstPage} />}
+            icon={<ChevronFirstIcon className="size-4" />}
             onClick={() => gotoPage(0)}
           />
           <IconButton
             isDisabled={!canPreviousPage || queryLoading}
             aria-label="previous page"
-            icon={<Icon as={MdNavigateBefore} />}
+            icon={<ChevronLeftIcon className="size-4" />}
             onClick={() => previousPage()}
           />
           <Text whiteSpace="nowrap">
@@ -345,13 +346,13 @@ export const NFTGetAllTable: React.FC<ContractOverviewNFTGetAllProps> = ({
           <IconButton
             isDisabled={!canNextPage || queryLoading}
             aria-label="next page"
-            icon={<Icon as={MdNavigateNext} />}
+            icon={<ChevronRightIcon className="size-4" />}
             onClick={() => nextPage()}
           />
           <IconButton
             isDisabled={!canNextPage || queryLoading}
             aria-label="last page"
-            icon={<Icon as={MdLastPage} />}
+            icon={<ChevronLastIcon className="size-4" />}
             onClick={() => gotoPage(pageCount - 1)}
           />
 
@@ -368,8 +369,8 @@ export const NFTGetAllTable: React.FC<ContractOverviewNFTGetAllProps> = ({
             <option value="250">250</option>
             <option value="500">500</option>
           </Select>
-        </Flex>
-      </Center>
+        </div>
+      </div>
     </Flex>
   );
 };

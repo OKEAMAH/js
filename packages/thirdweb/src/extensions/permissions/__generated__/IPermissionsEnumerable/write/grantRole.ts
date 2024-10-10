@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -32,19 +31,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `grantRole` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `grantRole` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `grantRole` method is supported.
  * @extension PERMISSIONS
  * @example
  * ```ts
  * import { isGrantRoleSupported } from "thirdweb/extensions/permissions";
  *
- * const supported = await isGrantRoleSupported(contract);
+ * const supported = isGrantRoleSupported(["0x..."]);
  * ```
  */
-export async function isGrantRoleSupported(contract: ThirdwebContract<any>) {
+export function isGrantRoleSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -56,7 +55,7 @@ export async function isGrantRoleSupported(contract: ThirdwebContract<any>) {
  * @extension PERMISSIONS
  * @example
  * ```ts
- * import { encodeGrantRoleParams } "thirdweb/extensions/permissions";
+ * import { encodeGrantRoleParams } from "thirdweb/extensions/permissions";
  * const result = encodeGrantRoleParams({
  *  role: ...,
  *  account: ...,
@@ -74,7 +73,7 @@ export function encodeGrantRoleParams(options: GrantRoleParams) {
  * @extension PERMISSIONS
  * @example
  * ```ts
- * import { encodeGrantRole } "thirdweb/extensions/permissions";
+ * import { encodeGrantRole } from "thirdweb/extensions/permissions";
  * const result = encodeGrantRole({
  *  role: ...,
  *  account: ...,
@@ -97,6 +96,7 @@ export function encodeGrantRole(options: GrantRoleParams) {
  * @extension PERMISSIONS
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { grantRole } from "thirdweb/extensions/permissions";
  *
  * const transaction = grantRole({
@@ -109,8 +109,7 @@ export function encodeGrantRole(options: GrantRoleParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function grantRole(

@@ -3,7 +3,6 @@ import { readContract } from "../../../../../transaction/read-contract.js";
 import type { BaseTransactionOptions } from "../../../../../transaction/types.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -29,19 +28,18 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `verifyClaim` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `verifyClaim` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `verifyClaim` method is supported.
  * @extension ERC721
  * @example
  * ```ts
  * import { isVerifyClaimSupported } from "thirdweb/extensions/erc721";
- *
- * const supported = await isVerifyClaimSupported(contract);
+ * const supported = isVerifyClaimSupported(["0x..."]);
  * ```
  */
-export async function isVerifyClaimSupported(contract: ThirdwebContract<any>) {
+export function isVerifyClaimSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -53,7 +51,7 @@ export async function isVerifyClaimSupported(contract: ThirdwebContract<any>) {
  * @extension ERC721
  * @example
  * ```ts
- * import { encodeVerifyClaimParams } "thirdweb/extensions/erc721";
+ * import { encodeVerifyClaimParams } from "thirdweb/extensions/erc721";
  * const result = encodeVerifyClaimParams({
  *  claimer: ...,
  *  quantity: ...,
@@ -71,7 +69,7 @@ export function encodeVerifyClaimParams(options: VerifyClaimParams) {
  * @extension ERC721
  * @example
  * ```ts
- * import { encodeVerifyClaim } "thirdweb/extensions/erc721";
+ * import { encodeVerifyClaim } from "thirdweb/extensions/erc721";
  * const result = encodeVerifyClaim({
  *  claimer: ...,
  *  quantity: ...,

@@ -5,9 +5,8 @@ import {
   WalletsInAppIcon,
   WalletsSmartIcon,
 } from "@/icons";
-import { CodeIcon, ConstructionIcon } from "lucide-react";
+import { CodeIcon } from "lucide-react";
 import Link from "next/link";
-import type { PropsWithChildren } from "react";
 
 export default function Page() {
   return (
@@ -20,7 +19,7 @@ export default function Page() {
 function WalletsSection() {
   return (
     <section className="my-12">
-      <h2 className="text-2xl md:text-3xl font-semibold tracking-tight break-words">
+      <h2 className="break-words font-semibold text-2xl tracking-tight md:text-3xl">
         Connect
       </h2>
 
@@ -78,27 +77,13 @@ function ArticleCardIndex(props: {
   return (
     <Link
       href={props.href}
-      className="flex items-center gap-4 rounded-lg border p-4 transition-colors hover:border-ring hover:bg-ring/20 min-h-32"
+      className="flex min-h-32 items-center gap-4 rounded-lg border p-4 transition-colors hover:border-ring hover:bg-ring/20"
     >
       {props.icon && <props.icon className="size-10 shrink-0" />}
       <div className="flex flex-col gap-1">
-        <h3 className="text-lg font-semibold">{props.title}</h3>
+        <h3 className="font-semibold text-lg">{props.title}</h3>
         <p className="font-medium text-muted-foreground">{props.description}</p>
       </div>
     </Link>
   );
 }
-
-const ComingSoonWrapper: React.FC<PropsWithChildren> = ({ children }) => {
-  return (
-    <div className="relative pointer-events-none rounded-lg overflow-hidden">
-      {children}
-      <div className="absolute top-0 left-0 h-full w-full backdrop-blur-[2px] bg-color-overlay">
-        <div className="flex items-center justify-center h-full space-x-2">
-          <ConstructionIcon className="opacity-80" strokeWidth={1} />
-          <p className="font-semibold">Coming Soon</p>
-        </div>
-      </div>
-    </div>
-  );
-};

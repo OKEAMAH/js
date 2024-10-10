@@ -1,6 +1,6 @@
-import { Flex, HStack, Icon } from "@chakra-ui/react";
+import { Flex, Icon } from "@chakra-ui/react";
 import { FiAlertCircle, FiCheckCircle, FiInfo } from "react-icons/fi";
-import { Badge, Heading, Text } from "tw-components";
+import { Badge, Text } from "tw-components";
 
 interface BillingHeaderProps {
   validPayment: boolean;
@@ -12,12 +12,10 @@ export const BillingHeader: React.FC<BillingHeaderProps> = ({
   paymentVerification,
 }) => {
   return (
-    <Flex direction="column" gap={2}>
-      <Heading size="title.lg" as="h1">
-        Billing Info
-      </Heading>
+    <Flex direction="column" gap={1}>
+      <h1 className="font-semibold text-xl tracking-tight">Billing Info</h1>
 
-      <HStack>
+      <div className="flex flex-row items-center gap-2">
         <Text size="body.md">
           Manage your payment methods, billing information and invoices.
         </Text>
@@ -29,7 +27,7 @@ export const BillingHeader: React.FC<BillingHeaderProps> = ({
           py={1.5}
           textTransform="capitalize"
         >
-          <HStack as="span">
+          <span className="flex flex-row items-center gap-2">
             <Icon
               as={
                 validPayment
@@ -53,9 +51,9 @@ export const BillingHeader: React.FC<BillingHeaderProps> = ({
                   ? "Needs verification"
                   : "Invalid payment"}
             </Text>
-          </HStack>
+          </span>
         </Badge>
-      </HStack>
+      </div>
     </Flex>
   );
 };

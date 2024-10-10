@@ -1,10 +1,9 @@
 // @ts-check
 /**
  *
- * @returns {Promise<import("@thirdweb-dev/chains").Chain[]>}
  */
 async function fetchChainsFromApi() {
-  const res = await fetch(`https://api.thirdweb.com/v1/chains`, {
+  const res = await fetch("https://api.thirdweb.com/v1/chains", {
     headers: {
       "Content-Type": "application/json",
     },
@@ -21,7 +20,6 @@ async function fetchChainsFromApi() {
 /**
  *
  * @param {number|string} chainIdOrSlug
- * @returns {Promise<import("@thirdweb-dev/chains").Chain>}
  */
 async function getSingleChain(chainIdOrSlug) {
   const res = await fetch(
@@ -57,7 +55,9 @@ module.exports = {
     ],
   },
   exclude: ["/chain/validate"],
-  transform: async (config, path) => {
+  transform: async (config, _path) => {
+    let path = _path;
+
     // ignore og image paths
     if (path.includes("_og")) {
       return null;

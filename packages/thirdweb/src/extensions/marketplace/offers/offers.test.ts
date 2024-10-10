@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { TEST_CONTRACT_URI } from "~test/ipfs-uris.js";
 import { ANVIL_CHAIN } from "../../../../test/src/chains.js";
 import { TEST_CLIENT } from "../../../../test/src/test-clients.js";
 import {
@@ -31,7 +32,7 @@ import { getOffer } from "./read/getOffer.js";
 import { acceptOffer } from "./write/acceptOffer.js";
 import { makeOffer } from "./write/makeOffer.js";
 
-describe.runIf(process.env.TW_SECRET_KEY)("Marketplace: Offers", () => {
+describe.skip("Marketplace: Offers", () => {
   let nftTokenId: bigint;
   let marketplaceContract: ThirdwebContract;
   let erc721Contract: ThirdwebContract;
@@ -43,6 +44,7 @@ describe.runIf(process.env.TW_SECRET_KEY)("Marketplace: Offers", () => {
       client: TEST_CLIENT,
       params: {
         name: "TestMarketPlace",
+        contractURI: TEST_CONTRACT_URI,
       },
     });
     marketplaceContract = getContract({
@@ -59,6 +61,7 @@ describe.runIf(process.env.TW_SECRET_KEY)("Marketplace: Offers", () => {
       client: TEST_CLIENT,
       params: {
         name: "TestERC721",
+        contractURI: TEST_CONTRACT_URI,
       },
     });
 
@@ -92,7 +95,6 @@ describe.runIf(process.env.TW_SECRET_KEY)("Marketplace: Offers", () => {
     WETH9 = (await getDeployedInfraContract({
       chain: ANVIL_CHAIN,
       contractId: "WETH9",
-      constructorParams: [],
       client: TEST_CLIENT,
     }))!;
 

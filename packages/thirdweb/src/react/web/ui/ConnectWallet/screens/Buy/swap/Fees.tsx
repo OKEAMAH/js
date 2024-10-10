@@ -10,14 +10,13 @@ import { Text } from "../../../../components/text.js";
  */
 export function SwapFees(props: {
   quote: BuyWithCryptoQuote;
-  align: "left" | "right";
 }) {
   return (
     <Container
       flex="column"
       gap="xs"
       style={{
-        alignItems: props.align === "right" ? "flex-end" : "flex-start",
+        alignItems: "flex-start",
       }}
     >
       {props.quote.processingFees.map((fee) => {
@@ -84,8 +83,7 @@ export function FiatFees(props: {
             </Text>
 
             <Text color="primaryText" inline>
-              {feeAmount === 0 ? "~" : ""}
-              {feeAmount} {fee.currencySymbol}{" "}
+              {feeAmount === 0 ? "~" : ""} {feeAmount} {fee.currencySymbol}
             </Text>
           </div>
         );

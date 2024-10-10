@@ -1,3 +1,6 @@
+"use client";
+
+import { useThirdwebClient } from "@/constants/thirdweb.client";
 import {
   type EngineContractSubscription,
   useEngineRemoveContractSubscription,
@@ -13,32 +16,42 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
-  Stack,
   Tooltip,
   type UseDisclosureReturn,
   useDisclosure,
 } from "@chakra-ui/react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
-import { shortenAddress } from "@thirdweb-dev/react";
 import { ChainIcon } from "components/icons/ChainIcon";
 import { TWTable } from "components/shared/TWTable";
 import { format } from "date-fns";
 import { useTrack } from "hooks/analytics/useTrack";
 import { useAllChainsData } from "hooks/chains/allChains";
 import { useTxNotifications } from "hooks/useTxNotifications";
-import { thirdwebClient } from "lib/thirdweb-client";
+import { useV5DashboardChain } from "lib/v5-adapter";
 import { useState } from "react";
 import { FiInfo, FiTrash } from "react-icons/fi";
 import { eth_getBlockByNumber, getRpcClient } from "thirdweb";
+import { shortenAddress as shortenAddresThrows } from "thirdweb/utils";
 import { Button, Card, FormLabel, LinkButton, Text } from "tw-components";
-import { defineDashboardChain } from "../../../lib/v5-adapter";
 import { AddressCopyButton } from "../../../tw-components/AddressCopyButton";
+
+function shortenAddress(address: string) {
+  if (!address) {
+    return "";
+  }
+
+  try {
+    return shortenAddresThrows(address);
+  } catch {
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+  }
+}
 
 interface ContractSubscriptionTableProps {
   instanceUrl: string;
   contractSubscriptions: EngineContractSubscription[];
-  isLoading: boolean;
+  isPending: boolean;
   isFetched: boolean;
   autoUpdate: boolean;
 }
@@ -50,20 +63,20 @@ export const ContractSubscriptionTable: React.FC<
 > = ({
   instanceUrl,
   contractSubscriptions,
-  isLoading,
+  isPending,
   isFetched,
   autoUpdate,
 }) => {
   const removeDisclosure = useDisclosure();
   const [selectedContractSub, setSelectedContractSub] =
     useState<EngineContractSubscription>();
-  const { chainIdToChainRecord } = useAllChainsData();
+  const { idToChain } = useAllChainsData();
 
   const columns = [
     columnHelper.accessor("chainId", {
       header: "Chain",
       cell: (cell) => {
-        const chain = chainIdToChainRecord[cell.getValue()];
+        const chain = idToChain.get(cell.getValue());
         return (
           <Flex align="center" gap={2}>
             <ChainIcon size={12} ipfsSrc={chain?.icon?.url} />
@@ -76,7 +89,7 @@ export const ContractSubscriptionTable: React.FC<
       header: "Contract Address",
       cell: (cell) => {
         const { chainId } = cell.row.original;
-        const chain = chainIdToChainRecord[chainId];
+        const chain = idToChain.get(chainId);
         const explorer = chain?.explorers?.[0];
         if (!explorer) {
           return (
@@ -94,7 +107,7 @@ export const ContractSubscriptionTable: React.FC<
             href={explorer ? `${explorer.url}/address/${cell.getValue()}` : "#"}
             fontFamily="mono"
           >
-            {shortenAddress(cell.getValue(), false)}
+            {shortenAddress(cell.getValue())}
           </LinkButton>
         );
       },
@@ -134,11 +147,11 @@ export const ContractSubscriptionTable: React.FC<
                   <Tooltip
                     p={0}
                     label={
-                      <Stack p={2} fontSize="small" color="white">
+                      <div className="flex flex-col gap-2 p-2 text-sm">
                         {filterEvents.map((name) => (
                           <Text key={name}>{name}</Text>
                         ))}
-                      </Stack>
+                      </div>
                     }
                     bgColor="backgroundCardHighlight"
                     borderRadius="lg"
@@ -162,11 +175,11 @@ export const ContractSubscriptionTable: React.FC<
                   <Tooltip
                     p={0}
                     label={
-                      <Stack p={2} fontSize="small" color="white">
+                      <div className="flex flex-col gap-2 p-2 text-sm">
                         {filterFunctions.map((name) => (
                           <Text key={name}>{name}</Text>
                         ))}
-                      </Stack>
+                      </div>
                     }
                     bgColor="backgroundCardHighlight"
                     borderRadius="lg"
@@ -204,7 +217,7 @@ export const ContractSubscriptionTable: React.FC<
         title="contract subscriptions"
         data={contractSubscriptions}
         columns={columns}
-        isLoading={isLoading}
+        isPending={isPending}
         isFetched={isFetched}
         onMenuClick={[
           {
@@ -237,15 +250,17 @@ const ChainLastBlockTimestamp = ({
   chainId: number;
   blockNumber: bigint;
 }) => {
+  const client = useThirdwebClient();
+  const chain = useV5DashboardChain(chainId);
   // Get the block timestamp to display how delayed the last processed block is.
   const ethBlockQuery = useQuery({
     queryKey: ["block_timestamp", chainId, Number(blockNumber)],
     // keep the previous data while fetching new data
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const rpcRequest = getRpcClient({
-        client: thirdwebClient,
-        chain: defineDashboardChain(chainId),
+        client,
+        chain,
       });
       const block = await eth_getBlockByNumber(rpcRequest, {
         blockNumber,
@@ -322,8 +337,8 @@ const RemoveModal = ({
     "Successfully removed contract subscription.",
     "Failed to remove contract subscription.",
   );
-  const { chainIdToChainRecord } = useAllChainsData();
-  const chain = chainIdToChainRecord[contractSubscription.chainId];
+  const { idToChain } = useAllChainsData();
+  const chain = idToChain.get(contractSubscription.chainId);
 
   const onClick = () => {
     removeContractSubscription(
@@ -358,11 +373,11 @@ const RemoveModal = ({
   return (
     <Modal isOpen={disclosure.isOpen} onClose={disclosure.onClose} isCentered>
       <ModalOverlay />
-      <ModalContent>
+      <ModalContent className="!bg-background rounded-lg border border-border">
         <ModalHeader>Remove Contract Subscription</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          <Stack spacing={4}>
+          <div className="flex flex-col gap-4">
             <Text>
               This action will delete all stored data for this contract
               subscription.
@@ -413,7 +428,7 @@ const RemoveModal = ({
                 )}
               </FormControl>
             </Card>
-          </Stack>
+          </div>
         </ModalBody>
         <ModalFooter as={Flex} gap={3}>
           <Button type="button" onClick={disclosure.onClose} variant="ghost">

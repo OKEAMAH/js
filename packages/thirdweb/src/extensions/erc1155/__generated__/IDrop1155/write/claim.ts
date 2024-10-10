@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -87,19 +86,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `claim` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `claim` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `claim` method is supported.
  * @extension ERC1155
  * @example
  * ```ts
  * import { isClaimSupported } from "thirdweb/extensions/erc1155";
  *
- * const supported = await isClaimSupported(contract);
+ * const supported = isClaimSupported(["0x..."]);
  * ```
  */
-export async function isClaimSupported(contract: ThirdwebContract<any>) {
+export function isClaimSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -111,7 +110,7 @@ export async function isClaimSupported(contract: ThirdwebContract<any>) {
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeClaimParams } "thirdweb/extensions/erc1155";
+ * import { encodeClaimParams } from "thirdweb/extensions/erc1155";
  * const result = encodeClaimParams({
  *  receiver: ...,
  *  tokenId: ...,
@@ -142,7 +141,7 @@ export function encodeClaimParams(options: ClaimParams) {
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeClaim } "thirdweb/extensions/erc1155";
+ * import { encodeClaim } from "thirdweb/extensions/erc1155";
  * const result = encodeClaim({
  *  receiver: ...,
  *  tokenId: ...,
@@ -168,6 +167,7 @@ export function encodeClaim(options: ClaimParams) {
  * @extension ERC1155
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { claim } from "thirdweb/extensions/erc1155";
  *
  * const transaction = claim({
@@ -185,8 +185,7 @@ export function encodeClaim(options: ClaimParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function claim(

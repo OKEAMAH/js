@@ -1,4 +1,4 @@
-import { TrackedLink } from "../../../tw-components";
+import { TrackedLink } from "tw-components";
 import styles from "./opensource.module.css";
 
 const thirdwebRepoUrl = "https://github.com/thirdweb-dev";
@@ -37,7 +37,7 @@ const GithubIcon = () => {
   );
 };
 
-export type OpenSourceProps = {
+type OpenSourceProps = {
   TRACKING_CATEGORY: string;
 };
 

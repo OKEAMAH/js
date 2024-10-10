@@ -5,8 +5,12 @@ import type {
 import type { Prettify } from "../../../utils/type-utils.js";
 import { toUnits } from "../../../utils/units.js";
 import { mintTo as generatedMintTo } from "../__generated__/IMintableERC20/write/mintTo.js";
+
+export { isMintToSupported } from "../__generated__/IMintableERC20/write/mintTo.js";
+
 /**
  * Represents the parameters for the `mintTo` function.
+ * @extension ERC20
  */
 export type MintToParams = Prettify<
   WithOverrides<

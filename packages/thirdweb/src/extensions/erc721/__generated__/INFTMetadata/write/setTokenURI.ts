@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -32,19 +31,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `setTokenURI` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `setTokenURI` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `setTokenURI` method is supported.
  * @extension ERC721
  * @example
  * ```ts
  * import { isSetTokenURISupported } from "thirdweb/extensions/erc721";
  *
- * const supported = await isSetTokenURISupported(contract);
+ * const supported = isSetTokenURISupported(["0x..."]);
  * ```
  */
-export async function isSetTokenURISupported(contract: ThirdwebContract<any>) {
+export function isSetTokenURISupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -56,7 +55,7 @@ export async function isSetTokenURISupported(contract: ThirdwebContract<any>) {
  * @extension ERC721
  * @example
  * ```ts
- * import { encodeSetTokenURIParams } "thirdweb/extensions/erc721";
+ * import { encodeSetTokenURIParams } from "thirdweb/extensions/erc721";
  * const result = encodeSetTokenURIParams({
  *  tokenId: ...,
  *  uri: ...,
@@ -74,7 +73,7 @@ export function encodeSetTokenURIParams(options: SetTokenURIParams) {
  * @extension ERC721
  * @example
  * ```ts
- * import { encodeSetTokenURI } "thirdweb/extensions/erc721";
+ * import { encodeSetTokenURI } from "thirdweb/extensions/erc721";
  * const result = encodeSetTokenURI({
  *  tokenId: ...,
  *  uri: ...,
@@ -97,6 +96,7 @@ export function encodeSetTokenURI(options: SetTokenURIParams) {
  * @extension ERC721
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { setTokenURI } from "thirdweb/extensions/erc721";
  *
  * const transaction = setTokenURI({
@@ -109,8 +109,7 @@ export function encodeSetTokenURI(options: SetTokenURIParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function setTokenURI(

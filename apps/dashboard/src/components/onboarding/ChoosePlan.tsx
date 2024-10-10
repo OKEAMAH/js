@@ -1,18 +1,20 @@
-import { AccountPlan, useUpdateAccount } from "@3rdweb-sdk/react/hooks/useApi";
-import { SimpleGrid } from "@chakra-ui/react";
+import {
+  AccountPlan,
+  useUpdateAccountPlan,
+} from "@3rdweb-sdk/react/hooks/useApi";
 import { PricingCard } from "components/homepage/sections/PricingCard";
 import { useTrack } from "hooks/analytics/useTrack";
-import { OnboardingTitle } from "./Title";
+import { TitleAndDescription } from "./Title";
 
 interface OnboardingChoosePlanProps {
   onSave: () => void;
 }
 
-export const OnboardingChoosePlan: React.FC<OnboardingChoosePlanProps> = ({
+const OnboardingChoosePlan: React.FC<OnboardingChoosePlanProps> = ({
   onSave,
 }) => {
   const trackEvent = useTrack();
-  const mutation = useUpdateAccount();
+  const mutation = useUpdateAccountPlan();
 
   const handleSave = (plan: AccountPlan) => {
     trackEvent({
@@ -67,11 +69,11 @@ export const OnboardingChoosePlan: React.FC<OnboardingChoosePlanProps> = ({
 
   return (
     <>
-      <OnboardingTitle
+      <TitleAndDescription
         heading="Choose your plan"
         description="Get started for free with our Starter plan or subscribe to Growth plan to unlock higher rate limits and advanced features."
       />
-      <SimpleGrid columns={{ base: 1, md: 2 }} gap={8}>
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         <PricingCard
           size="sm"
           name={AccountPlan.Free}
@@ -90,7 +92,7 @@ export const OnboardingChoosePlan: React.FC<OnboardingChoosePlanProps> = ({
 
         <PricingCard
           size="sm"
-          ctaTitle={"Claim your 1-month free"}
+          ctaTitle="Claim your 1-month free"
           name={AccountPlan.Growth}
           ctaHint="Your free trial will end after 30 days."
           canTrialGrowth={true}
@@ -107,7 +109,9 @@ export const OnboardingChoosePlan: React.FC<OnboardingChoosePlanProps> = ({
           }}
           onDashboard
         />
-      </SimpleGrid>
+      </div>
     </>
   );
 };
+
+export default OnboardingChoosePlan;

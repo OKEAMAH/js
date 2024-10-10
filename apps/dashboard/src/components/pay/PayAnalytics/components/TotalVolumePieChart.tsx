@@ -1,6 +1,6 @@
+import { SkeletonContainer } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Cell, Pie, PieChart } from "recharts";
-import { SkeletonContainer } from "../../../../@/components/ui/skeleton";
 import { usePayVolume } from "../hooks/usePayVolume";
 import { FailedToLoad, chartHeight } from "./common";
 
@@ -18,18 +18,21 @@ type ProcessedQuery = {
   };
   isError?: boolean;
   isEmpty?: boolean;
-  isLoading?: boolean;
+  isPending?: boolean;
 };
 
 function processQuery(
   volumeQuery: ReturnType<typeof usePayVolume>,
 ): ProcessedQuery {
-  if (volumeQuery.isLoading) {
-    return { isLoading: true };
+  if (volumeQuery.isPending) {
+    return { isPending: true };
   }
 
   if (volumeQuery.isError) {
     return { isError: true };
+  }
+  if (!volumeQuery.data) {
+    return { isEmpty: true };
   }
 
   if (volumeQuery.data.aggregate.sum.succeeded.amountUSDCents === 0) {
@@ -107,7 +110,7 @@ function RenderData(props: { query: ProcessedQuery }) {
     : skeletonData;
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 justify-center">
+    <div className="flex flex-col justify-center gap-6 lg:flex-row">
       {/* Left */}
       <div className="relative flex justify-center">
         <PieChart width={250} height={chartHeight}>
@@ -134,8 +137,8 @@ function RenderData(props: { query: ProcessedQuery }) {
         </PieChart>
 
         <div className="absolute inset-0 flex items-center justify-center p-10">
-          <div className="flex flex-col gap-1 items-center">
-            <p className="text-sm font-medium"> Total Volume</p>
+          <div className="flex flex-col items-center gap-1">
+            <p className="font-medium text-sm"> Total Volume</p>
 
             <SkeletonContainer
               loadedData={
@@ -145,12 +148,12 @@ function RenderData(props: { query: ProcessedQuery }) {
                     ? "NA"
                     : undefined
               }
-              skeletonData={"$100"}
+              skeletonData="$100"
               render={(totalAmount) => {
                 return (
                   <p
                     className={cn(
-                      "text-3xl font-semibold tracking-tighter",
+                      "font-semibold text-3xl tracking-tighter",
                       totalAmount.length > 6 ? "text-3xl" : "text-4xl",
                     )}
                   >
@@ -162,10 +165,9 @@ function RenderData(props: { query: ProcessedQuery }) {
           </div>
         </div>
       </div>
-
       {/* Right */}
-      <div className="lg:flex items-center border-t border-border pt-5 lg:pt-0 lg:border-none lg:pr-10">
-        <div className="flex lg:flex-col gap-10 lg:gap-4 justify-center">
+      <div className="items-center border-border border-t pt-5 lg:flex lg:border-none lg:pt-0 lg:pr-10">
+        <div className="flex justify-center gap-10 lg:flex-col lg:gap-4">
           {volumeData.map((v) => (
             <VolumeLegend
               key={v.name}
@@ -194,22 +196,20 @@ function VolumeLegend(props: {
   return (
     <div className="flex items-start gap-2">
       <div
-        className="size-5 rounded mt-1"
+        className="mt-1 size-5 rounded"
         style={{
           background: props.color,
         }}
       />
       <div>
-        <p className="text-secondary-foreground font-medium mb-1">
-          {props.label}
-        </p>
+        <p className="mb-1 font-medium text-muted-foreground">{props.label}</p>
 
         <SkeletonContainer
           loadedData={props.amount}
-          skeletonData={"$50"}
+          skeletonData="$50"
           render={(amount) => {
             return (
-              <p className="text-2xl text-foreground font-semibold tracking-tight">
+              <p className="font-semibold text-2xl text-foreground tracking-tight">
                 {amount}
               </p>
             );

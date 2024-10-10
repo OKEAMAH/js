@@ -1,8 +1,6 @@
 import z from "zod";
-import type { PartnerPermission } from "../../types";
-import { isValidPermission } from "./utils";
 
-export const isDomainRegex =
+const isDomainRegex =
   /^(?:\*|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*(?:\*(?:\.[a-z0-9][a-z0-9-]{0,61}[a-z0-9](?:\.[a-z0-9][a-z0-9-]{0,61}[a-z0-9])*)?)|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]|localhost(?::\d{1,5})?)$/;
 
 export const partnerFormSchema = z.object({
@@ -32,10 +30,4 @@ export const partnerFormSchema = z.object({
         .filter((d) => d.length > 0)
         .join(","),
     ),
-  permissions: z.custom<PartnerPermission>(
-    (value) => isValidPermission(value),
-    {
-      message: "Invalid permissions setting",
-    },
-  ),
 });

@@ -1,8 +1,12 @@
+"use client";
+
+import { Label } from "@/components/ui/label";
+import { useThirdwebClient } from "@/constants/thirdweb.client";
+import { cn } from "@/lib/utils";
+import { useDashboardStorageUpload } from "@3rdweb-sdk/react/hooks/useDashboardStorageUpload";
 import {
-  AspectRatio,
   Box,
   ButtonGroup,
-  Center,
   Divider,
   Flex,
   GridItem,
@@ -12,11 +16,8 @@ import {
   SimpleGrid,
   Tooltip,
   chakra,
-  useToast,
 } from "@chakra-ui/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { MediaRenderer, useStorageUpload } from "@thirdweb-dev/react";
-import type { UploadProgressEvent } from "@thirdweb-dev/storage";
 import { PINNED_FILES_QUERY_KEY_ROOT } from "components/storage/your-files";
 import { useErrorHandler } from "contexts/error-handler";
 import { useTrack } from "hooks/analytics/useTrack";
@@ -25,6 +26,8 @@ import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { BsFillCloudUploadFill } from "react-icons/bs";
 import { FiExternalLink, FiTrash2, FiUploadCloud } from "react-icons/fi";
+import { toast } from "sonner";
+import { MediaRenderer } from "thirdweb/react";
 import { useActiveAccount } from "thirdweb/react";
 import {
   Button,
@@ -36,14 +39,12 @@ import {
   TrackedIconButton,
   TrackedLink,
 } from "tw-components";
-import { Label } from "../../@/components/ui/label";
 
 const TRACKING_CATEGORY = "ipfs_uploader";
 
 const UNACCEPTED_FILE_TYPES = ["text/html"];
 
 export const IpfsUploadDropzone: React.FC = () => {
-  const toast = useToast();
   const address = useActiveAccount()?.address;
 
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
@@ -54,13 +55,8 @@ export const IpfsUploadDropzone: React.FC = () => {
         UNACCEPTED_FILE_TYPES.includes(f.type),
       );
       if (invalidFiles.length) {
-        const description = `${invalidFiles.length} ${invalidFiles.length > 1 ? "files have" : "file has"} been removed from the list. Uploading ${UNACCEPTED_FILE_TYPES.join(", ")} files is restricted.`;
-        toast({
-          title: "Error",
-          description,
-          status: "error",
-          isClosable: true,
-          duration: 6000,
+        toast.error("Error", {
+          description: `${invalidFiles.length} ${invalidFiles.length > 1 ? "files have" : "file has"} been removed from the list. Uploading ${UNACCEPTED_FILE_TYPES.join(", ")} files is restricted.`,
         });
       }
       setDroppedFiles((prev) => [
@@ -71,43 +67,35 @@ export const IpfsUploadDropzone: React.FC = () => {
   });
   return (
     <Flex flexDir="column" gap={4}>
-      <AspectRatio
-        ratio={{
-          base: droppedFiles.length ? 1 : 8 / 4,
-          md: droppedFiles.length ? 16 / 9 : 36 / 9,
-        }}
-        w="100%"
+      <div
+        className={cn(
+          "relative w-full",
+          droppedFiles.length
+            ? "aspect-square md:aspect-[16/9]"
+            : "aspect-[2] md:aspect-[36/9]",
+        )}
       >
         {droppedFiles.length ? (
-          <Box border="2px solid" borderColor="borderColor" borderRadius="xl">
+          <div className="h-full rounded-xl border-2 border-border">
             <FileUpload files={droppedFiles} updateFiles={setDroppedFiles} />
-          </Box>
+          </div>
         ) : !address ? (
-          <Center
-            border="2px solid"
-            borderColor="borderColor"
-            borderRadius="xl"
-          >
-            <Text size="label.lg" color="gray.700" textAlign="center">
+          <div className="flex h-full items-center justify-center rounded-xl border-2 border-border">
+            <Text
+              size="label.lg"
+              className="text-muted-foreground"
+              textAlign="center"
+            >
               Please connect your wallet to begin uploading.
             </Text>
-          </Center>
+          </div>
         ) : (
-          <Center
+          <div
+            className={cn(
+              "flex items-center justify-center rounded-xl border-2 border-border border-solid bg-transparent hover:border-blue-600 dark:border-blue-400",
+              address ? "cursor-pointer" : "cursor-default",
+            )}
             {...getRootProps()}
-            bg="transparent"
-            _hover={{
-              _light: {
-                borderColor: "blue.600",
-              },
-              _dark: {
-                borderColor: "blue.400",
-              },
-            }}
-            border="2px solid"
-            borderColor="borderColor"
-            borderRadius="xl"
-            cursor={address ? "pointer" : "default"}
           >
             <input {...getInputProps()} />
 
@@ -139,9 +127,9 @@ export const IpfsUploadDropzone: React.FC = () => {
                 )}
               </Flex>
             }
-          </Center>
+          </div>
         )}
-      </AspectRatio>
+      </div>
       <Flex flexDir="column" gap={{ base: 6, md: 3 }} />
     </Flex>
   );
@@ -157,19 +145,17 @@ const filesPerPage = 20;
 const FileUpload: React.FC<FileUploadProps> = ({ files, updateFiles }) => {
   const trackEvent = useTrack();
   const address = useActiveAccount()?.address;
-  const [progress, setProgress] = useState<UploadProgressEvent>({
-    progress: 0,
-    total: 100,
-  });
+  const client = useThirdwebClient();
+
   const [uploadWithoutDirectory, setUploadWithoutDirectory] = useState(
     files.length === 1,
   );
   const uploadToAFolder = !uploadWithoutDirectory;
-  const storageUpload = useStorageUpload({
+  const storageUpload = useDashboardStorageUpload({
     uploadWithoutDirectory,
-    onProgress: setProgress,
+    // onProgress: setProgress,
     metadata: {
-      address,
+      address: address ?? "",
       uploadedAt: new Date().toISOString(),
       uploadedFrom: "thirdweb-dashboard",
     },
@@ -180,7 +166,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, updateFiles }) => {
 
   const [page, setPage] = useState(0);
 
-  const progressPercent = (progress.progress / progress.total) * 100;
+  // const progressPercent = (progress.progress / progress.total) * 100;
 
   const mainIpfsUri = useMemo(() => {
     if (ipfsHashes.length === 0) {
@@ -190,8 +176,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, updateFiles }) => {
       return replaceIpfsUrl(ipfsHashes[0]);
     }
     // get the folder
-    // return replaceIpfsUrl(ipfsHashes[0].split("/").slice(0, -1).join("/"));
-    return `https://ipfs.io/ipfs/${ipfsHashes[0].split("ipfs://")[1]}`;
+    const uri = ipfsHashes[0].split("ipfs://")[1];
+    const folderPath = uri.split("/")[0]; // "Qma.../image.png" -> "Qma..."
+    return `https://ipfs.io/ipfs/${folderPath}`;
   }, [ipfsHashes]);
 
   const filesToShow = useMemo(() => {
@@ -226,7 +213,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, updateFiles }) => {
                 alignItems="center"
               >
                 <GridItem colSpan={5} rowSpan={2}>
-                  <AspectRatio ratio={1}>
+                  <div className="relative aspect-square">
                     <Box
                       rounded="lg"
                       overflow="hidden"
@@ -241,9 +228,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, updateFiles }) => {
                         src={URL.createObjectURL(file)}
                         mimeType={file.type}
                         requireInteraction
+                        client={client}
                       />
                     </Box>
-                  </AspectRatio>
+                  </div>
                 </GridItem>
                 <GridItem colSpan={16} rowSpan={1}>
                   <Heading size="label.md" as="label" noOfLines={2}>
@@ -303,7 +291,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, updateFiles }) => {
                           e.stopPropagation();
                           updateFiles((prev) => prev.filter((f) => f !== file));
                         }}
-                        isDisabled={storageUpload.isLoading}
+                        isDisabled={storageUpload.isPending}
                       />
                     </Tooltip>
                   )}
@@ -354,7 +342,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, updateFiles }) => {
           );
         })}
       </SimpleGrid>
-
       {showPagination && (
         <Flex
           gap={2}
@@ -384,8 +371,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, updateFiles }) => {
           </Button>
         </Flex>
       )}
-
-      <Flex direction="column">
+      <div className="flex flex-col">
         <Divider flexShrink={0} />
         <Flex
           direction={{ base: "column-reverse", md: "row" }}
@@ -395,14 +381,14 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, updateFiles }) => {
           p={{ base: 2, md: 2 }}
           pt={2}
           bg="bgWhite"
-          justifyContent={"space-between"}
+          justifyContent="space-between"
         >
           {/* If user is uploading just one file,
           we allow them to choose if they want to upload without a folder */}
           {files.length === 1 &&
-            !storageUpload.isLoading &&
+            !storageUpload.isPending &&
             ipfsHashes.length === 0 && (
-              <Flex direction={"row"} gap={"2"}>
+              <Flex direction="row" gap="2">
                 <Checkbox
                   id="dropzone_uploadWithoutDirectory"
                   defaultChecked={uploadToAFolder}
@@ -416,7 +402,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, updateFiles }) => {
                 </Label>
               </Flex>
             )}
-          {storageUpload.isLoading && (
+          {storageUpload.isPending && (
             <Flex
               w="100%"
               direction="column"
@@ -426,22 +412,15 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, updateFiles }) => {
             >
               <Progress
                 colorScheme="green"
-                value={progress.progress ? progressPercent : undefined}
+                // value={progress.progress ? progressPercent : undefined}
                 size={{ base: "xs", md: "lg" }}
                 w="100%"
                 borderRadius="full"
-                isIndeterminate={progress.progress === progress.total}
+                isIndeterminate={storageUpload.isPending}
                 position="relative"
               />
-              <Center
-                display={{ base: "none", md: "block" }}
-                position="absolute"
-                left={0}
-                right={0}
-                top={0}
-                bottom={0}
-              >
-                <Text
+              <div className="absolute top-0 right-0 bottom-0 left-0 hidden md:block">
+                {/* <Text
                   mt={0.5}
                   size="label.xs"
                   fontSize={11}
@@ -466,13 +445,13 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, updateFiles }) => {
                   transition="color 0.2s"
                 >
                   {Math.round(progressPercent)}%
-                </Text>
-              </Center>
+                </Text> */}
+              </div>
             </Flex>
           )}
           <ButtonGroup ml={{ base: "0", md: "auto" }}>
             <Button
-              isDisabled={storageUpload.isLoading}
+              isDisabled={storageUpload.isPending}
               onClick={() => {
                 updateFiles([]);
                 setIpfsHashes([]);
@@ -501,7 +480,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, updateFiles }) => {
               </Button>
             ) : (
               <Button
-                isLoading={storageUpload.isLoading}
+                isLoading={storageUpload.isPending}
                 loadingText="Uploading..."
                 colorScheme="green"
                 leftIcon={<Icon as={FiUploadCloud} />}
@@ -512,49 +491,34 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, updateFiles }) => {
                     action: "upload",
                     label: "start",
                   });
-                  storageUpload.mutate(
-                    {
-                      data: files,
+                  storageUpload.mutate(files, {
+                    onError: (error) => {
+                      trackEvent({
+                        category: TRACKING_CATEGORY,
+                        action: "upload",
+                        label: "error",
+                        error,
+                      });
+                      onError(error, "Failed to upload file");
                     },
-                    {
-                      onError: (error) => {
-                        trackEvent({
-                          category: TRACKING_CATEGORY,
-                          action: "upload",
-                          label: "error",
-                          error,
-                        });
-                        onError(error, "Failed to upload file");
-                        setProgress({
-                          progress: 0,
-                          total: 100,
-                        });
-                      },
-                      onSuccess: (uris) => {
-                        trackEvent({
-                          category: TRACKING_CATEGORY,
-                          action: "upload",
-                          label: "success",
-                          address,
-                          uri:
-                            uris.length === 1
-                              ? uris[0]
-                              : uris[0].split("/").slice(0, -1).join("/"),
-                        });
-                        setIpfsHashes(uris);
-                        // also refetch the files list
-                        queryClient.invalidateQueries([
-                          PINNED_FILES_QUERY_KEY_ROOT,
-                        ]);
-                      },
-                      onSettled: () => {
-                        setProgress({
-                          progress: 0,
-                          total: 100,
-                        });
-                      },
+                    onSuccess: (uris) => {
+                      trackEvent({
+                        category: TRACKING_CATEGORY,
+                        action: "upload",
+                        label: "success",
+                        address,
+                        uri:
+                          uris.length === 1
+                            ? uris[0]
+                            : uris[0].split("/").slice(0, -1).join("/"),
+                      });
+                      setIpfsHashes(uris);
+                      // also refetch the files list
+                      queryClient.invalidateQueries({
+                        queryKey: [PINNED_FILES_QUERY_KEY_ROOT],
+                      });
                     },
-                  );
+                  });
                 }}
               >
                 Start Upload
@@ -562,12 +526,12 @@ const FileUpload: React.FC<FileUploadProps> = ({ files, updateFiles }) => {
             )}
           </ButtonGroup>
         </Flex>
-      </Flex>
+      </div>
     </Flex>
   );
 };
 
-export const TWMediaRenderer = chakra(MediaRenderer, {
+const TWMediaRenderer = chakra(MediaRenderer, {
   shouldForwardProp: (prop) =>
     ["width", "height", "mimeType", "src", "requireInteraction"].includes(prop),
 });

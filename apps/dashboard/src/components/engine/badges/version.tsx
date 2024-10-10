@@ -1,27 +1,25 @@
+import { Button } from "@/components/ui/button";
+import { ToolTipLabel } from "@/components/ui/tooltip";
 import {
   type EngineInstance,
   useEngineLatestVersion,
   useEngineSystemHealth,
-  useEngineUpdateVersion,
+  useEngineUpdateServerVersion,
 } from "@3rdweb-sdk/react/hooks/useEngine";
+import { CircleArrowDownIcon, CloudDownloadIcon } from "lucide-react";
+import { useState } from "react";
+
+import { Spinner } from "@/components/ui/Spinner/Spinner";
 import {
-  Flex,
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  Tag,
-  TagLabel,
-  TagLeftIcon,
-  Tooltip,
-  type UseDisclosureReturn,
-  useDisclosure,
-} from "@chakra-ui/react";
-import { useTxNotifications } from "hooks/useTxNotifications";
-import { FaArrowCircleUp } from "react-icons/fa";
-import { Button, Text, TrackedLink } from "tw-components";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { TrackedLinkTW } from "@/components/ui/tracked-link";
+import { toast } from "sonner";
 
 export const EngineVersionBadge = ({
   instance,
@@ -30,40 +28,49 @@ export const EngineVersionBadge = ({
 }) => {
   const healthQuery = useEngineSystemHealth(instance.url);
   const latestVersionQuery = useEngineLatestVersion();
-  const disclosure = useDisclosure();
+  const [isModalOpen, setModalOpen] = useState(false);
 
-  const current = healthQuery.data?.engineVersion ?? "...";
-  const latest = latestVersionQuery.data ?? "...";
-  const isStale = current !== latest;
+  const currentVersion = healthQuery.data?.engineVersion ?? "...";
+  const latestVersion = latestVersionQuery.data;
+  const isStale = latestVersion && currentVersion !== latestVersion;
 
   if (!isStale) {
     return (
-      <Tag size="sm">
-        <TagLabel fontSize="small">{current}</TagLabel>
-      </Tag>
+      <ToolTipLabel label="Latest Version">
+        <Button variant="outline" asChild className="hover:bg-transparent">
+          <div>{currentVersion}</div>
+        </Button>
+      </ToolTipLabel>
     );
   }
 
   return (
     <>
-      <Tooltip label="Update to the latest version">
-        <Button variant="unstyled">
-          <Tag
-            onClick={disclosure.onOpen}
-            size="sm"
-            colorScheme="blue"
-            variant="outline"
-          >
-            <TagLeftIcon as={FaArrowCircleUp} boxSize={3} />
-            <TagLabel fontSize="small">{current}</TagLabel>
-          </Tag>
-        </Button>
-      </Tooltip>
+      <ToolTipLabel
+        label="New version is available"
+        leftIcon={
+          <CircleArrowDownIcon className="size-4 text-link-foreground" />
+        }
+      >
+        <Button
+          variant="outline"
+          className="relative"
+          onClick={() => setModalOpen(true)}
+        >
+          {currentVersion}
 
-      {disclosure.isOpen && (
+          {/* Notification Dot */}
+          <span className="-top-1 -right-1 absolute">
+            <PulseDot />
+          </span>
+        </Button>
+      </ToolTipLabel>
+
+      {latestVersion && (
         <UpdateVersionModal
-          disclosure={disclosure}
-          latest={latest ?? ""}
+          open={isModalOpen}
+          onOpenChange={setModalOpen}
+          latestVersion={latestVersion}
           instance={instance}
         />
       )}
@@ -71,79 +78,109 @@ export const EngineVersionBadge = ({
   );
 };
 
-const UpdateVersionModal = ({
-  disclosure,
-  latest,
-  instance,
-}: {
-  disclosure: UseDisclosureReturn;
-  latest: string;
+const UpdateVersionModal = (props: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  latestVersion: string;
   instance: EngineInstance;
 }) => {
-  const { mutate } = useEngineUpdateVersion();
-  const { onSuccess, onError } = useTxNotifications(
-    "Submitted a request to update your Engine instance. Please allow 1-2 business days for this process.",
-    "Unexpected error updating your Engine instance.",
-  );
+  const { open, onOpenChange, latestVersion, instance } = props;
+  const updateEngineServerMutation = useEngineUpdateServerVersion();
 
-  if (!instance.cloudDeployedAt) {
+  if (!instance.deploymentId) {
     // For self-hosted, show a prompt to the Github release page.
     return (
-      <Modal isOpen={disclosure.isOpen} onClose={disclosure.onClose}>
-        <ModalContent>
-          <ModalCloseButton />
-
-          <ModalHeader>Update your self-hosted Engine to {latest}</ModalHeader>
-          <ModalBody>
-            <Text>
-              View the changelog in the{" "}
-              <TrackedLink
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          className="z-[10001] max-w-[400px]"
+          dialogOverlayClassName="z-[10000]"
+        >
+          <DialogHeader>
+            <DialogTitle className="mb-6 pr-4 font-semibold text-2xl tracking-tight">
+              Update your self-hosted Engine to {latestVersion}
+            </DialogTitle>
+            <DialogDescription>
+              View the{" "}
+              <TrackedLinkTW
                 href="https://github.com/thirdweb-dev/engine/releases"
                 category="engine"
                 label="clicked-engine-releases"
-                isExternal
-                color="blue.500"
+                target="_blank"
+                className="text-link-foreground hover:text-foreground"
               >
-                Engine Github repository
-              </TrackedLink>
+                latest changelog
+              </TrackedLinkTW>
               .
-            </Text>
-          </ModalBody>
-          <ModalFooter as={Flex} gap={3}>
-            <Button type="button" onClick={disclosure.onClose} variant="ghost">
-              Close
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     );
   }
 
-  const onClick = () => {
+  const onClick = async () => {
     try {
-      mutate({ engineId: instance.id });
-      onSuccess();
-    } catch (e) {
-      onError(e);
+      const promise = updateEngineServerMutation.mutateAsync({
+        engineId: instance.id,
+        serverVersion: latestVersion,
+      });
+      toast.promise(promise, {
+        success: `Upgrading your Engine to ${latestVersion}. Please confirm after a few minutes.`,
+        error: "Unexpected error updating your Engine.",
+      });
+      await promise;
+    } finally {
+      onOpenChange(false);
     }
-    disclosure.onClose();
   };
 
   return (
-    <Modal isOpen={disclosure.isOpen} onClose={disclosure.onClose}>
-      <ModalContent>
-        <ModalCloseButton />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="z-[10001] max-w-[400px]"
+        dialogOverlayClassName="z-[10000]"
+      >
+        <DialogHeader>
+          <DialogTitle>Update Engine to {latestVersion}?</DialogTitle>
 
-        <ModalHeader>Update Engine to {latest}?</ModalHeader>
-        <ModalFooter as={Flex} gap={3}>
-          <Button type="button" onClick={disclosure.onClose} variant="ghost">
+          <DialogDescription>
+            It is recommended to pause traffic to Engine before performing this
+            upgrade. There is &lt; 1 minute of expected downtime.
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogFooter className="mt-5">
+          <Button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            variant="outline"
+          >
             Close
           </Button>
-          <Button type="submit" onClick={onClick} colorScheme="blue">
+          <Button
+            type="submit"
+            onClick={onClick}
+            variant="primary"
+            className="gap-2"
+          >
+            {updateEngineServerMutation.isPending ? (
+              <Spinner className="size-4" />
+            ) : (
+              <CloudDownloadIcon className="size-4" />
+            )}
             Update
           </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
+
+function PulseDot() {
+  return (
+    <span className="relative flex size-2">
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75" />
+      <span className="relative inline-flex size-2 rounded-full bg-primary" />
+    </span>
+  );
+}

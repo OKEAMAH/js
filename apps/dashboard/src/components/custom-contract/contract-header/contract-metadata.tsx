@@ -1,47 +1,45 @@
-import type { Chain } from "@thirdweb-dev/chains";
-import { useContract, useContractMetadata } from "@thirdweb-dev/react";
-import { usePublishedContractsFromDeploy } from "components/contract-components/hooks";
-import { useEffect, useState } from "react";
+import { getThirdwebClient } from "@/constants/thirdweb.server";
+import { fetchDashboardContractMetadata } from "@3rdweb-sdk/react/hooks/useDashboardContractMetadata";
+import { fetchPublishedContractsFromDeploy } from "components/contract-components/fetchPublishedContractsFromDeploy";
+import type { ThirdwebContract } from "thirdweb";
+import type { ChainMetadata } from "thirdweb/chains";
 import { MetadataHeader } from "./metadata-header";
 
 interface ContractMetadataProps {
-  contractAddress: string;
-  chain: Chain | undefined;
+  contract: ThirdwebContract;
+  chain: ChainMetadata;
 }
 
-export const ContractMetadata: React.FC<ContractMetadataProps> = ({
+export async function ContractMetadata({
+  contract,
   chain,
-  contractAddress,
-}) => {
-  const [wasError, setWasError] = useState(false);
+}: ContractMetadataProps) {
+  const settledResults = await Promise.allSettled([
+    fetchDashboardContractMetadata(contract),
+    fetchPublishedContractsFromDeploy({
+      contract,
+      client: getThirdwebClient(),
+    }),
+  ]);
 
-  const contractQuery = useContract(contractAddress);
-  const contractMetadataQuery = useContractMetadata(contractQuery.contract);
+  const contractMetadata =
+    settledResults[0].status === "fulfilled"
+      ? settledResults[0].value
+      : undefined;
 
-  const publishedContractsFromDeploy = usePublishedContractsFromDeploy(
-    contractAddress,
-    chain?.chainId,
-  );
-  const latestPublished = publishedContractsFromDeploy.data?.slice(-1)[0];
+  const publishedContractsFromDeploy =
+    settledResults[1].status === "fulfilled"
+      ? settledResults[1].value
+      : undefined;
 
-  // legitimate, we use this to keep the state around and *only* flip it if the status changes explicitly from error to success etc
-  // eslint-disable-next-line no-restricted-syntax
-  useEffect(() => {
-    if (contractMetadataQuery.isError) {
-      setWasError(true);
-    } else if (contractMetadataQuery.isSuccess) {
-      setWasError(false);
-    }
-  }, [contractMetadataQuery.isError, contractMetadataQuery.isSuccess]);
+  const latestPublished = publishedContractsFromDeploy?.slice(-1)[0];
 
   return (
     <MetadataHeader
-      isError={contractMetadataQuery.isError || wasError}
-      isLoaded={contractMetadataQuery.isSuccess}
-      data={contractMetadataQuery.data}
+      data={contractMetadata}
       chain={chain}
-      address={contractAddress}
+      address={contract.address}
       externalLinks={latestPublished?.externalLinks}
     />
   );
-};
+}

@@ -1,6 +1,6 @@
+import { useDashboardStorageUpload } from "@3rdweb-sdk/react/hooks/useDashboardStorageUpload";
 import { Box, Input, InputGroup, InputRightElement } from "@chakra-ui/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useStorageUpload } from "@thirdweb-dev/react";
 import { IpfsUploadButton } from "components/ipfs-upload/button";
 import { PINNED_FILES_QUERY_KEY_ROOT } from "components/storage/your-files";
 import type { SolidityInputWithTypeProps } from ".";
@@ -11,7 +11,7 @@ export const SolidityStringInput: React.FC<SolidityInputWithTypeProps> = ({
   functionName,
   ...inputProps
 }) => {
-  const storageUpload = useStorageUpload();
+  const storageUpload = useDashboardStorageUpload();
   const queryClient = useQueryClient();
   const { name, ...restOfInputProps } = inputProps;
   const inputName = name as string;
@@ -33,14 +33,14 @@ export const SolidityStringInput: React.FC<SolidityInputWithTypeProps> = ({
     <InputGroup display="flex">
       <Input
         placeholder="string"
-        isDisabled={storageUpload.isLoading}
+        isDisabled={storageUpload.isPending}
         pr={{ base: "90px", md: "160px" }}
         {...restOfInputProps}
         value={form.watch(inputName)}
         onChange={handleChange}
       />
       {showButton && (
-        <InputRightElement mx={1} width={{ base: "75px", md: "145px" }}>
+        <InputRightElement mx={1} width={{ base: "75px", md: "160px" }}>
           <IpfsUploadButton
             onUpload={(uri) => {
               if (functionName) {
@@ -57,7 +57,9 @@ export const SolidityStringInput: React.FC<SolidityInputWithTypeProps> = ({
               }
               form.setValue(inputName, uri, { shouldDirty: true });
               // also refetch the files list
-              queryClient.invalidateQueries([PINNED_FILES_QUERY_KEY_ROOT]);
+              queryClient.invalidateQueries({
+                queryKey: [PINNED_FILES_QUERY_KEY_ROOT],
+              });
             }}
             storageUpload={storageUpload}
           >

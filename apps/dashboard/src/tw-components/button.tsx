@@ -8,9 +8,9 @@ import {
   Link,
   forwardRef,
   useButtonGroup,
-  useClipboard,
 } from "@chakra-ui/react";
 import { useTrack } from "hooks/analytics/useTrack";
+import { useClipboard } from "hooks/useClipboard";
 import { forwardRef as reactForwardRef } from "react";
 import { FiCheck, FiCopy, FiExternalLink } from "react-icons/fi";
 import { fontWeights, letterSpacings, lineHeights } from "theme/typography";
@@ -157,9 +157,7 @@ export const TrackedIconButton = forwardRef<TrackedIconButtonProps, "button">(
     const trackEvent = useTrack();
     return (
       <IconButton
-        _light={{
-          color: "gray.700",
-        }}
+        className="text-muted-foreground"
         ref={ref}
         onClick={() =>
           trackEvent({

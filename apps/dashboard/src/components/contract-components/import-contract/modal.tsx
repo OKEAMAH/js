@@ -1,64 +1,111 @@
+"use client";
+import { Spinner } from "@/components/ui/Spinner/Spinner";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useDashboardRouter } from "@/lib/DashboardRouter";
 import {
   useAddContractMutation,
   useAllContractList,
 } from "@3rdweb-sdk/react/hooks/useRegistry";
-import {
-  Flex,
-  FormControl,
-  Modal,
-  ModalContent,
-  ModalOverlay,
-} from "@chakra-ui/react";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { NetworkSelectorButton } from "components/selects/NetworkSelectorButton";
-import { SolidityInput } from "contract-ui/components/solidity-inputs";
 import { useChainSlug } from "hooks/chains/chainSlug";
-import { useRouter } from "next/router";
-import { useCallback, useState } from "react";
+import { PlusIcon } from "lucide-react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { FiFilePlus } from "react-icons/fi";
-import { getAddress } from "thirdweb";
+import { toast } from "sonner";
+import { getAddress, isAddress } from "thirdweb";
 import { useActiveAccount, useActiveWalletChain } from "thirdweb/react";
-import { Button, FormErrorMessage, Heading, Text } from "tw-components";
+import { z } from "zod";
 
 type ImportModalProps = {
   isOpen: boolean;
   onClose: () => void;
 };
 
-const defaultValues = {
-  contractAddress: "",
+export const ImportModal: React.FC<ImportModalProps> = (props) => {
+  return (
+    <Dialog
+      open={props.isOpen}
+      onOpenChange={(v) => {
+        if (!v) {
+          props.onClose();
+        }
+      }}
+    >
+      <DialogContent
+        dialogOverlayClassName="z-[9000] rounded-lg"
+        className="z-[9001]"
+      >
+        <DialogHeader>
+          <DialogTitle className="font-semibold text-2xl tracking-tight">
+            Import Contract
+          </DialogTitle>
+          <DialogDescription>
+            Import an already deployed contract into thirdweb by entering a
+            contract address below.
+          </DialogDescription>
+        </DialogHeader>
+
+        <ImportForm />
+      </DialogContent>
+    </Dialog>
+  );
 };
 
-export const ImportModal: React.FC<ImportModalProps> = (props) => {
-  const addToDashboard = useAddContractMutation();
-  const address = useActiveAccount()?.address;
-  const registry = useAllContractList(address);
-  const form = useForm({
-    defaultValues,
-  });
+const importFormSchema = z.object({
+  contractAddress: z.string().refine(
+    (v) => {
+      try {
+        return isAddress(v);
+      } catch {
+        return false;
+      }
+    },
+    {
+      message: "Invalid contract address",
+    },
+  ),
+});
 
-  const onClose = useCallback(() => {
-    form.reset(defaultValues);
-    props.onClose();
-  }, [form, props]);
-
-  const router = useRouter();
+function ImportForm() {
+  const router = useDashboardRouter();
   const chainId = useActiveWalletChain()?.id;
   const chainSlug = useChainSlug(chainId || 1);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
+  const form = useForm({
+    resolver: zodResolver(importFormSchema),
+  });
+  const addToDashboard = useAddContractMutation();
+  const address = useActiveAccount()?.address;
+  const registry = useAllContractList(address);
+
+  const showLoading =
+    form.formState.isSubmitting ||
+    addToDashboard.isPending ||
+    addToDashboard.isSuccess ||
+    isRedirecting;
+
   return (
-    <Modal
-      isOpen={props.isOpen}
-      onClose={onClose}
-      isCentered
-      size="lg"
-      trapFocus={false}
-      blockScrollOnMount={false}
-    >
-      <ModalOverlay />
-      <ModalContent
-        as="form"
+    <Form {...form}>
+      <form
         onSubmit={form.handleSubmit(async (data) => {
           if (!chainId) {
             throw new Error("No chain ID");
@@ -130,58 +177,49 @@ export const ImportModal: React.FC<ImportModalProps> = (props) => {
               },
             );
           } catch (err) {
+            toast.error("Failed to import contract");
             console.error(err);
           }
         })}
-        p={8}
-        rounded="lg"
       >
-        <Flex gap={6} direction="column">
-          <Flex gap={1} direction="column">
-            <Heading size="title.sm" mb={1}>
-              Import Contract
-            </Heading>
-            <Text color="faded">
-              Import an already deployed contract into thirdweb by entering a
-              contract address below.
-            </Text>
-          </Flex>
-          <Flex gap={3} direction="column">
-            <FormControl isInvalid={!!form.formState.errors.contractAddress}>
-              <SolidityInput
-                solidityType="address"
-                formContext={form}
-                placeholder="Contract address"
-                {...form.register("contractAddress")}
-              />
-              <FormErrorMessage>
-                {form.formState.errors.contractAddress?.message}
-              </FormErrorMessage>
-            </FormControl>
+        <FormField
+          control={form.control}
+          name="contractAddress"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Contract Address</FormLabel>
+              <FormControl>
+                <Input placeholder="0x..." {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-            <NetworkSelectorButton />
-          </Flex>
-          <Button
-            ml="auto"
-            leftIcon={<FiFilePlus />}
-            colorScheme="primary"
-            type="submit"
-            isLoading={
-              form.formState.isSubmitting ||
-              addToDashboard.isLoading ||
-              addToDashboard.isSuccess ||
-              isRedirecting
-            }
-            loadingText={
-              addToDashboard.isSuccess || isRedirecting
+        <div className="h-3" />
+        <div>
+          <Label className="mb-3 inline-block">Network</Label>
+          <NetworkSelectorButton />
+        </div>
+
+        <div className="h-8" />
+
+        <div className="flex justify-end">
+          <Button type="submit" className="gap-2">
+            {showLoading ? (
+              <Spinner className="size-4" />
+            ) : (
+              <PlusIcon className="size-4" />
+            )}
+
+            {showLoading
+              ? addToDashboard.isSuccess || isRedirecting
                 ? "Redirecting"
                 : "Importing contract"
-            }
-          >
-            Import
+              : "Import Contract"}
           </Button>
-        </Flex>
-      </ModalContent>
-    </Modal>
+        </div>
+      </form>
+    </Form>
   );
-};
+}

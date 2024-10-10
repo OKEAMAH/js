@@ -1,28 +1,26 @@
+"use client";
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { TrackedLinkTW } from "@/components/ui/tracked-link";
+import { cn } from "@/lib/utils";
 import {
+  type Account,
   AccountStatus,
+  type UsageBillableByService,
   useAccount,
   useAccountUsage,
 } from "@3rdweb-sdk/react/hooks/useApi";
 import { useLoggedInUser } from "@3rdweb-sdk/react/hooks/useLoggedInUser";
-import {
-  Alert,
-  AlertDescription,
-  AlertIcon,
-  AlertTitle,
-  Flex,
-  IconButton,
-  Stack,
-  useDisclosure,
-} from "@chakra-ui/react";
-import { OnboardingBilling } from "components/onboarding/Billing";
+import { useDisclosure } from "@chakra-ui/react";
 import { OnboardingModal } from "components/onboarding/Modal";
 import { format } from "date-fns";
 import { useTrack } from "hooks/analytics/useTrack";
 import { useLocalStorage } from "hooks/useLocalStorage";
-import { useRouter } from "next/router";
+import { ExternalLinkIcon, XIcon } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
-import { FiX } from "react-icons/fi";
-import { Heading, Text, TrackedLinkButton } from "tw-components";
+import { LazyOnboardingBilling } from "../../../../onboarding/LazyOnboardingBilling";
 import { ManageBillingButton } from "../ManageButton";
 import { RecurringPaymentFailureAlert } from "./RecurringPaymentFailureAlert";
 
@@ -39,7 +37,10 @@ type AlertConditionType = {
     | "usage";
 };
 
-export const BillingAlerts = () => {
+export const BillingAlerts = (props: {
+  className?: string;
+}) => {
+  const pathname = usePathname();
   const { isLoggedIn } = useLoggedInUser();
   const usageQuery = useAccountUsage();
   const meQuery = useAccount({
@@ -48,17 +49,40 @@ export const BillingAlerts = () => {
         AccountStatus.InvalidPayment,
         AccountStatus.InvalidPaymentMethod,
         AccountStatus.PaymentVerification,
-      ].includes(account?.status as AccountStatus)
+      ].includes(account.state.data?.status as AccountStatus)
         ? 1000
         : false,
   });
-  const { data: account } = meQuery;
-  const router = useRouter();
+
+  if (
+    !isLoggedIn ||
+    !meQuery.data ||
+    !usageQuery.data ||
+    pathname?.includes("/support")
+  ) {
+    return null;
+  }
+
+  return (
+    <BillingAlertsUI
+      usageData={usageQuery.data}
+      dashboardAccount={meQuery.data}
+      className={props.className}
+    />
+  );
+};
+
+export function BillingAlertsUI(props: {
+  usageData: UsageBillableByService;
+  dashboardAccount: Account;
+  className?: string;
+}) {
+  const { usageData, dashboardAccount } = props;
   const trackEvent = useTrack();
 
   const [dismissedAlerts, setDismissedAlerts] = useLocalStorage<
     Record<string, number> | undefined
-  >(`dismissed-billing-alert-${account?.id}`, undefined, {});
+  >(`dismissed-billing-alert-${dashboardAccount.id}`, undefined, {});
 
   const handleDismiss = useCallback(
     (key: string) => {
@@ -82,13 +106,13 @@ export const BillingAlerts = () => {
 
   // Alert shouldShowAlerts based on the possible states of the account
   const alertConditions = useMemo<AlertConditionType[]>(() => {
-    const hasUsageData = !!usageQuery.data;
-    const { usage, limits, rateLimitedAt } = usageQuery.data || {};
+    const { usage, limits, rateLimitedAt } = usageData;
 
     // Define alert shouldShowAlerts including the directly computed ones
     const paymentFailureAlerts: AlertConditionType[] = [
       {
-        shouldShowAlert: account?.status === AccountStatus.PaymentVerification,
+        shouldShowAlert:
+          dashboardAccount.status === AccountStatus.PaymentVerification,
         key: "verifyPaymentAlert",
         title: "Your payment method requires verification",
         description:
@@ -97,7 +121,8 @@ export const BillingAlerts = () => {
         componentType: "paymentVerification",
       },
       {
-        shouldShowAlert: account?.status === AccountStatus.InvalidPaymentMethod,
+        shouldShowAlert:
+          dashboardAccount.status === AccountStatus.InvalidPaymentMethod,
         key: "invalidPaymentMethodAlert",
         title: "Your payment method is invalid",
         description:
@@ -105,7 +130,7 @@ export const BillingAlerts = () => {
         status: "error",
         componentType: "paymentVerification",
       },
-      ...(account?.recurringPaymentFailures?.map((failure) => {
+      ...(dashboardAccount.recurringPaymentFailures?.map((failure) => {
         const serviceCutoffDate = failure.serviceCutoffDate
           ? format(new Date(failure.serviceCutoffDate), "MMMM d, yyyy")
           : null;
@@ -128,70 +153,76 @@ export const BillingAlerts = () => {
 
     // Directly compute usage and rate limit shouldShowAlerts within useMemo
     const exceededUsage_50 =
-      hasUsageData &&
-      usage &&
-      limits &&
-      (usage.embeddedWallets.countWalletAddresses >=
+      usage.embeddedWallets.countWalletAddresses >=
         limits.embeddedWallets / 2 ||
-        usage.storage.sumFileSizeBytes >= limits.storage / 2);
+      usage.storage.sumFileSizeBytes >= limits.storage / 2;
 
     const exceededUsage_100 =
-      hasUsageData &&
-      usage &&
-      limits &&
-      (usage.embeddedWallets.countWalletAddresses >= limits.embeddedWallets ||
-        usage.storage.sumFileSizeBytes >= limits.storage);
+      usage.embeddedWallets.countWalletAddresses >= limits.embeddedWallets ||
+      usage.storage.sumFileSizeBytes >= limits.storage;
+
+    const hasHardLimits =
+      dashboardAccount.status !== AccountStatus.ValidPayment;
+    const isFreePlan = dashboardAccount.plan === "free";
+    const isGrowthPlan = dashboardAccount.plan === "growth";
     const usageAlerts: AlertConditionType[] = [
       {
-        shouldShowAlert: !!(exceededUsage_50 && !exceededUsage_100),
+        // Show alert if user has exceeded 50% of their usage limit and has not yet exceeded 100% of their usage limit and has hard limits
+        shouldShowAlert:
+          !!(exceededUsage_50 && !exceededUsage_100) && hasHardLimits,
         key: "usage_50_alert",
-        title: "You are approaching your free monthly credits",
+        title: "You are nearing your usage limit",
         description:
-          "You are approaching your free monthly credits. Consider monitoring your usage to avoid service interruptions.",
+          "To prevent service interruptions, please add a valid payment method or upgrade your plan.",
         status: "warning",
         componentType: "usage",
       },
       {
-        shouldShowAlert: !!exceededUsage_100,
+        // if the user has exceeded 100% of their usage limit and is has hard limits enforced
+        shouldShowAlert: !!exceededUsage_100 && hasHardLimits,
         key: "usage_100_alert",
-        title: "You have used all of your free monthly credits",
+        title: "You have exceeded your usage limit",
         description:
-          "You have exceeded your free monthly credits limit. Please upgrade your plan to continue using services without interruption.",
+          "To continue using our services, add a valid payment method or upgrade your plan.",
         status: "error",
         componentType: "usage",
       },
       {
-        shouldShowAlert: hasUsageData && !!rateLimitedAt?.rpc,
-        key: "rate_rpc_alert",
-        title: "You have exceeded your RPC rate limit",
-        description:
-          "You have exceeded your RPC rate limit. Please consider upgrading your plan to avoid service interruptions.",
+        // if its NOT a free plan and the user has exceeded 100% of their usage limit
+        shouldShowAlert: !!exceededUsage_100 && !hasHardLimits,
+        key: "usage_100_alert",
+        title: "You have exceeded your usage limit",
+        // if free or growth plan, included the upgrade plan message
+        description: `Overages are now being charged.${isFreePlan || isGrowthPlan ? " Consider upgrading your plan to increase your included limits." : ""}`,
         status: "warning",
         componentType: "usage",
       },
       {
-        shouldShowAlert: hasUsageData && !!rateLimitedAt?.storage,
+        // only show RPC warning if the user has exceeded their RPC rate limit and has hard limits
+        shouldShowAlert: !!rateLimitedAt?.rpc && hasHardLimits,
+        key: "rate_rpc_alert",
+        title: "You have exceeded your RPC rate limit",
+        description:
+          "To prevent service interruptions, add a valid payment method or upgrade your plan.",
+        status: "warning",
+        componentType: "usage",
+      },
+      {
+        // only show Storage warning if the user has exceeded their Storage rate limit and has hard limits
+        shouldShowAlert: !!rateLimitedAt?.storage && hasHardLimits,
         key: "rate_storage_alert",
         title: "You have exceeded your Storage Gateway rate limit",
         description:
-          "You have exceeded your Storage Gateway rate limit. Please consider upgrading your plan to avoid service interruptions.",
+          "To prevent service interruptions, add a valid payment method or upgrade your plan.",
         status: "warning",
         componentType: "usage",
       },
     ];
 
     return [...paymentFailureAlerts, ...usageAlerts];
-  }, [account, usageQuery.data]);
+  }, [dashboardAccount, usageData]);
 
-  if (
-    !isLoggedIn ||
-    meQuery.isLoading ||
-    !account ||
-    usageQuery.isLoading ||
-    !usageQuery.data ||
-    router.pathname.includes("/support") ||
-    alertConditions.length === 0
-  ) {
+  if (alertConditions.length === 0) {
     return null;
   }
 
@@ -202,6 +233,7 @@ export const BillingAlerts = () => {
       const isDismissedMoreThanAWeekAgo =
         (dismissedAlerts?.[alert.key] ?? 0) <
         Date.now() - 1000 * 60 * 60 * 24 * 7;
+
       if (shouldShowAlert && (!isDismissed || isDismissedMoreThanAWeekAgo)) {
         switch (alert.componentType) {
           case "recurringPayment": {
@@ -211,6 +243,7 @@ export const BillingAlerts = () => {
                 key={index}
                 affectedServices={[alert.description].filter((v) => v)}
                 paymentFailureCode={alert.key}
+                dashboardAccount={dashboardAccount}
               />
             );
           }
@@ -222,12 +255,13 @@ export const BillingAlerts = () => {
                 key={index}
                 affectedServices={[alert.description].filter((v) => v)}
                 paymentFailureCode={alert.key}
+                dashboardAccount={dashboardAccount}
               />
             );
           }
           case "paymentVerification": {
             return (
-              <BillingAlertNotification
+              <AddPaymentNotification
                 // biome-ignore lint/suspicious/noArrayIndexKey: FIXME
                 key={index}
                 status={alert.status}
@@ -236,12 +270,13 @@ export const BillingAlerts = () => {
                 ctaText="Verify payment method"
                 ctaHref="/dashboard/settings/billing"
                 label="verifyPaymentAlert"
+                dashboardAccount={dashboardAccount}
               />
             );
           }
           case "usage": {
             return (
-              <BillingAlertNotification
+              <AddPaymentNotification
                 // biome-ignore lint/suspicious/noArrayIndexKey: FIXME
                 key={index}
                 status={alert.status}
@@ -251,6 +286,7 @@ export const BillingAlerts = () => {
                 ctaText="Upgrade your plan"
                 ctaHref="/dashboard/settings/billing"
                 label="upgradePlanAlert"
+                dashboardAccount={dashboardAccount}
               />
             );
           }
@@ -263,10 +299,13 @@ export const BillingAlerts = () => {
   if (alerts.length === 0) {
     return null;
   }
-  return <Stack mb={12}>{alerts}</Stack>;
-};
 
-type BillingAlertNotificationProps = {
+  return (
+    <div className={cn("flex flex-col gap-4", props.className)}>{alerts}</div>
+  );
+}
+
+type AddPaymentNotificationProps = {
   status: "error" | "warning";
   onDismiss?: () => void;
   title: string;
@@ -275,11 +314,10 @@ type BillingAlertNotificationProps = {
   ctaText?: string;
   ctaHref?: string;
   label?: string;
+  dashboardAccount: Account;
 };
 
-export const BillingAlertNotification: React.FC<
-  BillingAlertNotificationProps
-> = ({
+const AddPaymentNotification: React.FC<AddPaymentNotificationProps> = ({
   status,
   onDismiss,
   title,
@@ -288,12 +326,11 @@ export const BillingAlertNotification: React.FC<
   ctaHref = "/dashboard/settings/billing",
   label = "addPaymentAlert",
   showCTAs = true,
+  dashboardAccount,
 }) => {
   // TODO: We should find a way to move this deeper into the
   // TODO: ManageBillingButton component and set an optional field to override
   const [paymentMethodSaving, setPaymentMethodSaving] = useState(false);
-  const meQuery = useAccount();
-  const { data: account } = meQuery;
 
   const {
     onOpen: onPaymentMethodOpen,
@@ -310,87 +347,67 @@ export const BillingAlertNotification: React.FC<
 
   return (
     <Alert
-      status={status}
-      borderRadius="md"
-      as={Flex}
-      alignItems="start"
-      justifyContent="space-between"
-      variant="left-accent"
-      bg="backgroundCardHighlight"
+      variant={status === "error" ? "destructive" : "warning"}
+      className="relative py-6"
     >
-      <>
-        <OnboardingModal
-          isOpen={isPaymentMethodOpen}
-          onClose={onPaymentMethodClose}
-        >
-          <OnboardingBilling
-            onSave={handlePaymentAdded}
-            onCancel={onPaymentMethodClose}
-          />
-        </OnboardingModal>
-      </>
+      <OnboardingModal isOpen={isPaymentMethodOpen}>
+        <LazyOnboardingBilling
+          onSave={handlePaymentAdded}
+          onCancel={onPaymentMethodClose}
+        />
+      </OnboardingModal>
 
-      <Flex>
-        <AlertIcon boxSize={4} mt={1} ml={1} />
-        <Flex flexDir="column" pl={1}>
-          <AlertTitle>
-            <Heading as="span" size="subtitle.sm">
-              {title}
-            </Heading>
-          </AlertTitle>
-          <AlertDescription mb={2} as={Flex} direction="column">
-            <Text mb={showCTAs ? "4" : "0"}>{description}</Text>
-            {showCTAs && (
-              <Flex>
-                {isBilling && account ? (
-                  <ManageBillingButton
-                    account={account}
-                    loading={paymentMethodSaving}
-                    loadingText="Verifying payment method"
-                    buttonProps={{ colorScheme: "primary" }}
-                    onClick={onPaymentMethodOpen}
-                  />
-                ) : (
-                  <TrackedLinkButton
-                    href={ctaHref}
-                    category="billing"
-                    label={label}
-                    fontWeight="medium"
-                    colorScheme="blue"
-                    size="sm"
-                  >
-                    {ctaText}
-                  </TrackedLinkButton>
-                )}
-                <TrackedLinkButton
-                  ml="4"
-                  variant="outline"
-                  href="/support"
-                  category="billing"
-                  label="support"
-                  color="blue.500"
-                  fontSize="small"
-                  isExternal
-                >
-                  Contact Support
-                </TrackedLinkButton>
-              </Flex>
-            )}
-          </AlertDescription>
-        </Flex>
-      </Flex>
+      <AlertTitle>{title}</AlertTitle>
+      <AlertDescription>{description}</AlertDescription>
+
+      {showCTAs && (
+        <div className="mt-4 flex gap-2">
+          {isBilling ? (
+            <ManageBillingButton
+              account={dashboardAccount}
+              loading={paymentMethodSaving}
+              loadingText="Verifying payment method"
+              onClick={onPaymentMethodOpen}
+            />
+          ) : (
+            <Button variant="outline" asChild>
+              <TrackedLinkTW
+                href={ctaHref}
+                category="billing"
+                label={label}
+                target="_blank"
+                className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+              >
+                {ctaText}
+              </TrackedLinkTW>
+            </Button>
+          )}
+
+          <Button variant="outline" asChild>
+            <TrackedLinkTW
+              href="/support"
+              category="billing"
+              label="support"
+              target="_blank"
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+            >
+              Contact Support
+              <ExternalLinkIcon className="size-4" />
+            </TrackedLinkTW>
+          </Button>
+        </div>
+      )}
 
       {onDismiss && (
-        <IconButton
-          size="xs"
-          aria-label="Close announcement"
-          icon={<FiX />}
-          color="bgBlack"
+        <Button
+          size="icon"
+          aria-label="Close"
           variant="ghost"
-          opacity={0.6}
-          _hover={{ opacity: 1 }}
           onClick={onDismiss}
-        />
+          className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
+        >
+          <XIcon className="size-5" />
+        </Button>
       )}
     </Alert>
   );

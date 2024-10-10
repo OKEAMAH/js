@@ -1,31 +1,22 @@
+"use client";
+
 import { MinterOnly } from "@3rdweb-sdk/react/components/roles/minter-only";
-import { Icon, useDisclosure } from "@chakra-ui/react";
-import { type useContract, useSetSharedMetadata } from "@thirdweb-dev/react";
-import { extensionDetectedState } from "components/buttons/ExtensionDetectButton";
-import { FiPlus } from "react-icons/fi";
+import { useDisclosure } from "@chakra-ui/react";
+import { PlusIcon } from "lucide-react";
+import type { ThirdwebContract } from "thirdweb";
 import { Button, Drawer } from "tw-components";
-import { NFTMintForm } from "./mint-form";
+import { SharedMetadataForm } from "./shared-metadata-form";
 
 interface NFTSharedMetadataButtonProps {
-  contractQuery: ReturnType<typeof useContract>;
+  contract: ThirdwebContract;
 }
 
 export const NFTSharedMetadataButton: React.FC<
   NFTSharedMetadataButtonProps
-> = ({ contractQuery, ...restButtonProps }) => {
+> = ({ contract, ...restButtonProps }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const mutation = useSetSharedMetadata(contractQuery.contract);
-
-  const detectedState = extensionDetectedState({
-    contractQuery,
-    feature: ["ERC721SharedMetadata"],
-  });
-  if (detectedState !== "enabled" || !contractQuery.contract) {
-    return null;
-  }
-
   return (
-    <MinterOnly contract={contractQuery.contract}>
+    <MinterOnly contract={contract}>
       <Drawer
         allowPinchZoom
         preserveScrollBarGap
@@ -33,14 +24,11 @@ export const NFTSharedMetadataButton: React.FC<
         onClose={onClose}
         isOpen={isOpen}
       >
-        <NFTMintForm
-          contract={contractQuery.contract}
-          sharedMetadataMutation={mutation}
-        />
+        <SharedMetadataForm contract={contract} />
       </Drawer>
       <Button
         colorScheme="primary"
-        leftIcon={<Icon as={FiPlus} />}
+        leftIcon={<PlusIcon className="size-5" />}
         {...restButtonProps}
         onClick={onOpen}
       >

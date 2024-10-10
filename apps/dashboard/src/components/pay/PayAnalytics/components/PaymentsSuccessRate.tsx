@@ -5,9 +5,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SkeletonContainer } from "@/components/ui/skeleton";
+import { ToolTipLabel } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { SkeletonContainer } from "../../../../@/components/ui/skeleton";
-import { ToolTipLabel } from "../../../../@/components/ui/tooltip";
 import { usePayVolume } from "../hooks/usePayVolume";
 import { CardHeading, FailedToLoad } from "./common";
 
@@ -23,7 +24,7 @@ type UIData = {
 type ProcessedQuery = {
   data?: UIData;
   isError?: boolean;
-  isLoading?: boolean;
+  isPending?: boolean;
   isEmpty?: boolean;
 };
 
@@ -31,15 +32,20 @@ function processQuery(
   volumeQuery: ReturnType<typeof usePayVolume>,
   type: PayVolumeType,
 ): ProcessedQuery {
-  if (volumeQuery.isLoading) {
-    return { isLoading: true };
+  if (volumeQuery.isPending) {
+    return { isPending: true };
   }
 
   if (volumeQuery.isError) {
     return { isError: true };
   }
 
-  const aggregated = volumeQuery.data.aggregate;
+  const aggregated = volumeQuery.data?.aggregate;
+  if (!aggregated) {
+    return {
+      isEmpty: true,
+    };
+  }
 
   let succeeded = 0;
   let failed = 0;
@@ -100,17 +106,17 @@ export function PaymentsSuccessRate(props: {
   );
 
   return (
-    <div className="w-full relative flex flex-col">
-      <div className="flex justify-between gap-2 items-center">
+    <div className="relative flex w-full flex-col">
+      <div className="flex items-center justify-between gap-2">
         <CardHeading> Payments </CardHeading>
-        {uiQuery.data && (
+        {!uiQuery.isPending && (
           <Select
             value={type}
             onValueChange={(value: PayVolumeType) => {
               setType(value);
             }}
           >
-            <SelectTrigger className="bg-transparent w-auto">
+            <SelectTrigger className="w-auto bg-transparent">
               <SelectValue placeholder="Select" />
             </SelectTrigger>
             <SelectContent position="popper">
@@ -122,7 +128,7 @@ export function PaymentsSuccessRate(props: {
         )}
       </div>
 
-      <div className="flex-1 flex flex-col justify-center">
+      <div className="flex flex-1 flex-col justify-center">
         {!uiQuery.isError ? <RenderData query={uiQuery} /> : <FailedToLoad />}
       </div>
     </div>
@@ -169,21 +175,21 @@ function Bar(props: { rate: number }) {
     <div className="flex items-center gap-0.5">
       <ToolTipLabel label="Succeeded">
         <div
-          className="h-5 bg-success-foreground transition-all rounded-lg rounded-r-none border-r-0"
+          className="h-5 rounded-lg rounded-r-none border-r-0 bg-success-text transition-all"
           style={{
             width: `${props.rate}%`,
           }}
         />
       </ToolTipLabel>
       <ToolTipLabel label="Failed">
-        <div className="h-5 bg-destructive-foreground flex-1 transition-all rounded-lg rounded-l-none border-l-0" />
+        <div className="h-5 flex-1 rounded-lg rounded-l-none border-l-0 bg-destructive-text transition-all" />
       </ToolTipLabel>
     </div>
   );
 }
 
 function EmptyBar() {
-  return <div className="flex items-center gap-0.5 h-5 bg-accent rounded-lg" />;
+  return <div className="flex h-5 items-center gap-0.5 rounded-lg bg-accent" />;
 }
 
 function InfoRow(props: {
@@ -196,27 +202,27 @@ function InfoRow(props: {
     <div className="flex justify-between">
       <div className="flex items-center gap-2">
         <div
-          className={`size-5 rounded-lg ${
-            !props.amount
-              ? "bg-accent"
-              : props.type === "success"
-                ? "bg-success-foreground"
-                : "bg-destructive-foreground"
-          }`}
+          className={cn("size-5 rounded-lg", {
+            "bg-accent": props.amount === undefined,
+            "bg-success-text":
+              props.amount !== undefined && props.type === "success",
+            "bg-destructive-text":
+              props.amount !== undefined && props.type === "failure",
+          })}
         />
-        <p className="text-base text-secondary-foreground">{props.label}</p>
+        <p className="text-base text-muted-foreground">{props.label}</p>
       </div>
       <SkeletonContainer
         loadedData={
           props.isEmpty
             ? "$-"
-            : props.amount
+            : props.amount !== undefined
               ? `$${props.amount.toLocaleString()}`
               : undefined
         }
-        skeletonData={"$50"}
+        skeletonData="$50"
         render={(v) => {
-          return <p className="text-base font-medium">{v}</p>;
+          return <p className="font-medium text-base">{v}</p>;
         }}
       />
     </div>

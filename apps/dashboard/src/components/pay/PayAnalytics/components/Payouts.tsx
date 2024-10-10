@@ -1,7 +1,7 @@
+import { SkeletonContainer } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { useEffect, useState } from "react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
-import { SkeletonContainer } from "../../../../@/components/ui/skeleton";
 import { AreaChartLoadingState } from "../../../analytics/area-chart";
 import { usePayVolume } from "../hooks/usePayVolume";
 import {
@@ -26,16 +26,19 @@ type ProcessedQuery = {
   };
   isError?: boolean;
   isEmpty?: boolean;
-  isLoading?: boolean;
+  isPending?: boolean;
 };
 
 function processQuery(query: ReturnType<typeof usePayVolume>): ProcessedQuery {
-  if (query.isLoading) {
-    return { isLoading: true };
+  if (query.isPending) {
+    return { isPending: true };
   }
 
   if (query.isError) {
     return { isError: true };
+  }
+  if (!query.data) {
+    return { isEmpty: true };
   }
 
   if (query.data.intervalResults.length === 0) {
@@ -87,9 +90,9 @@ export function Payouts(props: {
   );
 
   return (
-    <section className="relative flex flex-col justify-center w-full">
+    <section className="relative flex w-full flex-col justify-center">
       {/* header */}
-      <div className="flex justify-between gap-2 items-center mb-1">
+      <div className="mb-1 flex items-center justify-between gap-2">
         <CardHeading> Payouts </CardHeading>
 
         {uiQuery.data && (
@@ -123,7 +126,7 @@ function RenderData(props: {
     : "hsl(var(--link-foreground))";
   return (
     <div>
-      <div className="flex items-center gap-3 mb-5">
+      <div className="mb-5 flex items-center gap-3">
         <SkeletonContainer
           loadedData={
             props.query.isEmpty
@@ -132,10 +135,10 @@ function RenderData(props: {
                 ? `$${props.query.data?.totalPayoutsUSD}`
                 : undefined
           }
-          skeletonData={"$20"}
+          skeletonData="$20"
           render={(value) => {
             return (
-              <p className="text-4xl tracking-tighter font-semibold">{value}</p>
+              <p className="font-semibold text-4xl tracking-tighter">{value}</p>
             );
           }}
         />
@@ -152,8 +155,8 @@ function RenderData(props: {
         )}
       </div>
 
-      <div className="relative flex justify-center w-full">
-        {props.query.isLoading ? (
+      <div className="relative flex w-full justify-center">
+        {props.query.isPending ? (
           <AreaChartLoadingState height={`${chartHeight}px`} />
         ) : (
           <ResponsiveContainer width="100%" height={chartHeight}>
@@ -164,11 +167,11 @@ function RenderData(props: {
                     | GraphData
                     | undefined;
                   return (
-                    <div className="bg-popover px-4 py-2 rounded border border-border">
-                      <p className="text-muted-foreground mb-1 text-sm">
+                    <div className="rounded border border-border bg-popover px-4 py-2">
+                      <p className="mb-1 text-muted-foreground text-sm">
                         {payload?.date}
                       </p>
-                      <p className="text-medium text-base">
+                      <p className="text-base text-medium">
                         ${payload?.value.toLocaleString()}
                       </p>
                     </div>
@@ -190,7 +193,7 @@ function RenderData(props: {
                   dataKey="date"
                   axisLine={false}
                   tickLine={false}
-                  className="text-xs font-sans"
+                  className="font-sans text-xs"
                   stroke="hsl(var(--muted-foreground))"
                   dy={10}
                 />

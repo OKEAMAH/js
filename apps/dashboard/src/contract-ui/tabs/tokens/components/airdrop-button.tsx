@@ -1,67 +1,52 @@
-import { thirdwebClient } from "@/constants/client";
-import { Icon, useDisclosure } from "@chakra-ui/react";
-import { useV5DashboardChain } from "lib/v5-adapter";
-import { useMemo } from "react";
-import { FiDroplet } from "react-icons/fi";
-import { getContract } from "thirdweb";
+"use client";
+
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Droplet } from "lucide-react";
+import { useState } from "react";
+import type { ThirdwebContract } from "thirdweb";
 import { balanceOf } from "thirdweb/extensions/erc20";
 import { useActiveAccount, useReadContract } from "thirdweb/react";
-import { Button, Drawer } from "tw-components";
+import { Button } from "tw-components";
 import { TokenAirdropForm } from "./airdrop-form";
-
 interface TokenAirdropButtonProps {
-  contractAddress: string;
-  chainId: number;
+  contract: ThirdwebContract;
 }
-
 export const TokenAirdropButton: React.FC<TokenAirdropButtonProps> = ({
-  contractAddress,
-  chainId,
+  contract,
   ...restButtonProps
 }) => {
-  const { isOpen, onOpen, onClose } = useDisclosure();
   const address = useActiveAccount()?.address;
-
-  const chain = useV5DashboardChain(chainId);
-
-  const contract = useMemo(
-    () =>
-      getContract({
-        address: contractAddress,
-        chain,
-        client: thirdwebClient,
-      }),
-    [chain, contractAddress],
-  );
-
   const tokenBalanceQuery = useReadContract(balanceOf, {
     contract,
     address: address || "",
     queryOptions: { enabled: !!address },
   });
-
   const hasBalance = tokenBalanceQuery.data && tokenBalanceQuery.data > 0n;
-
+  const [open, setOpen] = useState(false);
   return (
-    <>
-      <Drawer
-        allowPinchZoom
-        preserveScrollBarGap
-        size="lg"
-        onClose={onClose}
-        isOpen={isOpen}
-      >
-        <TokenAirdropForm contract={contract} />
-      </Drawer>
-      <Button
-        colorScheme="primary"
-        leftIcon={<Icon as={FiDroplet} />}
-        {...restButtonProps}
-        onClick={onOpen}
-        isDisabled={!hasBalance}
-      >
-        Airdrop
-      </Button>
-    </>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button
+          colorScheme="primary"
+          leftIcon={<Droplet size={16} />}
+          {...restButtonProps}
+          isDisabled={!hasBalance}
+        >
+          Airdrop
+        </Button>
+      </SheetTrigger>
+      <SheetContent className="z-[10000] overflow-y-auto sm:w-[540px] sm:max-w-[90%] lg:w-[700px]">
+        <SheetHeader>
+          <SheetTitle>Aidrop tokens</SheetTitle>
+        </SheetHeader>
+        <TokenAirdropForm contract={contract} toggle={setOpen} />
+      </SheetContent>
+    </Sheet>
   );
 };

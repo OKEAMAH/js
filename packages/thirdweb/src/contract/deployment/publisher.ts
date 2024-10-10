@@ -8,11 +8,13 @@ import {
 } from "../../utils/any-evm/deploy-metadata.js";
 import { extractIPFSUri } from "../../utils/bytecode/extractIPFS.js";
 import { resolveImplementation } from "../../utils/bytecode/resolveImplementation.js";
+import { withCache } from "../../utils/promise/withCache.js";
 
 import { type ThirdwebContract, getContract } from "../contract.js";
 
-const CONTRACT_PUBLISHER_ADDRESS = "0xf5b896Ddb5146D5dA77efF4efBb3Eae36E300808"; // Polygon only
-export const THIRDWEB_DEPLOYER = "0xdd99b75f095d0c4d5112aCe938e4e6ed962fb024";
+export const CONTRACT_PUBLISHER_ADDRESS =
+  "0xf5b896Ddb5146D5dA77efF4efBb3Eae36E300808"; // Polygon only
+const THIRDWEB_DEPLOYER = "0xdd99b75f095d0c4d5112aCe938e4e6ed962fb024";
 
 /**
  * @internal
@@ -23,17 +25,28 @@ export async function fetchPublishedContractMetadata(options: {
   publisher?: string;
   version?: string;
 }): Promise<FetchDeployMetadataResult> {
-  // TODO LRU cache
-  const publishedContract = await fetchPublishedContract({
-    client: options.client,
-    publisherAddress: options.publisher || THIRDWEB_DEPLOYER,
-    contractId: options.contractId,
-    version: options.version,
-  });
-  return fetchDeployMetadata({
-    client: options.client,
-    uri: publishedContract.publishMetadataUri,
-  });
+  const cacheKey = `${options.contractId}-${options.publisher}-${options.version}`;
+  return withCache(
+    async () => {
+      const publishedContract = await fetchPublishedContract({
+        client: options.client,
+        publisherAddress: options.publisher || THIRDWEB_DEPLOYER,
+        contractId: options.contractId,
+        version: options.version,
+      });
+      if (!publishedContract.publishMetadataUri) {
+        throw new Error(
+          `No published metadata URI found for ${options.contractId}`,
+        );
+      }
+      const data = await fetchDeployMetadata({
+        client: options.client,
+        uri: publishedContract.publishMetadataUri,
+      });
+      return data;
+    },
+    { cacheKey, cacheTime: 1000 * 60 * 60 },
+  );
 }
 
 // TODO: clean this up
@@ -190,6 +203,9 @@ const GET_PUBLISHED_CONTRACT_VERSIONS_ABI = {
   type: "function",
 } as const;
 
+/**
+ * @contract
+ */
 type FetchPublishedContractOptions = {
   publisherAddress: string;
   contractId: string;

@@ -5,12 +5,12 @@ import type { CodeEnvironment } from "components/contract-tabs/code/types";
 import { RelevantDataSection } from "components/dashboard/RelevantDataSection";
 import { IpfsUploadDropzone } from "components/ipfs-upload/dropzone";
 import { YourFilesSection } from "components/storage/your-files";
-import { SettingsSidebar } from "core-ui/sidebar/settings";
 import { NextSeo } from "next-seo";
 import { PageId } from "page-id";
 import { useState } from "react";
 import { Card, Heading, Link, Text, TrackedCopyButton } from "tw-components";
 import type { ThirdwebNextPage } from "utils/types";
+import { SettingsSidebarLayout } from "../../../core-ui/sidebar/settings";
 
 const TRACKING_CATEGORY = "storage";
 
@@ -86,9 +86,9 @@ const DashboardSettingsStorage: ThirdwebNextPage = () => {
                 fontFamily="mono"
                 overflow={{ base: "scroll", md: "inherit" }}
               >
-                {"https://{client-id}.ipfscdn.io/ipfs/"}
+                https://&lt;your-client-id&gt;.ipfscdn.io/ipfs/
               </Text>
-              <Flex>
+              <div className="flex flex-row">
                 <Tooltip
                   p={0}
                   label={
@@ -108,7 +108,7 @@ const DashboardSettingsStorage: ThirdwebNextPage = () => {
                     aria-label="Copy code"
                   />
                 </Tooltip>
-              </Flex>
+              </div>
             </Card>
             <Text>
               Gateway requests need to be authenticated using a client ID. You
@@ -141,7 +141,7 @@ const DashboardSettingsStorage: ThirdwebNextPage = () => {
                 >
                   npx thirdweb upload ./path/to/file-or-folder
                 </Text>
-                <Flex>
+                <div className="flex flex-row">
                   <Tooltip
                     p={0}
                     label={
@@ -161,7 +161,7 @@ const DashboardSettingsStorage: ThirdwebNextPage = () => {
                       aria-label="Copy code"
                     />
                   </Tooltip>
-                </Flex>
+                </div>
               </Card>
               <Text>
                 If this is the first time that you are running this command, you
@@ -207,14 +207,14 @@ const DashboardSettingsStorage: ThirdwebNextPage = () => {
 };
 
 const storageSnippets = {
-  react: `// Initialize your provider
-import { ThirdwebProvider } from "@thirdweb-dev/react";
+  react: `// Check out the latest docs here: https://portal.thirdweb.com/typescript/v5/storage
+
+// Initialize your provider
+import { ThirdwebProvider } from "thirdweb/react";
 
 function Provider() {
   return (
     <ThirdwebProvider
-      clientId="YOUR_CLIENT_ID" // You can get a client id from dashboard settings
-      activeChain="sepolia"
       >
       ...
     </ThirdwebProvider>
@@ -222,23 +222,23 @@ function Provider() {
 }
 
 // Upload files to IPFS
-import { useStorageUpload } from "@thirdweb-dev/react";
+import { upload } from "thirdweb/storage";
 
 function App() {
-  const { mutateAsync: upload } = useStorageUpload();
-
   const uploadData = () => {
-    // Get any data that you want to upload
-    const dataToUpload = [...];
-
     // And upload the data with the upload function
-    const uris = await upload({ data: dataToUpload });
+    const uri = await upload({
+      client, // thirdweb client
+      files: [
+        new File(["hello world"], "hello.txt"),
+      ],
+    });
   }
   ...
 }
 
 // Render files from IPFS
-import { MediaRenderer } from "@thirdweb-dev/react";
+import { MediaRenderer } from "thirdweb/react";
 
 function App() {
   return (
@@ -246,25 +246,30 @@ function App() {
     <MediaRenderer src="ipfs://QmamvVM5kvsYjQJYs7x8LXKYGFkwtGvuRvqZsuzvpHmQq9/0" />
   );
 }`,
-  javascript: `import { ThirdwebStorage } from "@thirdweb-dev/storage";
+  javascript: `// Check out the latest docs here: https://portal.thirdweb.com/typescript/v5/storage
 
-// First, instantiate the thirdweb IPFS storage
-const storage = new ThirdwebStorage({
-  secretKey: "YOUR_SECRET_KEY", // You can get one from dashboard settings
-});
+import { upload } from "thirdweb/storage";
 
 // Here we get the IPFS URI of where our metadata has been uploaded
-const uri = await storage.upload(metadata);
+const uri = await upload({
+  client,
+  files: [
+    new File(["hello world"], "hello.txt"),
+  ],
+});
+
 // This will log a URL like ipfs://QmWgbcjKWCXhaLzMz4gNBxQpAHktQK6MkLvBkKXbsoWEEy/0
 console.info(uri);
 
 // Here we a URL with a gateway that we can look at in the browser
-const url = await storage.resolveScheme(uri);
-// This will log a URL like https://ipfs.thirdwebstorage.com/ipfs/QmWgbcjKWCXhaLzMz4gNBxQpAHktQK6MkLvBkKXbsoWEEy/0
-console.info(url);
+const url = await download({
+  client,
+  uri,
+}).url;
 
-// You can also download the data from the uri
-const data = await storage.downloadJSON(uri);`,
+// This will log a URL like https://ipfs.thirdwebstorage.com/ipfs/QmWgbcjKWCXhaLzMz4gNBxQpAHktQK6MkLvBkKXbsoWEEy/0
+console.info(url);`,
+
   unity: `using Thirdweb;
 
 // Reference the SDK
@@ -284,9 +289,12 @@ var response = await ThirdwebManager.Instance.SDK.storage.UploadText(metaJson);`
 };
 
 DashboardSettingsStorage.getLayout = (page, props) => (
-  <AppLayout {...props} hasSidebar={true}>
-    <SettingsSidebar activePage="storage" />
-    {page}
+  <AppLayout
+    {...props}
+    pageContainerClassName="!max-w-full !px-0"
+    mainClassName="!pt-0"
+  >
+    <SettingsSidebarLayout>{page}</SettingsSidebarLayout>
   </AppLayout>
 );
 DashboardSettingsStorage.pageId = PageId.DashboardSettingsStorage;

@@ -10,9 +10,15 @@ import {
   DISCORD_ICON,
   EMAIL_ICON,
   FACEBOOK_ICON,
+  FARCASTER_ICON,
   GOOGLE_ICON,
+  GUEST_ICON,
+  LINE_ICON,
+  PASSKEY_ICON,
   PHONE_ICON,
+  TELEGRAM_ICON,
   WALLET_ICON,
+  X_ICON,
 } from "../icons/svgs.js";
 import { RNImage } from "./RNImage.js";
 
@@ -20,9 +26,9 @@ export const WalletImage = (props: {
   theme: Theme;
   wallet: Wallet;
   size: number;
-  ensAvatar?: string | null;
+  avatar?: string | null;
 }) => {
-  const { wallet, ensAvatar, size } = props;
+  const { wallet, avatar, size } = props;
 
   const { data: imageData } = useQuery({
     queryKey: ["wallet-image", wallet.id, wallet.getAccount()?.address],
@@ -55,19 +61,28 @@ export const WalletImage = (props: {
 
       return WALLET_ICON;
     },
-    enabled: !ensAvatar,
+    enabled: !avatar,
   });
 
-  const data = ensAvatar || imageData || WALLET_ICON;
-  return <RNImage theme={props.theme} data={data} size={size} />;
+  const data = avatar || imageData || WALLET_ICON;
+  return (
+    <RNImage
+      theme={props.theme}
+      data={data}
+      size={size}
+      color={props.theme.colors.accentButtonBg}
+    />
+  );
 };
 
-export function getAuthProviderImage(lastAuthProvider: string | null): string {
-  switch (lastAuthProvider) {
+export function getAuthProviderImage(authProvider: string | null): string {
+  switch (authProvider) {
     case "phone":
       return PHONE_ICON;
     case "email":
       return EMAIL_ICON;
+    case "passkey":
+      return PASSKEY_ICON;
     case "google":
       return GOOGLE_ICON;
     case "apple":
@@ -76,6 +91,16 @@ export function getAuthProviderImage(lastAuthProvider: string | null): string {
       return FACEBOOK_ICON;
     case "discord":
       return DISCORD_ICON;
+    case "line":
+      return LINE_ICON;
+    case "x":
+      return X_ICON;
+    case "farcaster":
+      return FARCASTER_ICON;
+    case "telegram":
+      return TELEGRAM_ICON;
+    case "guest":
+      return GUEST_ICON;
     default:
       return WALLET_ICON;
   }

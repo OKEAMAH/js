@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -38,21 +37,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `setDefaultRoyaltyInfo` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `setDefaultRoyaltyInfo` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `setDefaultRoyaltyInfo` method is supported.
  * @extension COMMON
  * @example
  * ```ts
  * import { isSetDefaultRoyaltyInfoSupported } from "thirdweb/extensions/common";
  *
- * const supported = await isSetDefaultRoyaltyInfoSupported(contract);
+ * const supported = isSetDefaultRoyaltyInfoSupported(["0x..."]);
  * ```
  */
-export async function isSetDefaultRoyaltyInfoSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isSetDefaultRoyaltyInfoSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -64,7 +61,7 @@ export async function isSetDefaultRoyaltyInfoSupported(
  * @extension COMMON
  * @example
  * ```ts
- * import { encodeSetDefaultRoyaltyInfoParams } "thirdweb/extensions/common";
+ * import { encodeSetDefaultRoyaltyInfoParams } from "thirdweb/extensions/common";
  * const result = encodeSetDefaultRoyaltyInfoParams({
  *  royaltyRecipient: ...,
  *  royaltyBps: ...,
@@ -87,7 +84,7 @@ export function encodeSetDefaultRoyaltyInfoParams(
  * @extension COMMON
  * @example
  * ```ts
- * import { encodeSetDefaultRoyaltyInfo } "thirdweb/extensions/common";
+ * import { encodeSetDefaultRoyaltyInfo } from "thirdweb/extensions/common";
  * const result = encodeSetDefaultRoyaltyInfo({
  *  royaltyRecipient: ...,
  *  royaltyBps: ...,
@@ -112,6 +109,7 @@ export function encodeSetDefaultRoyaltyInfo(
  * @extension COMMON
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { setDefaultRoyaltyInfo } from "thirdweb/extensions/common";
  *
  * const transaction = setDefaultRoyaltyInfo({
@@ -124,8 +122,7 @@ export function encodeSetDefaultRoyaltyInfo(
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function setDefaultRoyaltyInfo(

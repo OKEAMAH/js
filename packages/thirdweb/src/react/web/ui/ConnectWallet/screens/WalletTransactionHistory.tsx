@@ -14,7 +14,7 @@ import {
   useChainExplorers,
   useChainIconUrl,
 } from "../../../../core/hooks/others/useChainQuery.js";
-import { useActiveWalletChain } from "../../../hooks/wallets/useActiveWalletChain.js";
+import { useActiveWalletChain } from "../../../../core/hooks/wallets/useActiveWalletChain.js";
 import { ChainIcon } from "../../components/ChainIcon.js";
 import { ChainName } from "../../components/ChainName.js";
 import { Spacer } from "../../components/Spacer.js";
@@ -46,7 +46,7 @@ export function WalletTransactionHistory(props: {
       fullHeight
       style={{
         minHeight: "250px",
-        maxHeight: "350px",
+        maxHeight: "370px",
         paddingBottom: spacing.lg,
       }}
     >
@@ -59,13 +59,19 @@ export function WalletTransactionHistory(props: {
             color="secondaryText"
             style={{
               flex: "1",
+              minHeight: "250px",
             }}
           >
             <CrossCircledIcon width={iconSize.xl} height={iconSize.xl} />
             <Text>No Transactions</Text>
           </Container>
         ) : (
-          <Container animate="fadein" flex="column" gap="xs">
+          <Container
+            animate="fadein"
+            flex="column"
+            gap="xs"
+            style={{ minHeight: "250px" }}
+          >
             {transactions.map((tx) => {
               return (
                 <TransactionButton
@@ -84,7 +90,7 @@ export function WalletTransactionHistory(props: {
   );
 }
 
-export function TransactionButton(props: {
+function TransactionButton(props: {
   hash: string;
   client: ThirdwebClient;
   chainId: number;
@@ -170,12 +176,12 @@ export function TransactionButton(props: {
       <Container flex="row" gap="xxs" center="y">
         {isLoading && <Spinner size="sm" color="primaryText" />}
         {!isLoading && receipt && receipt.status === "success" && (
-          <Text size="md" color={"success"}>
+          <Text size="md" color="success">
             <CheckIcon width={iconSize.md} height={iconSize.md} />
           </Text>
         )}
         {(error || (!isLoading && receipt && receipt.status !== "success")) && (
-          <Text size="md" color={"danger"}>
+          <Text size="md" color="danger">
             <CrossCircledIcon width={iconSize.md} height={iconSize.md} />
           </Text>
         )}

@@ -1,5 +1,5 @@
 import { Flex, Icon, SimpleGrid, Spinner } from "@chakra-ui/react";
-import type { ExtensionDetectedState } from "components/buttons/ExtensionDetectButton";
+import type { ExtensionDetectedState } from "components/buttons/ExtensionDetectedState";
 import { FiExternalLink } from "react-icons/fi";
 import { VscExtensions } from "react-icons/vsc";
 import { Heading, Text, TrackedLink } from "tw-components";
@@ -49,12 +49,11 @@ export const SettingDetectedState: React.FC<SettingDetectedStateProps> = ({
       left={0}
       bottom={0}
       right={0}
-      bg="opaqueBg"
       zIndex={1}
-      backdropFilter="blur(4px)"
       placeItems="center"
       px={{ base: 6, md: 0 }}
       borderRadius="md"
+      className="bg-background"
     >
       {detectedState === "loading" ? (
         <Spinner size="sm" />

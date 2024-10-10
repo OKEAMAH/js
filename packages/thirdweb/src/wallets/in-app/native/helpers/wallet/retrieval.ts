@@ -6,13 +6,15 @@ import {
 } from "../../../../../utils/encoding/hex.js";
 import type { Account } from "../../../../interfaces/wallet.js";
 import { privateKeyToAccount } from "../../../../private-key.js";
-import type { SetUpWalletRpcReturnType } from "../../../core/authentication/type.js";
+import type { ClientScopedStorage } from "../../../core/authentication/client-scoped-storage.js";
+import type { SetUpWalletRpcReturnType } from "../../../core/authentication/types.js";
 import { getUserShares } from "../api/fetchers.js";
 import {
   DEVICE_SHARE_MISSING_MESSAGE,
+  INVALID_DEVICE_SHARE_MESSAGE,
   ROUTE_GET_USER_SHARES,
 } from "../constants.js";
-import { getDeviceShare } from "../storage/local.js";
+import { getDeviceShare, removeDeviceShare } from "../storage/local.js";
 import { storeShares } from "./creation.js";
 import { decryptShareWeb } from "./encryption.js";
 
@@ -20,13 +22,17 @@ import { decryptShareWeb } from "./encryption.js";
  * For users on a known device and logged in.
  * Will throw if called on a new device // user not logged in
  */
-export async function getExistingUserAccount(args: { client: ThirdwebClient }) {
-  const { client } = args;
+export async function getExistingUserAccount(args: {
+  client: ThirdwebClient;
+  storage: ClientScopedStorage;
+}) {
+  const { client, storage } = args;
   const { authShare, deviceShare } = await getShares({
     client,
     authShare: { toRetrieve: true },
     deviceShare: { toRetrieve: true },
     recoveryShare: { toRetrieve: false },
+    storage,
   });
   return getAccountFromShares({
     client,
@@ -35,14 +41,14 @@ export async function getExistingUserAccount(args: { client: ThirdwebClient }) {
 }
 
 async function getWalletPrivateKeyFromShares(shares: string[]) {
-  const sss = await import("./sss.js");
-  let privateKeyHex = sss.secrets.combine(shares, 0);
+  const { secrets } = await import("./sss.js");
+  let privateKeyHex = secrets.combine(shares, 0);
   if (!isHex(privateKeyHex)) {
     privateKeyHex = `0x${privateKeyHex}`;
   }
   const prefixPrivateKey = hexToString(privateKeyHex as Hex);
   if (!prefixPrivateKey.startsWith("thirdweb_")) {
-    throw new Error("Invalid private key reconstructed from shares");
+    throw new Error(INVALID_DEVICE_SHARE_MESSAGE);
   }
   const privateKey = prefixPrivateKey.replace("thirdweb_", "");
   return privateKey;
@@ -53,9 +59,24 @@ async function getAccountFromShares(args: {
   shares: string[];
 }): Promise<Account> {
   const { client, shares } = args;
+  const privateKey = await (async () => {
+    try {
+      return await getWalletPrivateKeyFromShares(shares);
+    } catch (e) {
+      // If the private key reconstruction fails, try to reset the device share and prompt the user to try again
+      // This can happen if a user's account has been migrated or otherwise modified in the backend to use a new wallet. In that case, we need to reset their device state to get a new share
+      if (e instanceof Error && e.message === INVALID_DEVICE_SHARE_MESSAGE) {
+        await removeDeviceShare({ clientId: client.clientId });
+        throw new Error("Invalid device state, please try again.");
+      }
+      // Otherwise this is a legitimate error, throw it
+      throw e;
+    }
+  })();
+
   return privateKeyToAccount({
     client,
-    privateKey: await getWalletPrivateKeyFromShares(shares),
+    privateKey,
   });
 }
 
@@ -74,6 +95,7 @@ async function getShares<
   authShare,
   deviceShare,
   recoveryShare,
+  storage,
 }: {
   client: ThirdwebClient;
   authShare: { toRetrieve: A };
@@ -86,6 +108,7 @@ async function getShares<
         toRetrieve: R;
       };
   deviceShare: { toRetrieve: D };
+  storage: ClientScopedStorage;
 }): Promise<{
   authShare: A extends true ? string : undefined;
   recoveryShare: R extends true ? string : undefined;
@@ -119,7 +142,7 @@ async function getShares<
     );
   }
 
-  const userShares = await getUserShares(client, getShareUrl);
+  const userShares = await getUserShares({ client, getShareUrl, storage });
   const { authShare: _authShare, maybeEncryptedRecoveryShares } = userShares;
 
   let recoverShareToReturn: string | undefined;
@@ -152,7 +175,7 @@ async function getShares<
     deviceShareToReturn = deviceShare.toRetrieve
       ? (await getDeviceShare(client.clientId)).deviceShare
       : undefined;
-  } catch (e) {
+  } catch {
     throw new Error(DEVICE_SHARE_MISSING_MESSAGE);
   }
 
@@ -169,7 +192,7 @@ async function getShares<
   };
 }
 
-export async function getAccountAddressFromShares(args: {
+async function getAccountAddressFromShares(args: {
   client: ThirdwebClient;
   shares: string[];
 }) {
@@ -180,15 +203,18 @@ export async function getAccountAddressFromShares(args: {
 export async function setUpShareForNewDevice({
   recoveryCode,
   client,
+  storage,
 }: {
   recoveryCode: string;
   client: ThirdwebClient;
+  storage: ClientScopedStorage;
 }): Promise<SetUpWalletRpcReturnType> {
   const { recoveryShare, authShare } = await getShares({
     client,
     authShare: { toRetrieve: true },
     recoveryShare: { toRetrieve: true, recoveryCode },
     deviceShare: { toRetrieve: false },
+    storage,
   });
   // instead of recreating a new share, just save the recovery one as the new device share
   const deviceShare = recoveryShare;
@@ -201,6 +227,7 @@ export async function setUpShareForNewDevice({
     client,
     walletAddress,
     deviceShare,
+    storage,
   });
 
   if (!maybeDeviceShare?.deviceShareStored) {

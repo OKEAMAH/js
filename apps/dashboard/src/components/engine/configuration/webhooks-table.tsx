@@ -12,7 +12,6 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
-  Stack,
   Tooltip,
   useDisclosure,
 } from "@chakra-ui/react";
@@ -36,7 +35,7 @@ export function beautifyString(str: string): string {
 interface WebhooksTableProps {
   instanceUrl: string;
   webhooks: EngineWebhook[];
-  isLoading: boolean;
+  isPending: boolean;
   isFetched: boolean;
 }
 
@@ -109,7 +108,7 @@ const columns = [
 export const WebhooksTable: React.FC<WebhooksTableProps> = ({
   instanceUrl,
   webhooks,
-  isLoading,
+  isPending,
   isFetched,
 }) => {
   const [webhookToRevoke, setWebhookToRevoke] = useState<EngineWebhook>();
@@ -166,12 +165,12 @@ export const WebhooksTable: React.FC<WebhooksTableProps> = ({
     <>
       <Modal isOpen={isOpen} onClose={onClose} isCentered>
         <ModalOverlay />
-        <ModalContent>
+        <ModalContent className="!bg-background rounded-lg border border-border">
           <ModalHeader>Delete webhook</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             {webhookToRevoke && (
-              <Stack gap={4}>
+              <div className="flex flex-col gap-4">
                 <Text>Are you sure you want to delete this webook?</Text>
                 <FormControl>
                   <FormLabel>Name</FormLabel>
@@ -190,7 +189,7 @@ export const WebhooksTable: React.FC<WebhooksTableProps> = ({
                     )}
                   </Text>
                 </FormControl>
-              </Stack>
+              </div>
             )}
           </ModalBody>
 
@@ -209,7 +208,7 @@ export const WebhooksTable: React.FC<WebhooksTableProps> = ({
         title="webhooks"
         data={activeWebhooks}
         columns={columns}
-        isLoading={isLoading}
+        isPending={isPending}
         isFetched={isFetched}
         onMenuClick={[
           {

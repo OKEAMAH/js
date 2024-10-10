@@ -1,7 +1,8 @@
 "use client";
 
+import { useIsomorphicLayoutEffect } from "@/lib/useIsomorphicLayoutEffect";
 import { cn } from "@/lib/utils";
-import { useLayoutEffect, useRef } from "react";
+import { useRef } from "react";
 import styles from "./ScrollShadow.module.css";
 
 export function ScrollShadow(props: {
@@ -9,6 +10,7 @@ export function ScrollShadow(props: {
   className?: string;
   scrollableClassName?: string;
   disableTopShadow?: boolean;
+  shadowColor?: string;
 }) {
   const scrollableEl = useRef<HTMLDivElement>(null);
   const shadowTopEl = useRef<HTMLDivElement>(null);
@@ -17,7 +19,7 @@ export function ScrollShadow(props: {
   const shadowRightEl = useRef<HTMLDivElement>(null);
   const wrapperEl = useRef<HTMLDivElement>(null);
 
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const content = scrollableEl.current;
     const shadowTop = shadowTopEl.current;
     const shadowBottom = shadowBottomEl.current;
@@ -29,19 +31,20 @@ export function ScrollShadow(props: {
       return;
     }
 
-    const contentScrollHeight = content.scrollHeight - wrapper.offsetHeight;
-    const contentScrollWidth = content.scrollWidth - wrapper.offsetWidth;
-
     function handleScroll() {
       if (
         !content ||
         !shadowTop ||
         !shadowBottom ||
         !shadowLeft ||
-        !shadowRight
+        !shadowRight ||
+        !wrapper
       ) {
         return;
       }
+
+      const contentScrollHeight = content.scrollHeight - wrapper.offsetHeight;
+      const contentScrollWidth = content.scrollWidth - wrapper.offsetWidth;
 
       if (contentScrollHeight > 10) {
         const currentScroll = content.scrollTop / contentScrollHeight;
@@ -62,20 +65,36 @@ export function ScrollShadow(props: {
       }
     }
 
-    handleScroll();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        handleScroll();
+      });
+    });
     content.addEventListener("scroll", handleScroll);
+
+    const resizeObserver = new ResizeObserver(() => {
+      handleScroll();
+    });
+
+    resizeObserver.observe(content);
     return () => {
       content.removeEventListener("scroll", handleScroll);
+      resizeObserver.disconnect();
     };
   }, []);
 
   return (
     <div
-      className={cn(props.className, "relative overflow-hidden z-base")}
+      className={cn(props.className, "relative overflow-hidden")}
       ref={wrapperEl}
+      style={
+        {
+          "--shadow": props.shadowColor || "hsl(var(--muted))",
+        } as React.CSSProperties
+      }
     >
       <div
-        className={`${styles.scrollShadowTop} ${styles.scrollShadowY}`}
+        className={cn(styles.scrollShadowTop, styles.scrollShadowY)}
         ref={shadowTopEl}
         style={{
           opacity: "0",
@@ -83,32 +102,30 @@ export function ScrollShadow(props: {
         }}
       />
       <div
-        className={`${styles.scrollShadowBottom} ${styles.scrollShadowY}`}
+        className={cn(styles.scrollShadowBottom, styles.scrollShadowY)}
         ref={shadowBottomEl}
         style={{
           opacity: "0",
         }}
       />
       <div
-        className={`${styles.scrollShadowLeft} ${styles.scrollShadowX}`}
+        className={cn(styles.scrollShadowLeft, styles.scrollShadowX)}
         ref={shadowLeftEl}
         style={{
           opacity: "0",
         }}
       />
       <div
-        className={`${styles.scrollShadowRight} ${styles.scrollShadowX}`}
+        className={cn(styles.scrollShadowRight, styles.scrollShadowX)}
         ref={shadowRightEl}
         style={{
           opacity: "0",
         }}
       />
       <div
-        className={cn("overflow-auto", props.scrollableClassName)}
-        style={{
-          scrollbarWidth: "none",
-        }}
+        className={cn("no-scrollbar overflow-auto", props.scrollableClassName)}
         ref={scrollableEl}
+        data-scrollable
       >
         {props.children}
       </div>

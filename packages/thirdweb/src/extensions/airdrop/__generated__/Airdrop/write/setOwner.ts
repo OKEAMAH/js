@@ -6,45 +6,39 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
  * Represents the parameters for the "setOwner" function.
  */
 export type SetOwnerParams = WithOverrides<{
-  newOwner: AbiParameterToPrimitiveType<{
-    name: "_newOwner";
-    type: "address";
-    internalType: "address";
-  }>;
+  newOwner: AbiParameterToPrimitiveType<{ type: "address"; name: "_newOwner" }>;
 }>;
 
 export const FN_SELECTOR = "0x13af4035" as const;
 const FN_INPUTS = [
   {
-    name: "_newOwner",
     type: "address",
-    internalType: "address",
+    name: "_newOwner",
   },
 ] as const;
 const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `setOwner` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `setOwner` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `setOwner` method is supported.
  * @extension AIRDROP
  * @example
  * ```ts
  * import { isSetOwnerSupported } from "thirdweb/extensions/airdrop";
  *
- * const supported = await isSetOwnerSupported(contract);
+ * const supported = isSetOwnerSupported(["0x..."]);
  * ```
  */
-export async function isSetOwnerSupported(contract: ThirdwebContract<any>) {
+export function isSetOwnerSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -56,7 +50,7 @@ export async function isSetOwnerSupported(contract: ThirdwebContract<any>) {
  * @extension AIRDROP
  * @example
  * ```ts
- * import { encodeSetOwnerParams } "thirdweb/extensions/airdrop";
+ * import { encodeSetOwnerParams } from "thirdweb/extensions/airdrop";
  * const result = encodeSetOwnerParams({
  *  newOwner: ...,
  * });
@@ -73,7 +67,7 @@ export function encodeSetOwnerParams(options: SetOwnerParams) {
  * @extension AIRDROP
  * @example
  * ```ts
- * import { encodeSetOwner } "thirdweb/extensions/airdrop";
+ * import { encodeSetOwner } from "thirdweb/extensions/airdrop";
  * const result = encodeSetOwner({
  *  newOwner: ...,
  * });
@@ -93,6 +87,7 @@ export function encodeSetOwner(options: SetOwnerParams) {
  * @extension AIRDROP
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { setOwner } from "thirdweb/extensions/airdrop";
  *
  * const transaction = setOwner({
@@ -104,8 +99,7 @@ export function encodeSetOwner(options: SetOwnerParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function setOwner(

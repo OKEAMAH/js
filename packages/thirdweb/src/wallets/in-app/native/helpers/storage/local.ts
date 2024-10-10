@@ -1,16 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { AuthArgsType } from "../../../core/authentication/type.js";
 import {
-  AUTH_TOKEN_LOCAL_STORAGE_NAME,
   DEVICE_SHARE_LOCAL_STORAGE_NAME,
   WALLET_USER_DETAILS_LOCAL_STORAGE_NAME,
   WALLET_USER_ID_LOCAL_STORAGE_NAME,
 } from "../../../core/constants/settings.js";
 import { DEVICE_SHARE_MISSING_MESSAGE } from "../constants.js";
-
-const CONNECTED_EMAIL_LOCAL_STORAGE_NAME = "embedded-wallet-connected-email";
-const CONNECTED_AUTH_STRATEGY_LOCAL_STORAGE_NAME =
-  "embedded-wallet-connected-auth-params";
 
 const getItemFromAsyncStorage = async (key: string) => {
   // @ts-ignore - default import buils but ts doesn't like it
@@ -27,72 +21,28 @@ const removeItemInAsyncStorage = async (key: string) => {
   await AsyncStorage.removeItem(key);
 };
 
-export async function getConnectedEmail() {
-  return getItemFromAsyncStorage(CONNECTED_EMAIL_LOCAL_STORAGE_NAME);
-}
+// export async function getAuthTokenClient(clientId: string) {
+//   return getItemFromAsyncStorage(AUTH_TOKEN_LOCAL_STORAGE_NAME(clientId));
+// }
 
-export async function saveConnectedEmail(email: string) {
-  await setItemInAsyncStorage(CONNECTED_EMAIL_LOCAL_STORAGE_NAME, email);
-}
+// export async function setAuthTokenClient(
+//   cookieString: string,
+//   clientId: string,
+// ): Promise<void> {
+//   const authToken = AUTH_TOKEN_LOCAL_STORAGE_NAME(clientId);
+//   await setItemInAsyncStorage(authToken, cookieString);
+// }
 
-export async function clearConnectedEmail() {
-  await removeItemInAsyncStorage(CONNECTED_EMAIL_LOCAL_STORAGE_NAME);
-}
-
-export async function getConnectedAuthStrategy(): Promise<
-  AuthArgsType["strategy"] | undefined
-> {
-  return (await getItemFromAsyncStorage(
-    CONNECTED_AUTH_STRATEGY_LOCAL_STORAGE_NAME,
-  )) as AuthArgsType["strategy"] | undefined;
-}
-
-export async function saveConnectedAuthStrategy(authStrategy: string) {
-  await setItemInAsyncStorage(
-    CONNECTED_AUTH_STRATEGY_LOCAL_STORAGE_NAME,
-    authStrategy,
-  );
-}
-
-export async function clearConnectedAuthStrategy() {
-  await removeItemInAsyncStorage(CONNECTED_AUTH_STRATEGY_LOCAL_STORAGE_NAME);
-}
-
-export async function isDeviceSharePresentForUser(
-  clientId: string,
-  walletUserId?: string,
-): Promise<boolean> {
-  if (!walletUserId) {
-    return false;
-  }
-  const storedDeviceShare = await getItemFromAsyncStorage(
-    DEVICE_SHARE_LOCAL_STORAGE_NAME(clientId, walletUserId),
-  );
-  return !!storedDeviceShare;
-}
-
-export async function getAuthTokenClient(clientId: string) {
-  return getItemFromAsyncStorage(AUTH_TOKEN_LOCAL_STORAGE_NAME(clientId));
-}
-
-export async function setAuthTokenClient(
-  cookieString: string,
-  clientId: string,
-): Promise<void> {
-  const authToken = AUTH_TOKEN_LOCAL_STORAGE_NAME(clientId);
-  await setItemInAsyncStorage(authToken, cookieString);
-}
-
-export async function removeAuthTokenInClient(
-  clientId: string,
-): Promise<boolean> {
-  const verifiedTokenString = await getAuthTokenClient(clientId);
-  if (verifiedTokenString) {
-    await removeItemInAsyncStorage(AUTH_TOKEN_LOCAL_STORAGE_NAME(clientId));
-    return true;
-  }
-  return false;
-}
+// export async function removeAuthTokenInClient(
+//   clientId: string,
+// ): Promise<boolean> {
+//   const verifiedTokenString = await getAuthTokenClient(clientId);
+//   if (verifiedTokenString) {
+//     await removeItemInAsyncStorage(AUTH_TOKEN_LOCAL_STORAGE_NAME(clientId));
+//     return true;
+//   }
+//   return false;
+// }
 
 export async function setWallerUserDetails({
   clientId,
@@ -131,7 +81,7 @@ export async function getWalletUserDetails(
   try {
     const parsed = JSON.parse(result);
     return parsed;
-  } catch (e) {
+  } catch {
     return undefined;
   }
 }
@@ -160,6 +110,22 @@ export async function setDeviceShare({
   await setWallerUserDetails({ userId: userDetails.userId, clientId });
   await setItemInAsyncStorage(name, deviceShare);
   return deviceShare;
+}
+
+export async function removeDeviceShare({
+  clientId,
+}: {
+  clientId: string;
+}): Promise<void> {
+  const userDetails = await getWalletUserDetails(clientId);
+
+  if (!userDetails) {
+    throw new Error("Missing wallet user ID");
+  }
+
+  const name = DEVICE_SHARE_LOCAL_STORAGE_NAME(clientId, userDetails.userId);
+  await removeItemInAsyncStorage(name);
+  return;
 }
 
 export async function getDeviceShare(clientId: string) {

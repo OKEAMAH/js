@@ -11,7 +11,6 @@ import {
   Tabs,
   Textarea,
 } from "@chakra-ui/react";
-import type { ExtraPublishMetadata } from "@thirdweb-dev/sdk";
 import { compare, validate } from "compare-versions";
 import { FileInput } from "components/shared/FileInput";
 import { SolidityInput } from "contract-ui/components/solidity-inputs";
@@ -19,6 +18,7 @@ import { SelectOption } from "core-ui/batch-upload/lazy-mint-form/select-option"
 import { useImageFileOrUrl } from "hooks/useImageFileOrUrl";
 import { replaceIpfsUrl } from "lib/sdk";
 import { useFormContext } from "react-hook-form";
+import type { ExtendedMetadata } from "thirdweb/utils";
 import {
   Card,
   FormErrorMessage,
@@ -40,7 +40,7 @@ export const LandingFieldset: React.FC<LandingFieldsetProps> = ({
   latestVersion,
   placeholderVersion,
 }) => {
-  const form = useFormContext<ExtraPublishMetadata>();
+  const form = useFormContext<ExtendedMetadata>();
   const logoUrl = useImageFileOrUrl(form.watch("logo"));
 
   const handleVersionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,12 +95,9 @@ export const LandingFieldset: React.FC<LandingFieldsetProps> = ({
             <FileInput
               accept={{ "image/*": [] }}
               value={logoUrl}
+              // @ts-expect-error - we upload the file later this is fine
               setValue={(file) => form.setValue("logo", file)}
-              border="1px solid"
-              borderColor="gray.200"
-              borderRadius="md"
-              transition="all 200ms ease"
-              _hover={{ shadow: "sm" }}
+              className="rounded border border-border transition-all duration-200"
               renderPreview={(fileUrl) => (
                 <Image
                   alt=""
@@ -148,7 +145,7 @@ export const LandingFieldset: React.FC<LandingFieldsetProps> = ({
         </Flex>
       </Flex>
 
-      <Box>
+      <div>
         <Heading size="title.md" mb={2}>
           README
         </Heading>
@@ -189,9 +186,9 @@ export const LandingFieldset: React.FC<LandingFieldsetProps> = ({
             </TabPanels>
           </Tabs>
         </FormControl>
-      </Box>
+      </div>
       <ExternalLinksFieldset />
-      <Box>
+      <div>
         <Heading size="title.md" mb={2}>
           Version information
         </Heading>
@@ -270,8 +267,8 @@ export const LandingFieldset: React.FC<LandingFieldsetProps> = ({
             </FormHelperText>
           </FormControl>
         </Flex>
-      </Box>
-      <Box>
+      </div>
+      <div>
         <Heading size="title.md" mb={2}>
           Deployment options
         </Heading>
@@ -284,7 +281,7 @@ export const LandingFieldset: React.FC<LandingFieldsetProps> = ({
             description="Users will directly deploy the full contract."
             onClick={() => form.setValue("deployType", "standard")}
             isActive={form.watch("deployType") === "standard"}
-            width="full"
+            className="w-full"
           />
           <SelectOption
             name="Deploy via factory"
@@ -294,10 +291,10 @@ export const LandingFieldset: React.FC<LandingFieldsetProps> = ({
               form.watch("deployType") === "autoFactory" ||
               form.watch("deployType") === "customFactory"
             }
-            width="full"
+            className="w-full"
           />
         </Flex>
-      </Box>
+      </div>
     </Flex>
   );
 };

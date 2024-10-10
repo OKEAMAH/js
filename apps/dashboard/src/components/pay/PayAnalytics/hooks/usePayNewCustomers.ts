@@ -1,7 +1,7 @@
 import { useLoggedInUser } from "@3rdweb-sdk/react/hooks/useLoggedInUser";
 import { useQuery } from "@tanstack/react-query";
 
-export type PayNewCustomersData = {
+type PayNewCustomersData = {
   intervalType: "day" | "week";
   intervalResults: Array<{
     /**
@@ -31,9 +31,9 @@ export function usePayNewCustomers(options: {
 }) {
   const { user } = useLoggedInUser();
 
-  return useQuery(
-    ["usePayNewCustomers", user?.address, options],
-    async () => {
+  return useQuery({
+    queryKey: ["usePayNewCustomers", user?.address, options],
+    queryFn: async () => {
       const searchParams = new URLSearchParams();
       searchParams.append("intervalType", options.intervalType);
       searchParams.append("clientId", options.clientId);
@@ -58,6 +58,6 @@ export function usePayNewCustomers(options: {
 
       return resJSON.result.data;
     },
-    { enabled: !!user?.jwt },
-  );
+    enabled: !!user?.jwt,
+  });
 }

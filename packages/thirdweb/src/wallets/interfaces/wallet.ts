@@ -21,12 +21,12 @@ export type SendTransactionOption = TransactionSerializable & {
   chainId: number;
 };
 
-export type SendRawTransactionOptions = {
+type SendRawTransactionOptions = {
   rawTransaction: Hex;
   chainId: number;
 };
 
-export type WatchAssetParams = {
+type WatchAssetParams = {
   type: "ERC20";
   options: {
     address: Address;
@@ -74,6 +74,7 @@ export type Wallet<TWalletId extends WalletId = WalletId> = {
    * ```
    */
   getAccount(): Account | undefined;
+
   /**
    * Re-connect the wallet automatically without prompting the user for connection.
    *
@@ -140,6 +141,12 @@ export type Wallet<TWalletId extends WalletId = WalletId> = {
    * Can be used to execute any pre-connection actions like showing a modal, etc.
    */
   onConnectRequested?: () => Promise<void>;
+
+  /**
+   * Get the admin account of this wallet
+   * This is useful for smart wallets to get the underlying personal account
+   */
+  getAdminAccount?: () => Account | undefined;
 };
 
 /**

@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -119,21 +118,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `handleAggregatedOps` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `handleAggregatedOps` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `handleAggregatedOps` method is supported.
  * @extension ERC4337
  * @example
  * ```ts
  * import { isHandleAggregatedOpsSupported } from "thirdweb/extensions/erc4337";
  *
- * const supported = await isHandleAggregatedOpsSupported(contract);
+ * const supported = isHandleAggregatedOpsSupported(["0x..."]);
  * ```
  */
-export async function isHandleAggregatedOpsSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isHandleAggregatedOpsSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -145,7 +142,7 @@ export async function isHandleAggregatedOpsSupported(
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeHandleAggregatedOpsParams } "thirdweb/extensions/erc4337";
+ * import { encodeHandleAggregatedOpsParams } from "thirdweb/extensions/erc4337";
  * const result = encodeHandleAggregatedOpsParams({
  *  opsPerAggregator: ...,
  *  beneficiary: ...,
@@ -168,7 +165,7 @@ export function encodeHandleAggregatedOpsParams(
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeHandleAggregatedOps } "thirdweb/extensions/erc4337";
+ * import { encodeHandleAggregatedOps } from "thirdweb/extensions/erc4337";
  * const result = encodeHandleAggregatedOps({
  *  opsPerAggregator: ...,
  *  beneficiary: ...,
@@ -191,6 +188,7 @@ export function encodeHandleAggregatedOps(options: HandleAggregatedOpsParams) {
  * @extension ERC4337
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { handleAggregatedOps } from "thirdweb/extensions/erc4337";
  *
  * const transaction = handleAggregatedOps({
@@ -203,8 +201,7 @@ export function encodeHandleAggregatedOps(options: HandleAggregatedOpsParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function handleAggregatedOps(

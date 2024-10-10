@@ -6,67 +6,55 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
  * Represents the parameters for the "setMerkleRoot" function.
  */
 export type SetMerkleRootParams = WithOverrides<{
-  token: AbiParameterToPrimitiveType<{
-    name: "_token";
-    type: "address";
-    internalType: "address";
-  }>;
+  token: AbiParameterToPrimitiveType<{ type: "address"; name: "_token" }>;
   tokenMerkleRoot: AbiParameterToPrimitiveType<{
-    name: "_tokenMerkleRoot";
     type: "bytes32";
-    internalType: "bytes32";
+    name: "_tokenMerkleRoot";
   }>;
   resetClaimStatus: AbiParameterToPrimitiveType<{
-    name: "_resetClaimStatus";
     type: "bool";
-    internalType: "bool";
+    name: "_resetClaimStatus";
   }>;
 }>;
 
 export const FN_SELECTOR = "0x8259a87b" as const;
 const FN_INPUTS = [
   {
-    name: "_token",
     type: "address",
-    internalType: "address",
+    name: "_token",
   },
   {
-    name: "_tokenMerkleRoot",
     type: "bytes32",
-    internalType: "bytes32",
+    name: "_tokenMerkleRoot",
   },
   {
-    name: "_resetClaimStatus",
     type: "bool",
-    internalType: "bool",
+    name: "_resetClaimStatus",
   },
 ] as const;
 const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `setMerkleRoot` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `setMerkleRoot` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `setMerkleRoot` method is supported.
  * @extension AIRDROP
  * @example
  * ```ts
  * import { isSetMerkleRootSupported } from "thirdweb/extensions/airdrop";
  *
- * const supported = await isSetMerkleRootSupported(contract);
+ * const supported = isSetMerkleRootSupported(["0x..."]);
  * ```
  */
-export async function isSetMerkleRootSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isSetMerkleRootSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -78,7 +66,7 @@ export async function isSetMerkleRootSupported(
  * @extension AIRDROP
  * @example
  * ```ts
- * import { encodeSetMerkleRootParams } "thirdweb/extensions/airdrop";
+ * import { encodeSetMerkleRootParams } from "thirdweb/extensions/airdrop";
  * const result = encodeSetMerkleRootParams({
  *  token: ...,
  *  tokenMerkleRoot: ...,
@@ -101,7 +89,7 @@ export function encodeSetMerkleRootParams(options: SetMerkleRootParams) {
  * @extension AIRDROP
  * @example
  * ```ts
- * import { encodeSetMerkleRoot } "thirdweb/extensions/airdrop";
+ * import { encodeSetMerkleRoot } from "thirdweb/extensions/airdrop";
  * const result = encodeSetMerkleRoot({
  *  token: ...,
  *  tokenMerkleRoot: ...,
@@ -125,6 +113,7 @@ export function encodeSetMerkleRoot(options: SetMerkleRootParams) {
  * @extension AIRDROP
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { setMerkleRoot } from "thirdweb/extensions/airdrop";
  *
  * const transaction = setMerkleRoot({
@@ -138,8 +127,7 @@ export function encodeSetMerkleRoot(options: SetMerkleRootParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function setMerkleRoot(

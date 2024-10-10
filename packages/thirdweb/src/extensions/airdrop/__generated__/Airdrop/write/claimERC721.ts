@@ -6,75 +6,54 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
  * Represents the parameters for the "claimERC721" function.
  */
 export type ClaimERC721Params = WithOverrides<{
-  token: AbiParameterToPrimitiveType<{
-    name: "_token";
-    type: "address";
-    internalType: "address";
-  }>;
-  receiver: AbiParameterToPrimitiveType<{
-    name: "_receiver";
-    type: "address";
-    internalType: "address";
-  }>;
-  tokenId: AbiParameterToPrimitiveType<{
-    name: "_tokenId";
-    type: "uint256";
-    internalType: "uint256";
-  }>;
-  proofs: AbiParameterToPrimitiveType<{
-    name: "_proofs";
-    type: "bytes32[]";
-    internalType: "bytes32[]";
-  }>;
+  token: AbiParameterToPrimitiveType<{ type: "address"; name: "_token" }>;
+  receiver: AbiParameterToPrimitiveType<{ type: "address"; name: "_receiver" }>;
+  tokenId: AbiParameterToPrimitiveType<{ type: "uint256"; name: "_tokenId" }>;
+  proofs: AbiParameterToPrimitiveType<{ type: "bytes32[]"; name: "_proofs" }>;
 }>;
 
 export const FN_SELECTOR = "0x1290be10" as const;
 const FN_INPUTS = [
   {
+    type: "address",
     name: "_token",
-    type: "address",
-    internalType: "address",
   },
   {
+    type: "address",
     name: "_receiver",
-    type: "address",
-    internalType: "address",
   },
   {
-    name: "_tokenId",
     type: "uint256",
-    internalType: "uint256",
+    name: "_tokenId",
   },
   {
-    name: "_proofs",
     type: "bytes32[]",
-    internalType: "bytes32[]",
+    name: "_proofs",
   },
 ] as const;
 const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `claimERC721` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `claimERC721` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `claimERC721` method is supported.
  * @extension AIRDROP
  * @example
  * ```ts
  * import { isClaimERC721Supported } from "thirdweb/extensions/airdrop";
  *
- * const supported = await isClaimERC721Supported(contract);
+ * const supported = isClaimERC721Supported(["0x..."]);
  * ```
  */
-export async function isClaimERC721Supported(contract: ThirdwebContract<any>) {
+export function isClaimERC721Supported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -86,7 +65,7 @@ export async function isClaimERC721Supported(contract: ThirdwebContract<any>) {
  * @extension AIRDROP
  * @example
  * ```ts
- * import { encodeClaimERC721Params } "thirdweb/extensions/airdrop";
+ * import { encodeClaimERC721Params } from "thirdweb/extensions/airdrop";
  * const result = encodeClaimERC721Params({
  *  token: ...,
  *  receiver: ...,
@@ -111,7 +90,7 @@ export function encodeClaimERC721Params(options: ClaimERC721Params) {
  * @extension AIRDROP
  * @example
  * ```ts
- * import { encodeClaimERC721 } "thirdweb/extensions/airdrop";
+ * import { encodeClaimERC721 } from "thirdweb/extensions/airdrop";
  * const result = encodeClaimERC721({
  *  token: ...,
  *  receiver: ...,
@@ -136,6 +115,7 @@ export function encodeClaimERC721(options: ClaimERC721Params) {
  * @extension AIRDROP
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { claimERC721 } from "thirdweb/extensions/airdrop";
  *
  * const transaction = claimERC721({
@@ -150,8 +130,7 @@ export function encodeClaimERC721(options: ClaimERC721Params) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function claimERC721(

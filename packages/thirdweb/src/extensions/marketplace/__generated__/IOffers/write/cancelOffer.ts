@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -27,19 +26,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `cancelOffer` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `cancelOffer` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `cancelOffer` method is supported.
  * @extension MARKETPLACE
  * @example
  * ```ts
  * import { isCancelOfferSupported } from "thirdweb/extensions/marketplace";
  *
- * const supported = await isCancelOfferSupported(contract);
+ * const supported = isCancelOfferSupported(["0x..."]);
  * ```
  */
-export async function isCancelOfferSupported(contract: ThirdwebContract<any>) {
+export function isCancelOfferSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -51,7 +50,7 @@ export async function isCancelOfferSupported(contract: ThirdwebContract<any>) {
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeCancelOfferParams } "thirdweb/extensions/marketplace";
+ * import { encodeCancelOfferParams } from "thirdweb/extensions/marketplace";
  * const result = encodeCancelOfferParams({
  *  offerId: ...,
  * });
@@ -68,7 +67,7 @@ export function encodeCancelOfferParams(options: CancelOfferParams) {
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeCancelOffer } "thirdweb/extensions/marketplace";
+ * import { encodeCancelOffer } from "thirdweb/extensions/marketplace";
  * const result = encodeCancelOffer({
  *  offerId: ...,
  * });
@@ -90,6 +89,7 @@ export function encodeCancelOffer(options: CancelOfferParams) {
  * @extension MARKETPLACE
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { cancelOffer } from "thirdweb/extensions/marketplace";
  *
  * const transaction = cancelOffer({
@@ -101,8 +101,7 @@ export function encodeCancelOffer(options: CancelOfferParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function cancelOffer(

@@ -6,11 +6,10 @@ import {
   Input,
   InputGroup,
   InputRightElement,
-  Stack,
   Tooltip,
 } from "@chakra-ui/react";
-import type { OptionalPropertiesInput } from "@thirdweb-dev/sdk";
 import { FileInput } from "components/shared/FileInput";
+import { PlusIcon } from "lucide-react";
 import { useEffect } from "react";
 import {
   type ArrayPath,
@@ -25,12 +24,15 @@ import {
   type WatchObserver,
   useFieldArray,
 } from "react-hook-form";
-import { FiPlus, FiSlash, FiTrash, FiUpload, FiX } from "react-icons/fi";
+import { FiSlash, FiTrash, FiUpload, FiX } from "react-icons/fi";
 import { Button, FormErrorMessage, FormLabel } from "tw-components";
-import type { z } from "zod";
+
+type OptionalPropertiesInput = {
+  [key: string]: string | number;
+};
 
 interface IPropertyFieldValues extends FieldValues {
-  attributes?: z.input<typeof OptionalPropertiesInput>;
+  attributes?: OptionalPropertiesInput;
 }
 
 interface IPropertiesFormControlProps<
@@ -67,7 +69,7 @@ export const PropertiesFormControl = <
   }, [fields, append]);
 
   return (
-    <Stack spacing={4}>
+    <div className="flex flex-col gap-4">
       <Flex justify="space-between" align="center" direction="row">
         <FormLabel m={0}>Attributes</FormLabel>
         <Button
@@ -91,12 +93,10 @@ export const PropertiesFormControl = <
         const isInvalid = !!(keyError || valueError);
 
         return (
-          <Stack key={field.id} align="center" direction="row">
+          <div className="flex flex-row items-center gap-2" key={field.id}>
             <FormControl
               isInvalid={isInvalid}
-              as={Stack}
-              direction="row"
-              align="top"
+              className="flex flex-row items-start"
             >
               <FormControl isInvalid={!!keyError}>
                 <Input
@@ -157,8 +157,7 @@ export const PropertiesFormControl = <
                         >
                           <Icon
                             as={FiUpload}
-                            color="gray.600"
-                            _hover={{ color: "gray.500" }}
+                            className="text-muted-foreground"
                           />
                         </FileInput>
                       </Tooltip>
@@ -176,12 +175,12 @@ export const PropertiesFormControl = <
               size="xs"
               icon={<Icon as={FiX} />}
             />
-          </Stack>
+          </div>
         );
       })}
-      <Stack direction="row">
+      <div className="flex flex-row gap-2">
         <Button
-          leftIcon={<Icon as={FiPlus} />}
+          leftIcon={<PlusIcon className="size-5" />}
           colorScheme="purple"
           size="sm"
           onClick={() =>
@@ -191,7 +190,7 @@ export const PropertiesFormControl = <
         >
           Add Row
         </Button>
-      </Stack>
-    </Stack>
+      </div>
+    </div>
   );
 };

@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -36,19 +35,19 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `mintTo` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `mintTo` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `mintTo` method is supported.
  * @extension ERC721
  * @example
  * ```ts
  * import { isMintToSupported } from "thirdweb/extensions/erc721";
  *
- * const supported = await isMintToSupported(contract);
+ * const supported = isMintToSupported(["0x..."]);
  * ```
  */
-export async function isMintToSupported(contract: ThirdwebContract<any>) {
+export function isMintToSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -60,7 +59,7 @@ export async function isMintToSupported(contract: ThirdwebContract<any>) {
  * @extension ERC721
  * @example
  * ```ts
- * import { encodeMintToParams } "thirdweb/extensions/erc721";
+ * import { encodeMintToParams } from "thirdweb/extensions/erc721";
  * const result = encodeMintToParams({
  *  to: ...,
  *  uri: ...,
@@ -78,7 +77,7 @@ export function encodeMintToParams(options: MintToParams) {
  * @extension ERC721
  * @example
  * ```ts
- * import { encodeMintTo } "thirdweb/extensions/erc721";
+ * import { encodeMintTo } from "thirdweb/extensions/erc721";
  * const result = encodeMintTo({
  *  to: ...,
  *  uri: ...,
@@ -99,6 +98,7 @@ export function encodeMintTo(options: MintToParams) {
  * @extension ERC721
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { mintTo } from "thirdweb/extensions/erc721";
  *
  * const transaction = mintTo({
@@ -111,8 +111,7 @@ export function encodeMintTo(options: MintToParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function mintTo(

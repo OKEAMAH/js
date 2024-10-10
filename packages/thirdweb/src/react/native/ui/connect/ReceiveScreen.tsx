@@ -9,7 +9,7 @@ import { WalletImage } from "../components/WalletImage.js";
 import { Spacer } from "../components/spacer.js";
 import { ThemedText } from "../components/text.js";
 
-export type ReceiveScreenProps = {
+type ReceiveScreenProps = {
   theme: Theme;
   wallet: Wallet;
   account: Account;
@@ -32,7 +32,7 @@ export const ReceiveScreen = (props: ReceiveScreenProps) => {
       />
       <View style={styles.container}>
         {/* TODO (rn) QR code scanning */}
-        <WalletImage theme={theme} wallet={wallet} size={72} />
+        <WalletImage theme={theme} wallet={wallet} size={80} />
         <Spacer size="lg" />
         <View
           style={[

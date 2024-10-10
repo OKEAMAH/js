@@ -4,51 +4,43 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
  * Represents the parameters for the "maxMint" function.
  */
 export type MaxMintParams = {
-  receiver: AbiParameterToPrimitiveType<{
-    name: "receiver";
-    type: "address";
-    internalType: "address";
-  }>;
+  receiver: AbiParameterToPrimitiveType<{ type: "address"; name: "receiver" }>;
 };
 
 export const FN_SELECTOR = "0xc63d75b6" as const;
 const FN_INPUTS = [
   {
-    name: "receiver",
     type: "address",
-    internalType: "address",
+    name: "receiver",
   },
 ] as const;
 const FN_OUTPUTS = [
   {
-    name: "maxShares",
     type: "uint256",
-    internalType: "uint256",
+    name: "maxShares",
   },
 ] as const;
 
 /**
  * Checks if the `maxMint` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `maxMint` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `maxMint` method is supported.
  * @extension ERC4626
  * @example
  * ```ts
  * import { isMaxMintSupported } from "thirdweb/extensions/erc4626";
- *
- * const supported = await isMaxMintSupported(contract);
+ * const supported = isMaxMintSupported(["0x..."]);
  * ```
  */
-export async function isMaxMintSupported(contract: ThirdwebContract<any>) {
+export function isMaxMintSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -60,7 +52,7 @@ export async function isMaxMintSupported(contract: ThirdwebContract<any>) {
  * @extension ERC4626
  * @example
  * ```ts
- * import { encodeMaxMintParams } "thirdweb/extensions/erc4626";
+ * import { encodeMaxMintParams } from "thirdweb/extensions/erc4626";
  * const result = encodeMaxMintParams({
  *  receiver: ...,
  * });
@@ -77,7 +69,7 @@ export function encodeMaxMintParams(options: MaxMintParams) {
  * @extension ERC4626
  * @example
  * ```ts
- * import { encodeMaxMint } "thirdweb/extensions/erc4626";
+ * import { encodeMaxMint } from "thirdweb/extensions/erc4626";
  * const result = encodeMaxMint({
  *  receiver: ...,
  * });
@@ -98,7 +90,7 @@ export function encodeMaxMint(options: MaxMintParams) {
  * @example
  * ```ts
  * import { decodeMaxMintResult } from "thirdweb/extensions/erc4626";
- * const result = decodeMaxMintResult("...");
+ * const result = decodeMaxMintResultResult("...");
  * ```
  */
 export function decodeMaxMintResult(result: Hex) {

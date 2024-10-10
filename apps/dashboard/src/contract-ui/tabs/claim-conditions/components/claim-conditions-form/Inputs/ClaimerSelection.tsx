@@ -1,6 +1,5 @@
-import { Box, Flex, Icon, Select } from "@chakra-ui/react";
-import { BsCircleFill } from "react-icons/bs";
-import { FiUpload } from "react-icons/fi";
+import { Box, Flex, Select } from "@chakra-ui/react";
+import { UploadIcon } from "lucide-react";
 import { Button, Text } from "tw-components";
 import { useClaimConditionsFormContext } from "..";
 import { CustomFormControl } from "../common";
@@ -18,7 +17,6 @@ export const ClaimerSelection = () => {
     field,
     dropType,
     isErc20,
-    isClaimPhaseV1,
     setOpenSnapshotIndex: setOpenIndex,
     isAdmin,
     isColumn,
@@ -31,14 +29,10 @@ export const ClaimerSelection = () => {
     if (val === "any") {
       form.setValue(`phases.${phaseIndex}.snapshot`, undefined);
     } else {
-      if (val === "specific" && !isClaimPhaseV1) {
+      if (val === "specific") {
         form.setValue(`phases.${phaseIndex}.maxClaimablePerWallet`, 0);
       }
-      if (
-        val === "overrides" &&
-        !isClaimPhaseV1 &&
-        field.maxClaimablePerWallet !== 1
-      ) {
+      if (val === "overrides" && field.maxClaimablePerWallet !== 1) {
         form.setValue(`phases.${phaseIndex}.maxClaimablePerWallet`, 1);
       }
       form.setValue(`phases.${phaseIndex}.snapshot`, []);
@@ -50,39 +44,31 @@ export const ClaimerSelection = () => {
 
   const disabledSnapshotButton = isAdmin && formDisabled;
 
-  if (isClaimPhaseV1) {
-    helperText =
-      "Snapshot spots are one-time-use! Once a wallet has claimed the drop, it cannot claim again, even if it did not claim the entire amount assigned to it in the snapshot.";
+  if (dropType === "specific") {
+    helperText = (
+      <>
+        <b>Only</b> wallets on the <b>allowlist</b> can claim.
+      </>
+    );
+  } else if (dropType === "any") {
+    helperText = (
+      <>
+        <b>Anyone</b> can claim based on the rules defined in this phase.
+        (&quot;Public Mint&quot;)
+      </>
+    );
   } else {
-    if (dropType === "specific") {
-      helperText = (
-        <>
-          <b>Only</b> wallets on the <b>allowlist</b> can claim.
-        </>
-      );
-    } else if (dropType === "any") {
-      helperText = (
-        <>
-          <b>Anyone</b> can claim based on the rules defined in this phase.
-          (&quot;Public Mint&quot;)
-        </>
-      );
-    } else {
-      helperText = (
-        <>
-          <b>Anyone</b> can claim based on the rules defined in this phase.
-          <br />
-          <b>Wallets in the snapshot</b> can claim with special rules defined in
-          the snapshot.
-        </>
-      );
-    }
+    helperText = (
+      <>
+        <b>Anyone</b> can claim based on the rules defined in this phase.
+        <br />
+        <b>Wallets in the snapshot</b> can claim with special rules defined in
+        the snapshot.
+      </>
+    );
   }
 
-  if (
-    !isClaimPhaseV1 &&
-    (claimConditionType === "public" || claimConditionType === "creator")
-  ) {
+  if (claimConditionType === "public" || claimConditionType === "creator") {
     return null;
   }
 
@@ -113,9 +99,7 @@ export const ClaimerSelection = () => {
             onChange={handleClaimerChange}
           >
             <option value="any">Any wallet</option>
-            {!isClaimPhaseV1 ? (
-              <option value="overrides">Any wallet (with overrides)</option>
-            ) : null}
+            <option value="overrides">Any wallet (with overrides)</option>
             <option value="specific">Only specific wallets</option>
           </Select>
         )}
@@ -135,7 +119,7 @@ export const ClaimerSelection = () => {
               isDisabled={disabledSnapshotButton}
               borderRadius="md"
               onClick={() => setOpenIndex(phaseIndex)}
-              rightIcon={<Icon as={FiUpload} />}
+              rightIcon={<UploadIcon className="size-4" />}
             >
               {isAdmin ? "Edit" : "See"} Claimer Snapshot
             </Button>
@@ -152,8 +136,8 @@ export const ClaimerSelection = () => {
               }}
               ml={2}
             >
-              <Icon as={BsCircleFill} boxSize={2} />
               <Text size="body.sm" color="inherit">
+                ●{" "}
                 <strong>
                   {field.snapshot?.length} address
                   {field.snapshot?.length === 1 ? "" : "es"}

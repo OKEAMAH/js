@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -14,97 +13,83 @@ import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
  */
 export type AirdropERC721WithSignatureParams = WithOverrides<{
   req: AbiParameterToPrimitiveType<{
-    name: "req";
     type: "tuple";
-    internalType: "struct Airdrop.AirdropRequestERC721";
+    name: "req";
     components: [
-      { name: "uid"; type: "bytes32"; internalType: "bytes32" },
-      { name: "tokenAddress"; type: "address"; internalType: "address" },
-      { name: "expirationTimestamp"; type: "uint256"; internalType: "uint256" },
+      { type: "bytes32"; name: "uid" },
+      { type: "address"; name: "tokenAddress" },
+      { type: "uint256"; name: "expirationTimestamp" },
       {
-        name: "contents";
         type: "tuple[]";
-        internalType: "struct Airdrop.AirdropContentERC721[]";
+        name: "contents";
         components: [
-          { name: "recipient"; type: "address"; internalType: "address" },
-          { name: "tokenId"; type: "uint256"; internalType: "uint256" },
+          { type: "address"; name: "recipient" },
+          { type: "uint256"; name: "tokenId" },
         ];
       },
     ];
   }>;
-  signature: AbiParameterToPrimitiveType<{
-    name: "signature";
-    type: "bytes";
-    internalType: "bytes";
-  }>;
+  signature: AbiParameterToPrimitiveType<{ type: "bytes"; name: "signature" }>;
 }>;
 
 export const FN_SELECTOR = "0xb654a6f3" as const;
 const FN_INPUTS = [
   {
-    name: "req",
     type: "tuple",
-    internalType: "struct Airdrop.AirdropRequestERC721",
+    name: "req",
     components: [
       {
-        name: "uid",
         type: "bytes32",
-        internalType: "bytes32",
+        name: "uid",
       },
       {
-        name: "tokenAddress",
         type: "address",
-        internalType: "address",
+        name: "tokenAddress",
       },
       {
-        name: "expirationTimestamp",
         type: "uint256",
-        internalType: "uint256",
+        name: "expirationTimestamp",
       },
       {
-        name: "contents",
         type: "tuple[]",
-        internalType: "struct Airdrop.AirdropContentERC721[]",
+        name: "contents",
         components: [
           {
-            name: "recipient",
             type: "address",
-            internalType: "address",
+            name: "recipient",
           },
           {
-            name: "tokenId",
             type: "uint256",
-            internalType: "uint256",
+            name: "tokenId",
           },
         ],
       },
     ],
   },
   {
-    name: "signature",
     type: "bytes",
-    internalType: "bytes",
+    name: "signature",
   },
 ] as const;
 const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `airdropERC721WithSignature` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `airdropERC721WithSignature` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `airdropERC721WithSignature` method is supported.
  * @extension AIRDROP
  * @example
  * ```ts
  * import { isAirdropERC721WithSignatureSupported } from "thirdweb/extensions/airdrop";
  *
- * const supported = await isAirdropERC721WithSignatureSupported(contract);
+ * const supported = isAirdropERC721WithSignatureSupported(["0x..."]);
  * ```
  */
-export async function isAirdropERC721WithSignatureSupported(
-  contract: ThirdwebContract<any>,
+export function isAirdropERC721WithSignatureSupported(
+  availableSelectors: string[],
 ) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -116,7 +101,7 @@ export async function isAirdropERC721WithSignatureSupported(
  * @extension AIRDROP
  * @example
  * ```ts
- * import { encodeAirdropERC721WithSignatureParams } "thirdweb/extensions/airdrop";
+ * import { encodeAirdropERC721WithSignatureParams } from "thirdweb/extensions/airdrop";
  * const result = encodeAirdropERC721WithSignatureParams({
  *  req: ...,
  *  signature: ...,
@@ -136,7 +121,7 @@ export function encodeAirdropERC721WithSignatureParams(
  * @extension AIRDROP
  * @example
  * ```ts
- * import { encodeAirdropERC721WithSignature } "thirdweb/extensions/airdrop";
+ * import { encodeAirdropERC721WithSignature } from "thirdweb/extensions/airdrop";
  * const result = encodeAirdropERC721WithSignature({
  *  req: ...,
  *  signature: ...,
@@ -161,6 +146,7 @@ export function encodeAirdropERC721WithSignature(
  * @extension AIRDROP
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { airdropERC721WithSignature } from "thirdweb/extensions/airdrop";
  *
  * const transaction = airdropERC721WithSignature({
@@ -173,8 +159,7 @@ export function encodeAirdropERC721WithSignature(
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function airdropERC721WithSignature(

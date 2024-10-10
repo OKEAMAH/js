@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -30,21 +29,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `collectAuctionPayout` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `collectAuctionPayout` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `collectAuctionPayout` method is supported.
  * @extension MARKETPLACE
  * @example
  * ```ts
  * import { isCollectAuctionPayoutSupported } from "thirdweb/extensions/marketplace";
  *
- * const supported = await isCollectAuctionPayoutSupported(contract);
+ * const supported = isCollectAuctionPayoutSupported(["0x..."]);
  * ```
  */
-export async function isCollectAuctionPayoutSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isCollectAuctionPayoutSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -56,7 +53,7 @@ export async function isCollectAuctionPayoutSupported(
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeCollectAuctionPayoutParams } "thirdweb/extensions/marketplace";
+ * import { encodeCollectAuctionPayoutParams } from "thirdweb/extensions/marketplace";
  * const result = encodeCollectAuctionPayoutParams({
  *  auctionId: ...,
  * });
@@ -75,7 +72,7 @@ export function encodeCollectAuctionPayoutParams(
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeCollectAuctionPayout } "thirdweb/extensions/marketplace";
+ * import { encodeCollectAuctionPayout } from "thirdweb/extensions/marketplace";
  * const result = encodeCollectAuctionPayout({
  *  auctionId: ...,
  * });
@@ -99,6 +96,7 @@ export function encodeCollectAuctionPayout(
  * @extension MARKETPLACE
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { collectAuctionPayout } from "thirdweb/extensions/marketplace";
  *
  * const transaction = collectAuctionPayout({
@@ -110,8 +108,7 @@ export function encodeCollectAuctionPayout(
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function collectAuctionPayout(

@@ -1,26 +1,28 @@
+"use client";
+
 import { Flex, FormControl, Input } from "@chakra-ui/react";
-import { type DropContract, useClaimNFT } from "@thirdweb-dev/react";
 import { TransactionButton } from "components/buttons/TransactionButton";
-import { constants } from "ethers";
 import { useTrack } from "hooks/analytics/useTrack";
 import { useTxNotifications } from "hooks/useTxNotifications";
 import { useForm } from "react-hook-form";
-import { useActiveAccount } from "thirdweb/react";
+import { toast } from "sonner";
+import { type ThirdwebContract, ZERO_ADDRESS } from "thirdweb";
+import { getApprovalForTransaction } from "thirdweb/extensions/erc20";
+import { claimTo } from "thirdweb/extensions/erc1155";
+import { useActiveAccount, useSendAndConfirmTransaction } from "thirdweb/react";
 import { FormErrorMessage, FormHelperText, FormLabel } from "tw-components";
 
 interface ClaimTabProps {
-  contract: DropContract;
+  contract: ThirdwebContract;
   tokenId: string;
 }
 
-const ClaimTab: React.FC<ClaimTabProps> = ({ contract, tokenId }) => {
+const ClaimTabERC1155: React.FC<ClaimTabProps> = ({ contract, tokenId }) => {
   const trackEvent = useTrack();
   const address = useActiveAccount()?.address;
   const form = useForm<{ to: string; amount: string }>({
     defaultValues: { amount: "1", to: address },
   });
-
-  const claim = useClaimNFT(contract);
 
   const { onSuccess, onError } = useTxNotifications(
     "Claimed successfully",
@@ -28,6 +30,8 @@ const ClaimTab: React.FC<ClaimTabProps> = ({ contract, tokenId }) => {
     contract,
   );
 
+  const sendAndConfirmTx = useSendAndConfirmTransaction();
+  const account = useActiveAccount();
   return (
     <Flex
       w="full"
@@ -39,13 +43,29 @@ const ClaimTab: React.FC<ClaimTabProps> = ({ contract, tokenId }) => {
           action: "claim",
           label: "attempt",
         });
-
+        if (!account) {
+          return toast.error("No account detected");
+        }
         try {
-          await claim.mutateAsync({
-            tokenId,
-            quantity: data.amount,
+          const transaction = claimTo({
+            contract,
+            tokenId: BigInt(tokenId),
+            quantity: BigInt(data.amount),
             to: data.to,
+            from: account.address,
           });
+          const approveTx = await getApprovalForTransaction({
+            transaction,
+            account,
+          });
+          if (approveTx) {
+            try {
+              await sendAndConfirmTx.mutateAsync(approveTx);
+            } catch {
+              return toast.error("Error approving ERC20 token");
+            }
+          }
+          await sendAndConfirmTx.mutateAsync(transaction);
           trackEvent({
             category: "nft",
             action: "claim",
@@ -71,10 +91,7 @@ const ClaimTab: React.FC<ClaimTabProps> = ({ contract, tokenId }) => {
             isInvalid={!!form.getFieldState("to", form.formState).error}
           >
             <FormLabel>To Address</FormLabel>
-            <Input
-              placeholder={constants.AddressZero}
-              {...form.register("to")}
-            />
+            <Input placeholder={ZERO_ADDRESS} {...form.register("to")} />
             <FormHelperText>Enter the address to claim to.</FormHelperText>
             <FormErrorMessage>
               {form.getFieldState("to", form.formState).error?.message}
@@ -85,7 +102,18 @@ const ClaimTab: React.FC<ClaimTabProps> = ({ contract, tokenId }) => {
             isInvalid={!!form.getFieldState("amount", form.formState).error}
           >
             <FormLabel>Amount</FormLabel>
-            <Input type="text" {...form.register("amount")} />
+            <Input
+              type="text"
+              {...form.register("amount", {
+                validate: (value) => {
+                  // must be an integer
+                  const valueNum = Number(value);
+                  if (!Number.isInteger(valueNum)) {
+                    return "Amount must be an integer";
+                  }
+                },
+              })}
+            />
             <FormHelperText>How many would you like to claim?</FormHelperText>
             <FormErrorMessage>
               {form.getFieldState("amount", form.formState).error?.message}
@@ -94,8 +122,9 @@ const ClaimTab: React.FC<ClaimTabProps> = ({ contract, tokenId }) => {
         </Flex>
 
         <TransactionButton
+          txChainID={contract.chain.id}
           transactionCount={1}
-          isLoading={claim.isLoading || form.formState.isSubmitting}
+          isLoading={form.formState.isSubmitting}
           type="submit"
           colorScheme="primary"
           alignSelf="flex-end"
@@ -107,4 +136,4 @@ const ClaimTab: React.FC<ClaimTabProps> = ({ contract, tokenId }) => {
   );
 };
 
-export default ClaimTab;
+export default ClaimTabERC1155;

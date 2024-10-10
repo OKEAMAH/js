@@ -1,6 +1,7 @@
 import { type TransactionSerializable, decodeErrorResult } from "viem";
 import { parseEventLogs } from "../../../event/actions/parse-logs.js";
 import { userOperationRevertReasonEvent } from "../../../extensions/erc4337/__generated__/IEntryPoint/events/UserOperationRevertReason.js";
+import { postOpRevertReasonEvent } from "../../../extensions/erc4337/__generated__/IEntryPoint_v07/events/PostOpRevertReason.js";
 import type { TransactionReceipt } from "../../../transaction/types.js";
 import { type Hex, hexToBigInt } from "../../../utils/encoding/hex.js";
 import { getClientFetch } from "../../../utils/fetch.js";
@@ -10,8 +11,9 @@ import {
   type EstimationResult,
   type GasPriceResult,
   type PmTransactionData,
-  type UserOperation,
   type UserOperationReceipt,
+  type UserOperationV06,
+  type UserOperationV07,
   formatUserOperationReceipt,
 } from "../types.js";
 import {
@@ -38,7 +40,7 @@ import { hexlifyUserOp } from "./utils.js";
  * @walletUtils
  */
 export async function bundleUserOp(args: {
-  userOp: UserOperation;
+  userOp: UserOperationV06 | UserOperationV07;
   options: BundlerOptions;
 }): Promise<Hex> {
   return sendBundlerRequest({
@@ -67,7 +69,7 @@ export async function bundleUserOp(args: {
  * @walletUtils
  */
 export async function estimateUserOpGas(args: {
-  userOp: UserOperation;
+  userOp: UserOperationV06 | UserOperationV07;
   options: BundlerOptions;
 }): Promise<EstimationResult> {
   const res = await sendBundlerRequest({
@@ -85,6 +87,14 @@ export async function estimateUserOpGas(args: {
     verificationGas: hexToBigInt(res.verificationGas),
     verificationGasLimit: hexToBigInt(res.verificationGasLimit),
     callGasLimit: hexToBigInt(res.callGasLimit) + MANAGED_ACCOUNT_GAS_BUFFER,
+    paymasterVerificationGasLimit:
+      res.paymasterVerificationGasLimit !== undefined
+        ? hexToBigInt(res.paymasterVerificationGasLimit)
+        : undefined,
+    paymasterPostOpGasLimit:
+      res.paymasterPostOpGasLimit !== undefined
+        ? hexToBigInt(res.paymasterPostOpGasLimit)
+        : undefined,
   };
 }
 
@@ -147,7 +157,7 @@ export async function getUserOpReceipt(
   if (res.success === false) {
     // parse revert reason
     const logs = parseEventLogs({
-      events: [userOperationRevertReasonEvent()],
+      events: [userOperationRevertReasonEvent(), postOpRevertReasonEvent()],
       logs: res.logs,
     });
     const revertReason = logs[0]?.args?.revertReason;

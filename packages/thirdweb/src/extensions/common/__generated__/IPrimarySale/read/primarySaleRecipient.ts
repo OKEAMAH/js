@@ -3,7 +3,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 export const FN_SELECTOR = "0x079fe40e" as const;
@@ -16,21 +15,18 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `primarySaleRecipient` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `primarySaleRecipient` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `primarySaleRecipient` method is supported.
  * @extension COMMON
  * @example
  * ```ts
  * import { isPrimarySaleRecipientSupported } from "thirdweb/extensions/common";
- *
- * const supported = await isPrimarySaleRecipientSupported(contract);
+ * const supported = isPrimarySaleRecipientSupported(["0x..."]);
  * ```
  */
-export async function isPrimarySaleRecipientSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isPrimarySaleRecipientSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -43,7 +39,7 @@ export async function isPrimarySaleRecipientSupported(
  * @example
  * ```ts
  * import { decodePrimarySaleRecipientResult } from "thirdweb/extensions/common";
- * const result = decodePrimarySaleRecipientResult("...");
+ * const result = decodePrimarySaleRecipientResultResult("...");
  * ```
  */
 export function decodePrimarySaleRecipientResult(result: Hex) {

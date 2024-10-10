@@ -1,4 +1,4 @@
-import { toRlp } from "viem";
+import { hexToBytes, toRlp } from "viem";
 import { eth_sendRawTransaction } from "../../../rpc/actions/eth_sendRawTransaction.js";
 import { getRpcClient } from "../../../rpc/rpc.js";
 import { toBigInt } from "../../../utils/bigint.js";
@@ -16,7 +16,7 @@ import {
   getEip712Domain,
 } from "./getEip721Domain.js";
 
-export type SendEip712TransactionOptions = {
+type SendEip712TransactionOptions = {
   account: Account;
   // TODO: update this to `Transaction<"prepared">` once the type is available to ensure only prepared transactions are accepted
   // biome-ignore lint/suspicious/noExplicitAny: library function that accepts any prepared transaction type
@@ -87,25 +87,17 @@ export async function populateEip712Transaction(
   options: SendEip712TransactionOptions,
 ): Promise<EIP721TransactionSerializable> {
   const { account, transaction } = options;
-  let [
-    data,
-    to,
-    value,
-    gas,
-    maxFeePerGas,
-    maxPriorityFeePerGas,
-    gasPerPubdata,
-  ] = await Promise.all([
-    encode(transaction),
-    resolvePromisedValue(transaction.to),
-    resolvePromisedValue(transaction.value),
-    resolvePromisedValue(transaction.gas),
-    resolvePromisedValue(transaction.maxFeePerGas),
-    resolvePromisedValue(transaction.maxPriorityFeePerGas),
-    resolvePromisedValue(transaction.eip712).then(
-      (eip712) => eip712?.gasPerPubdata,
-    ),
-  ]);
+  let [data, to, value, gas, maxFeePerGas, maxPriorityFeePerGas, eip712] =
+    await Promise.all([
+      encode(transaction),
+      resolvePromisedValue(transaction.to),
+      resolvePromisedValue(transaction.value),
+      resolvePromisedValue(transaction.gas),
+      resolvePromisedValue(transaction.maxFeePerGas),
+      resolvePromisedValue(transaction.maxPriorityFeePerGas),
+      resolvePromisedValue(transaction.eip712),
+    ]);
+  let gasPerPubdata = eip712?.gasPerPubdata;
   if (!gas || !maxFeePerGas || !maxPriorityFeePerGas) {
     // fetch fees and gas
     const rpc = getRpcClient(transaction);
@@ -118,6 +110,15 @@ export async function populateEip712Transaction(
           to,
           data,
           value: value ? numberToHex(value) : undefined,
+          gasPerPubdata,
+          eip712Meta: {
+            ...eip712,
+            gasPerPubdata: gasPerPubdata ? toHex(gasPerPubdata) : toHex(50000n),
+            factoryDeps: eip712?.factoryDeps?.map((dep) =>
+              Array.from(hexToBytes(dep)),
+            ),
+          },
+          type: "0x71",
           // biome-ignore lint/suspicious/noExplicitAny: TODO add to RPC method types
         } as any,
       ],
@@ -127,11 +128,11 @@ export async function populateEip712Transaction(
       max_priority_fee_per_gas: string;
       gas_per_pubdata_limit: string;
     };
-    gas = toBigInt(result.gas_limit);
+    gas = toBigInt(result.gas_limit) * 2n; // overestimating to avoid issues when not accounting for paymaster extra gas ( we should really pass the paymaster input above for better accuracy )
     const baseFee = toBigInt(result.max_fee_per_gas);
     maxFeePerGas = baseFee * 2n; // bumping the base fee per gas to ensure fast inclusion
     maxPriorityFeePerGas = toBigInt(result.max_priority_fee_per_gas) || 1n;
-    gasPerPubdata = toBigInt(result.gas_per_pubdata_limit);
+    gasPerPubdata = toBigInt(result.gas_per_pubdata_limit) * 2n; // doubling for fast inclusion;
   }
 
   // serialize the transaction (with fees, gas, nonce)

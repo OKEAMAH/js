@@ -1,5 +1,4 @@
 import {
-  type UseQueryOptions,
   type UseQueryResult,
   queryOptions as defineQuery,
   useQuery,
@@ -18,23 +17,37 @@ import type {
 import type { PreparedMethod } from "../../../../utils/abi/prepare-method.js";
 import { getFunctionId } from "../../../../utils/function-id.js";
 import { stringify } from "../../../../utils/json.js";
-import type { Prettify } from "../../../../utils/type-utils.js";
 
-type PickedQueryOptions = Prettify<
-  Pick<UseQueryOptions, "enabled"> & {
-    refetchInterval?: number;
-    retry?: number;
-  }
->;
+type PickedQueryOptions = {
+  enabled?: boolean;
+  refetchInterval?: number;
+  retry?: number;
+};
 
 /**
- * A hook to read from a contract.
+ * A hook to read state from a contract that automatically updates when the contract changes.
+ *
+ * You can use raw read calls or read [extensions](https://portal.thirdweb.com/react/v5/extensions) to read from a contract.
+ *
  * @param options - The options for reading from a contract
- * @returns a query object.
+ * @returns a UseQueryResult object.
  * @example
  * ```jsx
+ * import { getContract } from "thirdweb";
+ * import { sepolia } from "thirdweb/chains";
  * import { useReadContract } from "thirdweb/react";
- * const { data, isLoading } = useReadContract({contract, method: "totalSupply"});
+ *
+ * const contract = getContract({
+ *   client,
+ *   address: "0x...",
+ *   chain: sepolia,
+ * });
+ *
+ * const { data, isLoading } = useReadContract({
+ *   contract,
+ *   method: "function tokenURI(uint256 tokenId) returns (string)"
+ *   params: [1n],
+ * });
  * ```
  * @contract
  */
@@ -51,14 +64,20 @@ export function useReadContract<
   ReadContractResult<PreparedMethod<ParseMethod<abi, method>>[2]>
 >;
 /**
- * A hook to read from a contract.
+ * A hook to read state from a contract that automatically updates when the contract changes.
+ * You can use raw read calls or read [extensions](https://portal.thirdweb.com/react/v5/extensions) to read from a contract.
+ *
  * @param extension - An extension to call.
  * @param options - The read extension params.
- * @returns a query object.
+ * @returns a UseQueryResult object.
  * @example
+ *
+ * Read a contract extension let you do complex contract queries with less code.
+ *
  * ```jsx
  * import { useReadContract } from "thirdweb/react";
- * import { getOwnedNFTs } form "thirdweb/extensions/erc721"
+ * import { getOwnedNFTs } form "thirdweb/extensions/erc721";
+ *
  * const { data, isLoading } = useReadContract(getOwnedNFTs, { contract, owner: address });
  * ```
  */
@@ -117,6 +136,8 @@ export function useReadContract<
       ...queryOptions,
     });
 
+    // TODO - FIX LATER
+    // biome-ignore lint/correctness/useHookAtTopLevel: <explanation>
     return useQuery(query);
   }
   // raw tx case
@@ -135,6 +156,8 @@ export function useReadContract<
       ...queryOptions,
     });
 
+    // TODO - FIX LATER
+    // biome-ignore lint/correctness/useHookAtTopLevel: <explanation>
     return useQuery(query);
   }
 

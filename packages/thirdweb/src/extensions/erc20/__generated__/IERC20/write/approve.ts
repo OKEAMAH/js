@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -36,19 +35,19 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `approve` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `approve` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `approve` method is supported.
  * @extension ERC20
  * @example
  * ```ts
  * import { isApproveSupported } from "thirdweb/extensions/erc20";
  *
- * const supported = await isApproveSupported(contract);
+ * const supported = isApproveSupported(["0x..."]);
  * ```
  */
-export async function isApproveSupported(contract: ThirdwebContract<any>) {
+export function isApproveSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -60,7 +59,7 @@ export async function isApproveSupported(contract: ThirdwebContract<any>) {
  * @extension ERC20
  * @example
  * ```ts
- * import { encodeApproveParams } "thirdweb/extensions/erc20";
+ * import { encodeApproveParams } from "thirdweb/extensions/erc20";
  * const result = encodeApproveParams({
  *  spender: ...,
  *  value: ...,
@@ -78,7 +77,7 @@ export function encodeApproveParams(options: ApproveParams) {
  * @extension ERC20
  * @example
  * ```ts
- * import { encodeApprove } "thirdweb/extensions/erc20";
+ * import { encodeApprove } from "thirdweb/extensions/erc20";
  * const result = encodeApprove({
  *  spender: ...,
  *  value: ...,
@@ -99,6 +98,7 @@ export function encodeApprove(options: ApproveParams) {
  * @extension ERC20
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { approve } from "thirdweb/extensions/erc20";
  *
  * const transaction = approve({
@@ -111,8 +111,7 @@ export function encodeApprove(options: ApproveParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function approve(

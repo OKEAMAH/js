@@ -1,54 +1,40 @@
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalOverlay,
-} from "@chakra-ui/react";
-import type { StoredChain } from "contexts/configured-chains";
-import { useSetEditChain } from "hooks/networkConfigModal";
+  type StoredChain,
+  addRecentlyUsedChainId,
+} from "../../stores/chainStores";
 import { ConfigureNetworks } from "./ConfigureNetworks";
 
-interface AddNetworkModalProps {
-  onClose: () => void;
+export type ConfigureNetworkModalProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onNetworkAdded?: (chain: StoredChain) => void;
-}
+  editChain: StoredChain | undefined;
+};
 
-export const ConfigureNetworkModal: React.FC<AddNetworkModalProps> = (
+export const ConfigureNetworkModal: React.FC<ConfigureNetworkModalProps> = (
   props,
 ) => {
-  const setEditChain = useSetEditChain();
   const onModalClose = () => {
-    props.onClose();
-    setEditChain(undefined);
+    props.onOpenChange(false);
   };
 
   return (
-    <Modal isOpen={true} onClose={onModalClose} isCentered>
-      <ModalOverlay />
-      <ModalContent
-        borderRadius="xl"
-        overflow="hidden"
-        w="500px"
-        mt={{ base: 8, md: 16 }}
-        mb={{ base: 0, md: 16 }}
-        maxW={{ base: "100vw", md: "calc(100vw - 40px)" }}
+    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+      <DialogContent
+        className="z-[10001] max-w-[480px] p-0"
+        dialogOverlayClassName="z-[10000]"
       >
-        <ModalCloseButton />
-        <ModalBody
-          p={0}
-          _dark={{ background: "backgroundBody" }}
-          _light={{ background: "white" }}
-        >
-          <ConfigureNetworks
-            onNetworkAdded={(chain) => {
-              props.onNetworkAdded?.(chain);
-              onModalClose();
-            }}
-            onNetworkConfigured={onModalClose}
-          />
-        </ModalBody>
-      </ModalContent>
-    </Modal>
+        <ConfigureNetworks
+          onNetworkAdded={(chain) => {
+            addRecentlyUsedChainId(chain.chainId);
+            props.onNetworkAdded?.(chain);
+            onModalClose();
+          }}
+          onNetworkConfigured={onModalClose}
+          editChain={props.editChain}
+        />
+      </DialogContent>
+    </Dialog>
   );
 };

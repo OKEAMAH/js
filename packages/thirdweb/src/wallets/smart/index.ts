@@ -19,6 +19,7 @@ import {
 } from "../../transaction/actions/zksync/send-eip712-transaction.js";
 import type { PreparedTransaction } from "../../transaction/prepare-transaction.js";
 import { getAddress } from "../../utils/address.js";
+import { isZkSyncChain } from "../../utils/any-evm/zksync/isZkSyncChain.js";
 import { concatHex } from "../../utils/encoding/helpers/concat-hex.js";
 import type { Hex } from "../../utils/encoding/hex.js";
 import { parseTypedData } from "../../utils/signatures/helpers/parseTypedData.js";
@@ -42,21 +43,22 @@ import {
   prepareBatchExecute,
   prepareExecute,
 } from "./lib/calls.js";
-import { DEFAULT_ACCOUNT_FACTORY } from "./lib/constants.js";
+import { getDefaultAccountFactory } from "./lib/constants.js";
 import {
+  clearAccountDeploying,
   createUnsignedUserOp,
   signUserOp,
   waitForUserOpReceipt,
 } from "./lib/userop.js";
-import { isNativeAAChain } from "./lib/utils.js";
 import type {
+  BundlerOptions,
   PaymasterResult,
   SmartAccountOptions,
   SmartWalletConnectionOptions,
   SmartWalletOptions,
-  UserOperation,
+  UserOperationV06,
+  UserOperationV07,
 } from "./types.js";
-
 /**
  * Checks if the provided wallet is a smart wallet.
  *
@@ -73,7 +75,7 @@ export function isSmartWallet(
  * We can get the personal account for given smart account but not the other way around - this map gives us the reverse lookup
  * @internal
  */
-export const personalAccountToSmartAccountMap = new WeakMap<
+const personalAccountToSmartAccountMap = new WeakMap<
   Account,
   Wallet<"smart">
 >();
@@ -95,12 +97,14 @@ export async function connectSmartWallet(
   }
 
   const options = creationOptions;
-  const factoryAddress = options.factoryAddress ?? DEFAULT_ACCOUNT_FACTORY;
+  const factoryAddress =
+    options.factoryAddress ??
+    getDefaultAccountFactory(creationOptions.overrides?.entrypointAddress);
   const chain = connectChain ?? options.chain;
   const sponsorGas =
     "gasless" in options ? options.gasless : options.sponsorGas;
 
-  if (isNativeAAChain(chain)) {
+  if (await isZkSyncChain(chain)) {
     return [
       createZkSyncAccount({
         creationOptions,
@@ -129,7 +133,7 @@ export async function connectSmartWallet(
     .then((address) => address)
     .catch((err) => {
       throw new Error(
-        `Failed to get account address with factory contract ${factoryContract.address} on chain ID ${chain.id}. Are you on the right chain?`,
+        `Failed to get account address with factory contract ${factoryContract.address} on chain ID ${chain.id}: ${err?.message || "unknown error"}`,
         { cause: err },
       );
     });
@@ -182,7 +186,9 @@ async function createSmartAccount(
       const erc20Paymaster = options.overrides?.erc20Paymaster;
       let paymasterOverride:
         | undefined
-        | ((userOp: UserOperation) => Promise<PaymasterResult>) = undefined;
+        | ((
+            userOp: UserOperationV06 | UserOperationV07,
+          ) => Promise<PaymasterResult>) = undefined;
       if (erc20Paymaster) {
         await approveERC20({
           accountContract,
@@ -195,6 +201,9 @@ async function createSmartAccount(
               erc20Paymaster.address as Hex,
               erc20Paymaster?.token as Hex,
             ]),
+            // for 0.7 compatibility
+            paymaster: erc20Paymaster.address as Hex,
+            paymasterData: "0x",
           };
         };
         paymasterOverride = options.overrides?.paymaster || paymasterCallback;
@@ -261,7 +270,7 @@ async function createSmartAccount(
           params: [originalMsgHash],
         });
         factorySupports712 = true;
-      } catch (e) {
+      } catch {
         // ignore
       }
 
@@ -349,7 +358,7 @@ async function createSmartAccount(
           params: [originalMsgHash],
         });
         factorySupports712 = true;
-      } catch (e) {
+      } catch {
         // ignore
       }
 
@@ -567,13 +576,20 @@ async function _sendUserOp(args: {
     overrides: options.overrides,
   });
   const signedUserOp = await signUserOp({
+    client: options.client,
     chain: options.chain,
     adminAccount: options.personalAccount,
     entrypointAddress: options.overrides?.entrypointAddress,
     userOp: unsignedUserOp,
   });
+  const bundlerOptions: BundlerOptions = {
+    chain: options.chain,
+    client: options.client,
+    bundlerUrl: options.overrides?.bundlerUrl,
+    entrypointAddress: options.overrides?.entrypointAddress,
+  };
   const userOpHash = await bundleUserOp({
-    options,
+    options: bundlerOptions,
     userOp: signedUserOp,
   });
   // wait for tx receipt rather than return the userOp hash
@@ -581,6 +597,9 @@ async function _sendUserOp(args: {
     ...options,
     userOpHash,
   });
+
+  // reset the isDeploying flag after every transaction
+  clearAccountDeploying(options.accountContract);
 
   return {
     client: options.client,

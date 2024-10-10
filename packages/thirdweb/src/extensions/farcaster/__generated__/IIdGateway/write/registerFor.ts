@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -59,19 +58,19 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `registerFor` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `registerFor` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `registerFor` method is supported.
  * @extension FARCASTER
  * @example
  * ```ts
  * import { isRegisterForSupported } from "thirdweb/extensions/farcaster";
  *
- * const supported = await isRegisterForSupported(contract);
+ * const supported = isRegisterForSupported(["0x..."]);
  * ```
  */
-export async function isRegisterForSupported(contract: ThirdwebContract<any>) {
+export function isRegisterForSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -83,7 +82,7 @@ export async function isRegisterForSupported(contract: ThirdwebContract<any>) {
  * @extension FARCASTER
  * @example
  * ```ts
- * import { encodeRegisterForParams } "thirdweb/extensions/farcaster";
+ * import { encodeRegisterForParams } from "thirdweb/extensions/farcaster";
  * const result = encodeRegisterForParams({
  *  to: ...,
  *  recovery: ...,
@@ -110,7 +109,7 @@ export function encodeRegisterForParams(options: RegisterForParams) {
  * @extension FARCASTER
  * @example
  * ```ts
- * import { encodeRegisterFor } "thirdweb/extensions/farcaster";
+ * import { encodeRegisterFor } from "thirdweb/extensions/farcaster";
  * const result = encodeRegisterFor({
  *  to: ...,
  *  recovery: ...,
@@ -136,6 +135,7 @@ export function encodeRegisterFor(options: RegisterForParams) {
  * @extension FARCASTER
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { registerFor } from "thirdweb/extensions/farcaster";
  *
  * const transaction = registerFor({
@@ -151,8 +151,7 @@ export function encodeRegisterFor(options: RegisterForParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function registerFor(

@@ -1,25 +1,23 @@
-import { Flex } from "@chakra-ui/react";
-import { useSDKChainId } from "@thirdweb-dev/react";
 import { CURRENCIES } from "constants/currencies";
-import { useSupportedChainsRecord } from "hooks/chains/configureChains";
 import { Text } from "tw-components";
 import { shortenIfAddress } from "utils/usedapp-external";
 import { isAddressZero } from "utils/zeroAddress";
+import { useAllChainsData } from "../../../../hooks/chains/allChains";
 
 interface PricePreviewProps {
   price: string | number | undefined;
   currencyAddress: string | undefined;
+  contractChainId: number;
 }
 
 export const PricePreview: React.FC<PricePreviewProps> = ({
   price,
   currencyAddress,
+  contractChainId,
 }) => {
-  const chainId = useSDKChainId();
-  const configuredChainsRecord = useSupportedChainsRecord();
-  const chain = chainId ? configuredChainsRecord[chainId] : undefined;
-
-  const helperCurrencies = chainId ? CURRENCIES[chainId] || [] : [];
+  const { idToChain } = useAllChainsData();
+  const chain = idToChain.get(contractChainId);
+  const helperCurrencies = CURRENCIES[contractChainId] || [];
 
   const foundCurrency = helperCurrencies.find(
     (currency) =>
@@ -27,7 +25,7 @@ export const PricePreview: React.FC<PricePreviewProps> = ({
   );
 
   return (
-    <Flex direction="column">
+    <div className="flex flex-col">
       <Text fontWeight="bold">Default price</Text>
       {Number(price) === 0 ? (
         <Text>Free</Text>
@@ -41,6 +39,6 @@ export const PricePreview: React.FC<PricePreviewProps> = ({
               : `(${shortenIfAddress(currencyAddress)})`}
         </Text>
       )}
-    </Flex>
+    </div>
   );
 };

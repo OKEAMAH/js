@@ -1,70 +1,115 @@
-import { ColorModeToggle } from "@/components/color-mode-toggle";
-import { Spinner } from "@/components/ui/Spinner/Spinner";
+import { NavLink } from "@/components/ui/NavLink";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { CustomConnectWallet } from "@3rdweb-sdk/react/components/connect-wallet";
-import { ClientOnly } from "components/ClientOnly/ClientOnly";
+import { CmdKSearch } from "components/cmd-k-search";
+import { ColorModeToggle } from "components/color-mode/color-mode-toggle";
+import { Logo } from "components/logo";
+import { CreditsButton } from "components/settings/Account/Billing/CreditsButton";
+import { UpgradeButton } from "components/settings/Account/Billing/UpgradeButton";
+import { CircleHelpIcon } from "lucide-react";
 import Link from "next/link";
-import { ThirdwebMiniLogo } from "../ThirdwebMiniLogo";
-import { NavLink } from "../nav-link.client";
-import { MobileBurgerMenu } from "./MobileBurgerMenu";
-import { headerLinks } from "./headerLinks";
+import { Suspense } from "react";
+import { DashboardHeaderTabs } from "./DashboardHeaderTabs";
 
-export function DashboardHeader() {
+export const DashboardHeader: React.FC = () => {
   return (
-    // the "h-24" avoids layout shift when connecting wallet (connected wallet button is taller than disconnected...)
-    <header className="flex items-center flex-shrink-0 h-20 border-b bg-card md:h-24">
-      <div className="container flex flex-row items-center justify-between gap-5 py-4">
-        {/* Left */}
-        <div className="flex items-center gap-5">
-          <div className="flex items-center gap-2">
-            <MobileBurgerMenu />
-            <Link href="/dashboard">
-              <ThirdwebMiniLogo className="size-10" />
-            </Link>
-          </div>
-
-          <div className="items-center hidden gap-5 md:flex">
-            {headerLinks.left.map((link) => (
-              <NavLink
-                key={link.href}
-                href={link.href}
-                target={link.href.startsWith("https") ? "_blank" : undefined}
-                className="text-secondary-foreground hover:text-foreground"
-                activeClassName="text-foreground font-semibold"
-              >
-                {link.name}
-              </NavLink>
-            ))}
-          </div>
+    <div className="bg-muted/50">
+      <header className="flex items-center justify-between px-4 py-3 lg:px-6">
+        {/* left */}
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard">
+            <Logo hideWordmark />
+          </Link>
+          <CmdKSearch />
         </div>
 
         {/* Right */}
-        <div className="flex items-center gap-5">
-          <div className="items-center hidden gap-5 lg:flex">
-            {headerLinks.right.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                target={link.href.startsWith("https") ? "_blank" : undefined}
-                className="text-secondary-foreground hover:text-foreground"
+        <div className="flex items-center gap-2">
+          <NavLink
+            href="/team"
+            tracking={{
+              category: "header",
+              action: "click",
+              label: "team-dashboard",
+            }}
+            className="hidden items-center gap-1.5 px-2.5 text-muted-foreground text-sm hover:text-foreground md:inline-flex"
+            activeClassName="text-foreground"
+          >
+            Team Dashboard <Badge className="px-1.5"> BETA </Badge>
+          </NavLink>
+
+          <div className="hidden gap-2 md:flex">
+            <Suspense fallback={null}>
+              <CreditsButton />
+            </Suspense>
+            <UpgradeButton />
+          </div>
+
+          <HeaderNavLink
+            trackingLabel="chainlist"
+            href="/chainlist"
+            label="Chainlist"
+          />
+
+          <HeaderNavLink
+            trackingLabel="docs"
+            href="https://portal.thirdweb.com"
+            label="Docs"
+          />
+
+          <HeaderNavLink
+            trackingLabel="support"
+            href="/support"
+            label="Support"
+          />
+
+          <div className="md:hidden">
+            <Button asChild variant="ghost">
+              <NavLink
+                className="fade-in-0 !h-auto !w-auto p-2"
+                href="/support"
+                tracking={{
+                  category: "header",
+                  action: "click",
+                  label: "support",
+                }}
               >
-                {link.name}
-              </Link>
-            ))}
+                <CircleHelpIcon className="size-5" />
+              </NavLink>
+            </Button>
           </div>
 
           <ColorModeToggle />
 
-          <ClientOnly
-            ssr={
-              <div className="w-[144px] h-[48px] bg-muted border rounded-lg flex items-center justify-center">
-                <Spinner className="size-4" />
-              </div>
-            }
-          >
+          <div className="md:ml-2">
             <CustomConnectWallet />
-          </ClientOnly>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      <DashboardHeaderTabs />
+    </div>
+  );
+};
+
+function HeaderNavLink(props: {
+  label: string;
+  trackingLabel: string;
+  href: string;
+}) {
+  return (
+    <NavLink
+      href={props.href}
+      tracking={{
+        category: "header",
+        action: "click",
+        label: props.trackingLabel,
+      }}
+      className="hidden px-2.5 text-muted-foreground text-sm hover:text-foreground md:block"
+      activeClassName="text-foreground"
+    >
+      {props.label}
+    </NavLink>
   );
 }

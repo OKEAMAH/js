@@ -1,69 +1,45 @@
-import { useDashboardEVMChainId } from "@3rdweb-sdk/react";
-import { Box, Flex } from "@chakra-ui/react";
-import { useContract } from "@thirdweb-dev/react";
-import { extensionDetectedState } from "components/buttons/ExtensionDetectButton";
-import { useSupportedChainsRecord } from "hooks/chains/configureChains";
-import { Card, Heading, LinkButton, Text } from "tw-components";
+"use client";
+
+import type { ThirdwebContract } from "thirdweb";
+import type { ChainMetadata } from "thirdweb/chains";
+import { Heading } from "tw-components";
 import { AccountBalance } from "./components/account-balance";
 import { DepositNative } from "./components/deposit-native";
 import { NftsOwned } from "./components/nfts-owned";
 
 interface AccountPageProps {
-  contractAddress?: string;
+  contract: ThirdwebContract;
+  chainMetadata: ChainMetadata;
 }
 
 export const AccountPage: React.FC<AccountPageProps> = ({
-  contractAddress,
+  contract,
+  chainMetadata,
 }) => {
-  const contractQuery = useContract(contractAddress);
-  const configuredChainsRecord = useSupportedChainsRecord();
-  const chainId = useDashboardEVMChainId();
-  const chain = chainId ? configuredChainsRecord[chainId] : undefined;
-
-  const symbol = chain?.nativeCurrency.symbol || "Native Token";
-
-  const detectedFeature = extensionDetectedState({
-    contractQuery,
-    feature: ["Account"],
-  });
-
-  if (contractQuery.isLoading) {
-    return null;
-  }
-
-  if (!detectedFeature) {
-    return (
-      <Card as={Flex} flexDir="column" gap={3}>
-        {/* TODO  extract this out into it's own component and make it better */}
-        <Heading size="subtitle.md">No Account extension enabled</Heading>
-        <Text>This contract is not a smart account.</Text>
-        <Box>
-          <LinkButton
-            isExternal
-            href="https://portal.thirdweb.com/contracts/build/extensions/erc-4337/SmartWallet"
-            colorScheme="purple"
-          >
-            Learn more
-          </LinkButton>
-        </Box>
-      </Card>
-    );
-  }
+  const symbol = chainMetadata.nativeCurrency.symbol || "Native Token";
 
   return (
-    <Flex direction="column" gap={6}>
-      <Flex direction="row" justify="space-between" align="center">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-row items-center justify-between">
         <Heading size="title.sm">Balances</Heading>
-      </Flex>
-      <AccountBalance address={contractAddress || ""} />
-      <Flex direction="row" justify="space-between" align="center">
+      </div>
+      <AccountBalance contract={contract} />
+      <div className="flex flex-row items-center justify-between">
         <Heading size="title.sm">Deposit {symbol}</Heading>
-      </Flex>
-      <DepositNative address={contractAddress || ""} symbol={symbol} />
-      <Flex direction="row" justify="space-between" align="center">
+      </div>
+
+      {chainMetadata && (
+        <DepositNative
+          address={contract.address}
+          symbol={symbol}
+          chain={chainMetadata}
+        />
+      )}
+
+      <div className="flex flex-row items-center justify-between">
         <Heading size="title.sm">NFTs owned</Heading>
-      </Flex>
-      <NftsOwned address={contractAddress || ""} />
-    </Flex>
+      </div>
+      <NftsOwned contract={contract} />
+    </div>
   );
 };

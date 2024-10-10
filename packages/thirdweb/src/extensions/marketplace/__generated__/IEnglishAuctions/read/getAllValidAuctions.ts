@@ -4,7 +4,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -93,21 +92,18 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `getAllValidAuctions` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `getAllValidAuctions` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `getAllValidAuctions` method is supported.
  * @extension MARKETPLACE
  * @example
  * ```ts
  * import { isGetAllValidAuctionsSupported } from "thirdweb/extensions/marketplace";
- *
- * const supported = await isGetAllValidAuctionsSupported(contract);
+ * const supported = isGetAllValidAuctionsSupported(["0x..."]);
  * ```
  */
-export async function isGetAllValidAuctionsSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isGetAllValidAuctionsSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -119,7 +115,7 @@ export async function isGetAllValidAuctionsSupported(
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeGetAllValidAuctionsParams } "thirdweb/extensions/marketplace";
+ * import { encodeGetAllValidAuctionsParams } from "thirdweb/extensions/marketplace";
  * const result = encodeGetAllValidAuctionsParams({
  *  startId: ...,
  *  endId: ...,
@@ -139,7 +135,7 @@ export function encodeGetAllValidAuctionsParams(
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeGetAllValidAuctions } "thirdweb/extensions/marketplace";
+ * import { encodeGetAllValidAuctions } from "thirdweb/extensions/marketplace";
  * const result = encodeGetAllValidAuctions({
  *  startId: ...,
  *  endId: ...,
@@ -163,7 +159,7 @@ export function encodeGetAllValidAuctions(options: GetAllValidAuctionsParams) {
  * @example
  * ```ts
  * import { decodeGetAllValidAuctionsResult } from "thirdweb/extensions/marketplace";
- * const result = decodeGetAllValidAuctionsResult("...");
+ * const result = decodeGetAllValidAuctionsResultResult("...");
  * ```
  */
 export function decodeGetAllValidAuctionsResult(result: Hex) {

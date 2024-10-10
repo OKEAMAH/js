@@ -1,25 +1,16 @@
 import { COOKIE_ACTIVE_ACCOUNT, COOKIE_PREFIX_TOKEN } from "@/constants/cookie";
+import { API_SERVER_URL } from "@/constants/env";
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { getAddress } from "thirdweb/utils";
 
-const THIRDWEB_API_HOST =
-  process.env.NEXT_PUBLIC_THIRDWEB_API_HOST || "https://api.thirdweb.com";
-
-export type EnsureLoginPayload = {
-  pathname: string;
-  address?: string;
-};
-
 export type EnsureLoginResponse = {
   isLoggedIn: boolean;
   jwt?: string;
-  redirectTo?: string;
 };
 
 export const GET = async (req: NextRequest) => {
   const address = req.nextUrl.searchParams.get("address");
-  const pathname = req.nextUrl.searchParams.get("pathname");
 
   const cookieStore = cookies();
   // if we are "disconnected" we are not logged in, clear the cookie and redirect to login
@@ -36,7 +27,6 @@ export const GET = async (req: NextRequest) => {
     cookieStore.delete(COOKIE_ACTIVE_ACCOUNT);
     return NextResponse.json({
       isLoggedIn: false,
-      redirectTo: buildLoginPath(pathname),
     });
   }
 
@@ -51,12 +41,11 @@ export const GET = async (req: NextRequest) => {
     cookieStore.delete(COOKIE_ACTIVE_ACCOUNT);
     return NextResponse.json({
       isLoggedIn: false,
-      redirectTo: buildLoginPath(pathname),
     });
   }
 
   // check that the token is valid by checking for the user account
-  const accountRes = await fetch(`${THIRDWEB_API_HOST}/v1/account/me`, {
+  const accountRes = await fetch(`${API_SERVER_URL}/v1/account/me`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -67,7 +56,6 @@ export const GET = async (req: NextRequest) => {
     cookieStore.delete(authCookieName);
     return NextResponse.json({
       isLoggedIn: false,
-      redirectTo: buildLoginPath(pathname),
     });
   }
 
@@ -89,7 +77,3 @@ export const GET = async (req: NextRequest) => {
   // if everything is good simply return true
   return NextResponse.json({ isLoggedIn: true, jwt: token });
 };
-
-function buildLoginPath(pathname?: string | null): string {
-  return `/login${pathname ? `?next=${encodeURIComponent(pathname)}` : ""}`;
-}

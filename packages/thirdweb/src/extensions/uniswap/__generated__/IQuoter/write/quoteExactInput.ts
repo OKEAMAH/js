@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -37,21 +36,19 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `quoteExactInput` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `quoteExactInput` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `quoteExactInput` method is supported.
  * @extension UNISWAP
  * @example
  * ```ts
  * import { isQuoteExactInputSupported } from "thirdweb/extensions/uniswap";
  *
- * const supported = await isQuoteExactInputSupported(contract);
+ * const supported = isQuoteExactInputSupported(["0x..."]);
  * ```
  */
-export async function isQuoteExactInputSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isQuoteExactInputSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -63,7 +60,7 @@ export async function isQuoteExactInputSupported(
  * @extension UNISWAP
  * @example
  * ```ts
- * import { encodeQuoteExactInputParams } "thirdweb/extensions/uniswap";
+ * import { encodeQuoteExactInputParams } from "thirdweb/extensions/uniswap";
  * const result = encodeQuoteExactInputParams({
  *  path: ...,
  *  amountIn: ...,
@@ -81,7 +78,7 @@ export function encodeQuoteExactInputParams(options: QuoteExactInputParams) {
  * @extension UNISWAP
  * @example
  * ```ts
- * import { encodeQuoteExactInput } "thirdweb/extensions/uniswap";
+ * import { encodeQuoteExactInput } from "thirdweb/extensions/uniswap";
  * const result = encodeQuoteExactInput({
  *  path: ...,
  *  amountIn: ...,
@@ -104,6 +101,7 @@ export function encodeQuoteExactInput(options: QuoteExactInputParams) {
  * @extension UNISWAP
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { quoteExactInput } from "thirdweb/extensions/uniswap";
  *
  * const transaction = quoteExactInput({
@@ -116,8 +114,7 @@ export function encodeQuoteExactInput(options: QuoteExactInputParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function quoteExactInput(

@@ -64,7 +64,8 @@ export function inAppWallet(
       const { InAppNativeConnector } = await import("./native-connector.js");
       return new InAppNativeConnector({
         client,
+        passkeyDomain: createOptions?.auth?.passkeyDomain,
       });
     },
-  });
+  }) as Wallet<"inApp">;
 }

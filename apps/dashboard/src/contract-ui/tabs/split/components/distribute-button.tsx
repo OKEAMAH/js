@@ -1,42 +1,49 @@
+"use client";
+
 import { useSplitDistributeFunds } from "@3rdweb-sdk/react/hooks/useSplit";
-import type { UseContractResult } from "@thirdweb-dev/react";
-import type { Split } from "@thirdweb-dev/sdk";
 import { MismatchButton } from "components/buttons/MismatchButton";
 import { TransactionButton } from "components/buttons/TransactionButton";
 import { useTrack } from "hooks/analytics/useTrack";
 import { useTxNotifications } from "hooks/useTxNotifications";
 import { useMemo } from "react";
+import type { ThirdwebContract } from "thirdweb";
 import { Button } from "tw-components";
 import type { Balance } from "../page";
 
 interface DistributeButtonProps {
-  contractQuery?: UseContractResult<Split>;
+  contract: ThirdwebContract;
   balances: Balance[];
-  balancesIsLoading: boolean;
+  balancesisPending: boolean;
   balancesIsError: boolean;
 }
 
 export const DistributeButton: React.FC<DistributeButtonProps> = ({
-  contractQuery,
+  contract,
   balances,
-  balancesIsLoading,
+  balancesisPending,
   balancesIsError,
   ...restButtonProps
 }) => {
   const trackEvent = useTrack();
+  const validBalances = balances.filter(
+    (item) => item.balance !== "0" && item.balance !== "0.0",
+  );
   const numTransactions = useMemo(() => {
-    if (balances.length === 1 && balances[0].name === "Native Token") {
+    if (
+      validBalances.length === 1 &&
+      validBalances[0].name === "Native Token"
+    ) {
       return 1;
     }
-    if (!balances || balancesIsLoading) {
+    if (!validBalances || balancesisPending) {
       return 0;
     }
-    return balances?.filter((b) => b.display_balance !== "0.0").length;
-  }, [balances, balancesIsLoading]);
+    return validBalances?.filter(
+      (b) => b.display_balance !== "0.0" && b.display_balance !== "0",
+    ).length;
+  }, [validBalances, balancesisPending]);
 
-  const distibutedFundsMutation = useSplitDistributeFunds(
-    contractQuery?.contract,
-  );
+  const mutation = useSplitDistributeFunds(contract);
 
   const { onSuccess, onError } = useTxNotifications(
     "Funds splitted successfully",
@@ -44,7 +51,7 @@ export const DistributeButton: React.FC<DistributeButtonProps> = ({
   );
 
   const distributeFunds = () => {
-    distibutedFundsMutation.mutate(undefined, {
+    mutation.mutate(undefined, {
       onSuccess: () => {
         onSuccess();
         trackEvent({
@@ -70,9 +77,10 @@ export const DistributeButton: React.FC<DistributeButtonProps> = ({
     // we still want to show the button, so we'll just show the mismatch button
     return (
       <MismatchButton
-        isLoading={distibutedFundsMutation.isLoading}
+        isLoading={mutation.isPending}
         colorScheme="primary"
         onClick={distributeFunds}
+        desiredChainId={contract.chain.id}
         {...restButtonProps}
       >
         Distribute Funds
@@ -91,10 +99,11 @@ export const DistributeButton: React.FC<DistributeButtonProps> = ({
   return (
     <TransactionButton
       transactionCount={numTransactions}
-      isLoading={distibutedFundsMutation.isLoading}
+      isLoading={mutation.isPending}
       colorScheme="primary"
       onClick={distributeFunds}
       {...restButtonProps}
+      txChainID={contract.chain.id}
     >
       Distribute Funds
     </TransactionButton>

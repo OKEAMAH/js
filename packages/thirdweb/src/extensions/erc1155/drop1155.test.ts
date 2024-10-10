@@ -1,20 +1,23 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { TEST_CONTRACT_URI } from "~test/ipfs-uris.js";
 import { VITALIK_WALLET } from "../../../test/src/addresses.js";
 import { ANVIL_CHAIN } from "../../../test/src/chains.js";
 import { TEST_CLIENT } from "../../../test/src/test-clients.js";
 import {
   TEST_ACCOUNT_A,
   TEST_ACCOUNT_B,
+  TEST_ACCOUNT_D,
 } from "../../../test/src/test-wallets.js";
 import { type ThirdwebContract, getContract } from "../../contract/contract.js";
 import { sendAndConfirmTransaction } from "../../transaction/actions/send-and-confirm-transaction.js";
 import { resolvePromisedValue } from "../../utils/promise/resolve-promised-value.js";
 import { toEther } from "../../utils/units.js";
-import { getContractMetadata } from "../common/read/getContractMetadata.js";
 import { deployERC1155Contract } from "../prebuilts/deploy-erc1155.js";
 import { balanceOf } from "./__generated__/IERC1155/read/balanceOf.js";
 import { nextTokenIdToMint } from "./__generated__/IERC1155Enumerable/read/nextTokenIdToMint.js";
+import { getClaimConditions } from "./drops/read/getClaimConditions.js";
 import { claimTo } from "./drops/write/claimTo.js";
+import { resetClaimEligibility } from "./drops/write/resetClaimEligibility.js";
 import { setClaimConditions } from "./drops/write/setClaimConditions.js";
 import { getNFT } from "./read/getNFT.js";
 import { lazyMint } from "./write/lazyMint.js";
@@ -34,6 +37,7 @@ describe.runIf(process.env.TW_SECRET_KEY)(
         client: TEST_CLIENT,
         params: {
           name: "Test DropERC1155",
+          contractURI: TEST_CONTRACT_URI,
         },
         type: "DropERC1155",
       });
@@ -46,16 +50,6 @@ describe.runIf(process.env.TW_SECRET_KEY)(
       // this deploys a contract, it may take some time
     }, 60_000);
 
-    describe("Deployment", () => {
-      it("should deploy", async () => {
-        expect(contract).toBeDefined();
-      });
-      it("should have the correct name", async () => {
-        const metadata = await getContractMetadata({ contract });
-        expect(metadata.name).toBe("Test DropERC1155");
-      });
-    });
-
     it("should allow for lazy minting tokens", async () => {
       const mintTx = lazyMint({
         contract,
@@ -64,6 +58,8 @@ describe.runIf(process.env.TW_SECRET_KEY)(
           { name: "Test NFT 2" },
           { name: "Test NFT 3" },
           { name: "Test NFT 4" },
+          { name: "Test NFT 5" },
+          { name: "Test NFT 6" },
         ],
       });
       await sendAndConfirmTransaction({
@@ -71,7 +67,7 @@ describe.runIf(process.env.TW_SECRET_KEY)(
         account: TEST_ACCOUNT_A,
       });
 
-      await expect(nextTokenIdToMint({ contract })).resolves.toBe(4n);
+      await expect(nextTokenIdToMint({ contract })).resolves.toBe(6n);
       await expect(
         getNFT({ contract, tokenId: 0n }),
       ).resolves.toMatchInlineSnapshot(`
@@ -82,7 +78,7 @@ describe.runIf(process.env.TW_SECRET_KEY)(
           },
           "owner": null,
           "supply": 0n,
-          "tokenURI": "ipfs://QmUfspS2uU9roYLJveebbY5geYaNR4KkZAsMkb5pPRtc7a/0",
+          "tokenURI": "ipfs://QmTo68Dm1ntSp2BHLmE9gesS6ELuXosRz5mAgFCK6tfsRk/0",
           "type": "ERC1155",
         }
       `);
@@ -201,10 +197,10 @@ describe.runIf(process.env.TW_SECRET_KEY)(
             }),
           }),
         ).rejects.toThrowErrorMatchingInlineSnapshot(`
-          [TransactionError: Error - !Qty
+          [TransactionError: DropClaimExceedLimit - 0,1
 
           contract: ${contract.address}
-          chainId: 31337]
+          chainId: ${contract.chain.id}]
         `);
       });
 
@@ -242,10 +238,10 @@ describe.runIf(process.env.TW_SECRET_KEY)(
             }),
           }),
         ).rejects.toThrowErrorMatchingInlineSnapshot(`
-          [TransactionError: Error - !Qty
+          [TransactionError: DropClaimExceedLimit - 1,2
 
           contract: ${contract.address}
-          chainId: 31337]
+          chainId: ${contract.chain.id}]
         `);
 
         await sendAndConfirmTransaction({
@@ -304,6 +300,103 @@ describe.runIf(process.env.TW_SECRET_KEY)(
       await expect(
         balanceOf({ contract, owner: TEST_ACCOUNT_A.address, tokenId }),
       ).resolves.toBe(1n);
+    });
+
+    it("should be able to retrieve multiple phases", async () => {
+      await sendAndConfirmTransaction({
+        transaction: setClaimConditions({
+          contract,
+          tokenId: 5n,
+          phases: [
+            {
+              maxClaimablePerWallet: 1n,
+              startTime: new Date(0),
+            },
+            {
+              maxClaimablePerWallet: 2n,
+              startTime: new Date(),
+            },
+          ],
+        }),
+        account: TEST_ACCOUNT_A,
+      });
+
+      const phases = await getClaimConditions({ contract, tokenId: 5n });
+      expect(phases).toHaveLength(2);
+      expect(phases[0]?.quantityLimitPerWallet).toBe(1n);
+      expect(phases[1]?.quantityLimitPerWallet).toBe(2n);
+    });
+
+    it("should be able to reset claim eligibility", async () => {
+      // set claim conditions to only allow one claim
+      await sendAndConfirmTransaction({
+        transaction: setClaimConditions({
+          contract,
+          tokenId: 6n,
+          phases: [
+            {
+              maxClaimablePerWallet: 1n,
+            },
+          ],
+        }),
+        account: TEST_ACCOUNT_A,
+      });
+      // claim one token
+      await sendAndConfirmTransaction({
+        transaction: claimTo({
+          tokenId: 6n,
+          contract,
+          // fresh account to avoid any previous claims
+          to: TEST_ACCOUNT_D.address,
+          quantity: 1n,
+        }),
+        // fresh account to avoid any previous claims
+        account: TEST_ACCOUNT_D,
+      });
+      // check that the account has claimed one token
+      await expect(
+        balanceOf({ tokenId: 6n, contract, owner: TEST_ACCOUNT_D.address }),
+      ).resolves.toBe(1n);
+      // attempt to claim another token (this should fail)
+      await expect(
+        sendAndConfirmTransaction({
+          transaction: claimTo({
+            tokenId: 6n,
+            contract,
+            to: TEST_ACCOUNT_D.address,
+            quantity: 1n,
+          }),
+          account: TEST_ACCOUNT_D,
+        }),
+      ).rejects.toThrowErrorMatchingInlineSnapshot(`
+        [TransactionError: DropClaimExceedLimit - 1,2
+
+        contract: ${contract.address}
+        chainId: ${contract.chain.id}]
+      `);
+
+      // reset claim eligibility
+      await sendAndConfirmTransaction({
+        transaction: resetClaimEligibility({
+          tokenId: 6n,
+          contract,
+        }),
+        account: TEST_ACCOUNT_A,
+      });
+      // attempt to claim another token (this should succeed)
+      await sendAndConfirmTransaction({
+        transaction: claimTo({
+          tokenId: 6n,
+          contract,
+          to: TEST_ACCOUNT_D.address,
+          quantity: 1n,
+        }),
+        account: TEST_ACCOUNT_D,
+      });
+      // check that the account has claimed two tokens
+      await expect(
+        balanceOf({ tokenId: 6n, contract, owner: TEST_ACCOUNT_D.address }),
+      ).resolves.toBe(2n);
     });
   },
 );

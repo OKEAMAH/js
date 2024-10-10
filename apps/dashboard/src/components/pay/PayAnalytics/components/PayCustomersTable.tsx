@@ -1,20 +1,7 @@
-import { useState } from "react";
-import { CopyAddressButton } from "../../../../@/components/ui/CopyAddressButton";
-import { ScrollShadow } from "../../../../@/components/ui/ScrollShadow/ScrollShadow";
-import { Button } from "../../../../@/components/ui/button";
-import { SkeletonContainer } from "../../../../@/components/ui/skeleton";
-import {
-  type PayTopCustomersData,
-  usePayCustomers,
-} from "../hooks/usePayCustomers";
-import { ExportToCSVButton } from "./ExportToCSVButton";
-import {
-  FailedToLoad,
-  TableData,
-  TableHeading,
-  TableHeadingRow,
-} from "./common";
-
+import { ExportToCSVButton } from "@/components/blocks/ExportToCSVButton";
+import { WalletAddress } from "@/components/blocks/wallet-address";
+import { ScrollShadow } from "@/components/ui/ScrollShadow/ScrollShadow";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -22,6 +9,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SkeletonContainer } from "@/components/ui/skeleton";
+import { useState } from "react";
+import {
+  type PayTopCustomersData,
+  usePayCustomers,
+} from "../hooks/usePayCustomers";
+import {
+  FailedToLoad,
+  TableData,
+  TableHeading,
+  TableHeadingRow,
+} from "./common";
 
 type UIData = {
   customers: Array<{
@@ -34,26 +33,30 @@ type UIData = {
 type ProcessedQuery = {
   data?: UIData;
   isError?: boolean;
-  isLoading?: boolean;
+  isPending?: boolean;
   isEmpty?: boolean;
 };
 
 function processQuery(
   topCustomersQuery: ReturnType<typeof usePayCustomers>,
 ): ProcessedQuery {
-  if (topCustomersQuery.isLoading) {
-    return { isLoading: true };
+  if (topCustomersQuery.isPending) {
+    return { isPending: true };
   }
 
   if (topCustomersQuery.isError) {
     return { isError: true };
   }
 
+  if (!topCustomersQuery.data) {
+    return { isEmpty: true };
+  }
+
   let customers = topCustomersQuery.data.pages.flatMap(
     (x) => x.pageData.customers,
   );
 
-  customers = customers.filter((x) => x.totalSpendUSDCents > 0);
+  customers = customers?.filter((x) => x.totalSpendUSDCents > 0);
 
   if (customers.length === 0) {
     return { isEmpty: true };
@@ -91,20 +94,19 @@ export function PayCustomersTable(props: {
   return (
     <div className="flex flex-col">
       {/* header */}
-      <div className="flex flex-col lg:flex-row lg:justify-between gap-2 lg:items-center">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <Select
           value={type}
           onValueChange={(value: "top-customers" | "new-customers") => {
             setType(value);
           }}
         >
-          <SelectTrigger className="bg-transparent w-auto border-none p-0 text-base focus:ring-transparent">
+          <SelectTrigger className="w-auto border-none bg-transparent p-0 text-base focus:ring-transparent">
             <SelectValue placeholder="Select" />
           </SelectTrigger>
           <SelectContent position="popper">
             <SelectItem value="top-customers">
-              {" "}
-              Top Customers By Spend{" "}
+              Top Customers By Spend
             </SelectItem>
             <SelectItem value="new-customers"> New Customers </SelectItem>
           </SelectContent>
@@ -148,7 +150,7 @@ function RenderData(props: { query: ProcessedQuery; loadMore: () => void }) {
           </TableHeadingRow>
         </thead>
         <tbody className="relative">
-          {props.query.isLoading ? (
+          {props.query.isPending ? (
             <>
               {new Array(5).fill(0).map((_, i) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: ok
@@ -170,17 +172,15 @@ function RenderData(props: { query: ProcessedQuery; loadMore: () => void }) {
           )}
         </tbody>
       </table>
-
       {props.query.isEmpty && (
-        <div className="min-h-[240px] flex items-center justify-center w-full text-muted-foreground text-sm">
+        <div className="flex min-h-[240px] w-full items-center justify-center text-muted-foreground text-sm">
           No data available
         </div>
       )}
-
       {props.query.data?.showLoadMore && (
         <div className="flex justify-center py-3">
           <Button
-            className="text-sm text-link-foreground p-2 h-auto"
+            className="h-auto p-2 text-link-foreground text-sm"
             variant="ghost"
             onClick={props.loadMore}
           >
@@ -204,23 +204,14 @@ function CustomerTableRow(props: {
   };
 
   return (
-    <tr className="border-b border-border">
+    <tr className="border-border border-b">
       <TableData>
         <SkeletonContainer
           className="inline-flex"
           style={delayAnim}
           loadedData={props.customer?.walletAddress}
           skeletonData="0x0000000000000000000000000000000000000000"
-          render={(v) => {
-            return (
-              <CopyAddressButton
-                address={v}
-                variant="ghost"
-                className="text-secondary-foreground"
-                copyIconPosition="left"
-              />
-            );
-          }}
+          render={(v) => <WalletAddress address={v} />}
         />
       </TableData>
       <TableData>

@@ -17,8 +17,8 @@ import {
   useChainName,
 } from "../../../../core/hooks/others/useChainQuery.js";
 import { useTokenInfo } from "../../../../core/hooks/others/useTokenInfo.js";
+import { useActiveAccount } from "../../../../core/hooks/wallets/useActiveAccount.js";
 import type { TokenInfo } from "../../../../core/utils/defaultTokens.js";
-import { useActiveAccount } from "../../../hooks/wallets/useActiveAccount.js";
 import { ChainIcon } from "../../components/ChainIcon.js";
 import { Skeleton } from "../../components/Skeleton.js";
 import { Spacer } from "../../components/Spacer.js";
@@ -154,43 +154,41 @@ export function TokenSelector(props: {
         <Spacer y="md" />
 
         {props.chainSelection && (
-          <>
-            <Container px="lg">
-              <Text size="sm">Select Network</Text>
-              <Spacer y="xxs" />
-              <SelectTokenBtn
-                fullWidth
-                variant="secondary"
-                onClick={() => {
-                  setScreen("select-chain");
+          <Container px="lg">
+            <Text size="sm">Select Network</Text>
+            <Spacer y="xxs" />
+            <SelectTokenBtn
+              fullWidth
+              variant="secondary"
+              onClick={() => {
+                setScreen("select-chain");
+              }}
+            >
+              <ChainIcon
+                chainIconUrl={chainIconQuery.url}
+                size={iconSize.lg}
+                client={props.client}
+              />
+
+              {chainNameQuery.name ? (
+                <Text color="primaryText" size="sm">
+                  {chainNameQuery.name}
+                </Text>
+              ) : (
+                <Skeleton height={fontSize.md} />
+              )}
+
+              <ChevronDownIcon
+                width={iconSize.sm}
+                height={iconSize.sm}
+                style={{
+                  marginLeft: "auto",
                 }}
-              >
-                <ChainIcon
-                  chainIconUrl={chainIconQuery.url}
-                  size={iconSize.lg}
-                  client={props.client}
-                />
-
-                {chainNameQuery.name ? (
-                  <Text color="primaryText" size="sm">
-                    {chainNameQuery.name}
-                  </Text>
-                ) : (
-                  <Skeleton height={fontSize.md} />
-                )}
-
-                <ChevronDownIcon
-                  width={iconSize.sm}
-                  height={iconSize.sm}
-                  style={{
-                    marginLeft: "auto",
-                  }}
-                />
-              </SelectTokenBtn>
-              <Spacer y="xl" />
-              <Text size="sm">Select Token</Text>
-            </Container>
-          </>
+              />
+            </SelectTokenBtn>
+            <Spacer y="xl" />
+            <Text size="sm">Select Token</Text>
+          </Container>
         )}
 
         <Container px="lg">

@@ -4,51 +4,42 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
  * Represents the parameters for the "previewMint" function.
  */
 export type PreviewMintParams = {
-  shares: AbiParameterToPrimitiveType<{
-    name: "shares";
-    type: "uint256";
-    internalType: "uint256";
-  }>;
+  shares: AbiParameterToPrimitiveType<{ type: "uint256"; name: "shares" }>;
 };
 
 export const FN_SELECTOR = "0xb3d7f6b9" as const;
 const FN_INPUTS = [
   {
-    name: "shares",
     type: "uint256",
-    internalType: "uint256",
+    name: "shares",
   },
 ] as const;
 const FN_OUTPUTS = [
   {
-    name: "",
     type: "uint256",
-    internalType: "uint256",
   },
 ] as const;
 
 /**
  * Checks if the `previewMint` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `previewMint` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `previewMint` method is supported.
  * @extension ERC4626
  * @example
  * ```ts
  * import { isPreviewMintSupported } from "thirdweb/extensions/erc4626";
- *
- * const supported = await isPreviewMintSupported(contract);
+ * const supported = isPreviewMintSupported(["0x..."]);
  * ```
  */
-export async function isPreviewMintSupported(contract: ThirdwebContract<any>) {
+export function isPreviewMintSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -60,7 +51,7 @@ export async function isPreviewMintSupported(contract: ThirdwebContract<any>) {
  * @extension ERC4626
  * @example
  * ```ts
- * import { encodePreviewMintParams } "thirdweb/extensions/erc4626";
+ * import { encodePreviewMintParams } from "thirdweb/extensions/erc4626";
  * const result = encodePreviewMintParams({
  *  shares: ...,
  * });
@@ -77,7 +68,7 @@ export function encodePreviewMintParams(options: PreviewMintParams) {
  * @extension ERC4626
  * @example
  * ```ts
- * import { encodePreviewMint } "thirdweb/extensions/erc4626";
+ * import { encodePreviewMint } from "thirdweb/extensions/erc4626";
  * const result = encodePreviewMint({
  *  shares: ...,
  * });
@@ -100,7 +91,7 @@ export function encodePreviewMint(options: PreviewMintParams) {
  * @example
  * ```ts
  * import { decodePreviewMintResult } from "thirdweb/extensions/erc4626";
- * const result = decodePreviewMintResult("...");
+ * const result = decodePreviewMintResultResult("...");
  * ```
  */
 export function decodePreviewMintResult(result: Hex) {

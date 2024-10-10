@@ -4,7 +4,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -63,21 +62,18 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `getPublishedContract` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `getPublishedContract` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `getPublishedContract` method is supported.
  * @extension THIRDWEB
  * @example
  * ```ts
  * import { isGetPublishedContractSupported } from "thirdweb/extensions/thirdweb";
- *
- * const supported = await isGetPublishedContractSupported(contract);
+ * const supported = isGetPublishedContractSupported(["0x..."]);
  * ```
  */
-export async function isGetPublishedContractSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isGetPublishedContractSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -89,7 +85,7 @@ export async function isGetPublishedContractSupported(
  * @extension THIRDWEB
  * @example
  * ```ts
- * import { encodeGetPublishedContractParams } "thirdweb/extensions/thirdweb";
+ * import { encodeGetPublishedContractParams } from "thirdweb/extensions/thirdweb";
  * const result = encodeGetPublishedContractParams({
  *  publisher: ...,
  *  contractId: ...,
@@ -112,7 +108,7 @@ export function encodeGetPublishedContractParams(
  * @extension THIRDWEB
  * @example
  * ```ts
- * import { encodeGetPublishedContract } "thirdweb/extensions/thirdweb";
+ * import { encodeGetPublishedContract } from "thirdweb/extensions/thirdweb";
  * const result = encodeGetPublishedContract({
  *  publisher: ...,
  *  contractId: ...,
@@ -138,7 +134,7 @@ export function encodeGetPublishedContract(
  * @example
  * ```ts
  * import { decodeGetPublishedContractResult } from "thirdweb/extensions/thirdweb";
- * const result = decodeGetPublishedContractResult("...");
+ * const result = decodeGetPublishedContractResultResult("...");
  * ```
  */
 export function decodeGetPublishedContractResult(result: Hex) {

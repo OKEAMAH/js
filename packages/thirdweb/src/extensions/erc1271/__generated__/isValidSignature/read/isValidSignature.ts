@@ -4,7 +4,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -34,21 +33,18 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `isValidSignature` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `isValidSignature` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `isValidSignature` method is supported.
  * @extension ERC1271
  * @example
  * ```ts
  * import { isIsValidSignatureSupported } from "thirdweb/extensions/erc1271";
- *
- * const supported = await isIsValidSignatureSupported(contract);
+ * const supported = isIsValidSignatureSupported(["0x..."]);
  * ```
  */
-export async function isIsValidSignatureSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isIsValidSignatureSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -60,7 +56,7 @@ export async function isIsValidSignatureSupported(
  * @extension ERC1271
  * @example
  * ```ts
- * import { encodeIsValidSignatureParams } "thirdweb/extensions/erc1271";
+ * import { encodeIsValidSignatureParams } from "thirdweb/extensions/erc1271";
  * const result = encodeIsValidSignatureParams({
  *  hash: ...,
  *  signature: ...,
@@ -78,7 +74,7 @@ export function encodeIsValidSignatureParams(options: IsValidSignatureParams) {
  * @extension ERC1271
  * @example
  * ```ts
- * import { encodeIsValidSignature } "thirdweb/extensions/erc1271";
+ * import { encodeIsValidSignature } from "thirdweb/extensions/erc1271";
  * const result = encodeIsValidSignature({
  *  hash: ...,
  *  signature: ...,
@@ -102,7 +98,7 @@ export function encodeIsValidSignature(options: IsValidSignatureParams) {
  * @example
  * ```ts
  * import { decodeIsValidSignatureResult } from "thirdweb/extensions/erc1271";
- * const result = decodeIsValidSignatureResult("...");
+ * const result = decodeIsValidSignatureResultResult("...");
  * ```
  */
 export function decodeIsValidSignatureResult(result: Hex) {

@@ -1,12 +1,5 @@
-import {
-  Box,
-  Center,
-  DarkMode,
-  Flex,
-  Icon,
-  LightMode,
-  SimpleGrid,
-} from "@chakra-ui/react";
+import { useForceDarkTheme } from "@/components/theme-provider";
+import { Box, Flex, LightMode, SimpleGrid } from "@chakra-ui/react";
 import { ChakraNextImage } from "components/Image";
 import { HomepageFooter } from "components/footer/Footer";
 import { NewsletterSection } from "components/homepage/sections/NewsletterSection";
@@ -16,9 +9,9 @@ import { ProductSection } from "components/product-pages/common/ProductSection";
 import { HomepageTopNav } from "components/product-pages/common/Topnav";
 import { HomepageSection } from "components/product-pages/homepage/HomepageSection";
 import { useTrack } from "hooks/analytics/useTrack";
+import { ZapIcon } from "lucide-react";
 import { NextSeo } from "next-seo";
 import { PageId } from "page-id";
-import { BsLightningCharge } from "react-icons/bs";
 import { Heading, LinkButton } from "tw-components";
 import type { ThirdwebNextPage } from "utils/types";
 import WhiteLogo from "../../../public/assets/landingpage/white-logo.png";
@@ -34,9 +27,10 @@ const SEO = {
 
 const Learn: ThirdwebNextPage = () => {
   const trackEvent = useTrack();
+  useForceDarkTheme();
 
   return (
-    <DarkMode>
+    <>
       <NextSeo {...SEO} />
       <Flex
         sx={{
@@ -86,7 +80,7 @@ const Learn: ThirdwebNextPage = () => {
             >
               <ProductCard
                 title="Domain Expertise"
-                icon={require("/public/assets/product-pages/sdk/hero-icon-3.png")}
+                icon={require("../../../public/assets/product-pages/sdk/hero-icon-3.png")}
               >
                 Our program will help you enhance your technical skills and
                 knowledge, enabling you to excel in web3 development and become
@@ -94,7 +88,7 @@ const Learn: ThirdwebNextPage = () => {
               </ProductCard>
               <ProductCard
                 title="Community Building"
-                icon={require("/public/assets/product-pages/dashboard/hero-icon-2.png")}
+                icon={require("../../../public/assets/product-pages/dashboard/hero-icon-2.png")}
               >
                 Connect with a network of web3 developers and content matter
                 experts through our program. Build lasting relationships and
@@ -102,14 +96,14 @@ const Learn: ThirdwebNextPage = () => {
               </ProductCard>
               <ProductCard
                 title="Career Launch"
-                icon={require("/public/assets/product-pages/sdk/hero-icon-2.png")}
+                icon={require("../../../public/assets/product-pages/sdk/hero-icon-2.png")}
               >
                 Get access to valuable resources to help you find your next job
                 or start your own web3 company.
               </ProductCard>
               <ProductCard
                 title="Comprehensive curriculum"
-                icon={require("/public/assets/product-pages/deploy/hero-icon-1.png")}
+                icon={require("../../../public/assets/product-pages/deploy/hero-icon-1.png")}
               >
                 Learn essential web3 concepts and gain in-depth knowledge of the
                 thirdweb SDK that empowers you to build secure decentralized
@@ -117,14 +111,14 @@ const Learn: ThirdwebNextPage = () => {
               </ProductCard>
               <ProductCard
                 title="Expert-Led Training"
-                icon={require("/public/assets/product-pages/authentication/verify.png")}
+                icon={require("../../../public/assets/product-pages/authentication/verify.png")}
               >
                 Learn from industry-leading web3 developers who bring real-world
                 experience and insights into the classroom.
               </ProductCard>
               <ProductCard
                 title="Flexible Program Formats"
-                icon={require("/public/assets/product-pages/dashboard/hero-icon-3.png")}
+                icon={require("../../../public/assets/product-pages/dashboard/hero-icon-3.png")}
               >
                 Choose from a range of program formats, including self-paced
                 courses, virtual workshops, or live bootcamps, to suit your
@@ -144,7 +138,7 @@ const Learn: ThirdwebNextPage = () => {
             >
               <ProductCard
                 title="Product Manager"
-                icon={require("/public/assets/product-pages/dashboard/hero-icon-1.png")}
+                icon={require("../../../public/assets/product-pages/dashboard/hero-icon-1.png")}
               >
                 Learn how to create, manage, and integrate NFTs and other
                 digital assets into dApps and platforms using thirdweb
@@ -152,7 +146,7 @@ const Learn: ThirdwebNextPage = () => {
               </ProductCard>
               <ProductCard
                 title="Web3 Developer"
-                icon={require("/public/assets/product-pages/dashboard/hero-icon-1.png")}
+                icon={require("../../../public/assets/product-pages/dashboard/hero-icon-1.png")}
               >
                 For both front and back-end engineers to learn how to build
                 secure and scalable dApps using the thirdweb SDK and relevant
@@ -160,7 +154,7 @@ const Learn: ThirdwebNextPage = () => {
               </ProductCard>
               <ProductCard
                 title="Back-end Engineer"
-                icon={require("/public/assets/product-pages/dashboard/hero-icon-1.png")}
+                icon={require("../../../public/assets/product-pages/dashboard/hero-icon-1.png")}
               >
                 Gain expertise in developing web3 services by reviewing common
                 server-side workflows as well as creating and integrating smart
@@ -187,8 +181,8 @@ const Learn: ThirdwebNextPage = () => {
             align="center"
             gap={{ base: 6, md: 8 }}
           >
-            <Center mb={6} pt={{ base: 8, lg: 24 }}>
-              <Center p={2} position="relative" mb={6}>
+            <div className="mb-6 flex items-center justify-center pt-8 lg:pt-24">
+              <div className="relative mb-6 flex items-center justify-center p-2">
                 <Box
                   position="absolute"
                   bgGradient="linear(to-r, #F213A4, #040BBF)"
@@ -207,8 +201,8 @@ const Learn: ThirdwebNextPage = () => {
                   placeholder="empty"
                   src={WhiteLogo}
                 />
-              </Center>
-            </Center>
+              </div>
+            </div>
             <Heading as="h2" size="display.md" textAlign="center">
               Ready to learn more?
             </Heading>
@@ -216,13 +210,7 @@ const Learn: ThirdwebNextPage = () => {
               <LinkButton
                 role="group"
                 leftIcon={
-                  <Icon
-                    as={BsLightningCharge}
-                    color="#1D64EF"
-                    transitionDuration="slow"
-                    transitionTimingFunction="easeOut"
-                    _groupHover={{ color: "#E0507A" }}
-                  />
+                  <ZapIcon className="size-5 text-[#1D64EF] transition-colors duration-300 ease-out group-hover:text-[#E0507A]" />
                 }
                 color="black"
                 px={20}
@@ -253,7 +241,7 @@ const Learn: ThirdwebNextPage = () => {
         <NewsletterSection />
         <HomepageFooter />
       </Flex>
-    </DarkMode>
+    </>
   );
 };
 

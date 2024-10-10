@@ -1,31 +1,23 @@
-import { Flex, FormControl, Input, Textarea } from "@chakra-ui/react";
+import { Textarea } from "@/components/ui/textarea";
+import { FormControl, Input } from "@chakra-ui/react";
 import { FileInput } from "components/shared/FileInput";
 import { useImageFileOrUrl } from "hooks/useImageFileOrUrl";
-import type { UseFormReturn } from "react-hook-form";
-import { FormErrorMessage, FormLabel, Heading, Text } from "tw-components";
-import type { useContractPublishMetadataFromURI } from "../hooks";
+import { FormErrorMessage, FormLabel } from "tw-components";
+import { Fieldset } from "./common";
+import type { CustomContractDeploymentForm } from "./custom-contract";
 
 interface ContractMetadataFieldsetProps {
-  // biome-ignore lint/suspicious/noExplicitAny: FIXME
-  form: UseFormReturn<any, any>;
-  metadata: ReturnType<typeof useContractPublishMetadataFromURI>;
+  form: CustomContractDeploymentForm;
 }
 
 export const ContractMetadataFieldset: React.FC<
   ContractMetadataFieldsetProps
-> = ({ form, metadata }) => {
+> = ({ form }) => {
   return (
-    <>
-      <Flex direction="column" gap={2}>
-        <Heading size="label.lg">Contract Metadata</Heading>
-        <Text size="body.md" fontStyle="italic">
-          Settings to organize and distinguish between your different contracts.
-        </Text>
-      </Flex>
-      <Flex gap={4} direction={{ base: "column", md: "row" }}>
-        <Flex flexShrink={0} flexGrow={1} maxW={{ base: "100%", md: "160px" }}>
+    <Fieldset legend="Contract Metadata">
+      <div className="flex flex-col gap-6 md:grid md:grid-cols-[270px_1fr]">
+        <div>
           <FormControl
-            isDisabled={!metadata.isSuccess}
             display="flex"
             flexDirection="column"
             isInvalid={
@@ -42,10 +34,7 @@ export const ContractMetadataFieldset: React.FC<
                   shouldTouch: true,
                 })
               }
-              border="1px solid"
-              borderColor="gray.200"
-              borderRadius="md"
-              transition="all 200ms ease"
+              className="rounded border-2 border-border border-dotted transition-all duration-200"
             />
             <FormErrorMessage>
               {
@@ -54,64 +43,62 @@ export const ContractMetadataFieldset: React.FC<
               }
             </FormErrorMessage>
           </FormControl>
-        </Flex>
+        </div>
 
-        <Flex direction="column" gap={4} flexGrow={1} justify="space-between">
-          <Flex gap={4} direction={{ base: "column", md: "row" }}>
-            <FormControl
-              isRequired
-              isDisabled={!metadata.isSuccess}
-              isInvalid={
-                !!form.getFieldState("contractMetadata.name", form.formState)
-                  .error
+        <div className="flex flex-col gap-6">
+          <FormControl
+            isRequired
+            isInvalid={
+              !!form.getFieldState("contractMetadata.name", form.formState)
+                .error
+            }
+          >
+            <FormLabel>Name</FormLabel>
+            <Input
+              autoFocus
+              variant="filled"
+              {...form.register("contractMetadata.name")}
+            />
+            <FormErrorMessage>
+              {
+                form.getFieldState("contractMetadata.name", form.formState)
+                  .error?.message
               }
-            >
-              <FormLabel>Name</FormLabel>
-              <Input
-                autoFocus
-                variant="filled"
-                {...form.register("contractMetadata.name")}
-              />
-              <FormErrorMessage>
-                {
-                  form.getFieldState("contractMetadata..name", form.formState)
-                    .error?.message
-                }
-              </FormErrorMessage>
-            </FormControl>
-            {/*             {hasSymbol && ( */}
-            <FormControl
-              maxW={{ base: "100%", md: "200px" }}
-              isInvalid={
-                !!form.getFieldState("contractMetadata.symbol", form.formState)
-                  .error
-              }
-            >
-              <FormLabel>Symbol</FormLabel>
-              <Input
-                variant="filled"
-                {...form.register("contractMetadata.symbol")}
-              />
-              <FormErrorMessage>
-                {
-                  form.getFieldState("contractMetadata.symbol", form.formState)
-                    .error?.message
-                }
-              </FormErrorMessage>
-            </FormControl>
-            {/*             )} */}
-          </Flex>
+            </FormErrorMessage>
+          </FormControl>
 
           <FormControl
-            isDisabled={!metadata.isSuccess}
             isInvalid={
-              !!form.getFieldState("description", form.formState).error
+              !!form.getFieldState("contractMetadata.symbol", form.formState)
+                .error
+            }
+          >
+            <FormLabel>Symbol</FormLabel>
+            <Input
+              variant="filled"
+              {...form.register("contractMetadata.symbol")}
+            />
+            <FormErrorMessage>
+              {
+                form.getFieldState("contractMetadata.symbol", form.formState)
+                  .error?.message
+              }
+            </FormErrorMessage>
+          </FormControl>
+
+          <FormControl
+            className="flex grow flex-col"
+            isInvalid={
+              !!form.getFieldState(
+                "contractMetadata.description",
+                form.formState,
+              ).error
             }
           >
             <FormLabel>Description</FormLabel>
             <Textarea
-              variant="filled"
               {...form.register("contractMetadata.description")}
+              className="grow bg-transparent"
             />
             <FormErrorMessage>
               {
@@ -122,8 +109,8 @@ export const ContractMetadataFieldset: React.FC<
               }
             </FormErrorMessage>
           </FormControl>
-        </Flex>
-      </Flex>
-    </>
+        </div>
+      </div>
+    </Fieldset>
   );
 };

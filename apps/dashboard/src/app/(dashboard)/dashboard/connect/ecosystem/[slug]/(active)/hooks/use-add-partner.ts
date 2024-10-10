@@ -6,12 +6,11 @@ import {
 } from "@tanstack/react-query";
 import type { Ecosystem, Partner } from "../../../types";
 
-export type AddPartnerParams = {
+type AddPartnerParams = {
   ecosystem: Ecosystem;
   name: string;
   allowlistedDomains: string[];
   allowlistedBundleIds: string[];
-  permissions: ["PROMPT_USER_V1" | "FULL_CONTROL_V1"];
 };
 
 export function useAddPartner(
@@ -24,7 +23,7 @@ export function useAddPartner(
   const { isLoggedIn, user } = useLoggedInUser();
   const queryClient = useQueryClient();
 
-  const { mutateAsync: addPartner, isLoading } = useMutation({
+  return useMutation({
     // Returns the created partner object
     mutationFn: async (params: AddPartnerParams): Promise<Partner> => {
       if (!isLoggedIn || !user?.jwt) {
@@ -44,7 +43,8 @@ export function useAddPartner(
             name: params.name,
             allowlistedDomains: params.allowlistedDomains,
             allowlistedBundleIds: params.allowlistedBundleIds,
-            permissions: params.permissions,
+            // TODO - remove the requirement for permissions in API endpoint
+            permissions: ["FULL_CONTROL_V1"],
           }),
         },
       );
@@ -74,11 +74,9 @@ export function useAddPartner(
       return data;
     },
     onSuccess: async (partner, variables, context) => {
-      await queryClient.invalidateQueries([
-        "ecosystem",
-        variables.ecosystem.id,
-        "partners",
-      ]);
+      await queryClient.invalidateQueries({
+        queryKey: ["ecosystem", variables.ecosystem.id, "partners"],
+      });
       if (onSuccess) {
         return onSuccess(partner, variables, context);
       }
@@ -86,6 +84,4 @@ export function useAddPartner(
     },
     ...queryOptions,
   });
-
-  return { addPartner, isLoading };
 }

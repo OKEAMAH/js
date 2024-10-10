@@ -23,11 +23,14 @@ import { airdropERC721WithSignature as generatedAirdropERC721WithSignature } fro
  * });
  * await sendTransaction({ transaction, account });
  * ```
- * @extension Airdrop
+ * @extension AIRDROP
  * @returns A promise that resolves to the transaction result.
  */
 export const airdropERC721WithSignature = generatedAirdropERC721WithSignature;
 
+/**
+ * @extension AIRDROP
+ */
 export type GenerateAirdropERC721SignatureOptions = {
   account: Account;
   contract: ThirdwebContract;
@@ -64,7 +67,7 @@ export type GenerateAirdropERC721SignatureOptions = {
  * });
  * await sendTransaction({ transaction, account });
  * ```
- * @extension Airdrop
+ * @extension AIRDROP
  * @returns A promise that resolves to the req and signature.
  */
 export async function generateAirdropSignatureERC721(
@@ -128,12 +131,12 @@ type GenerateReqInput = {
   contents: ContentType;
 };
 
-export const AirdropContentERC721 = [
+const AirdropContentERC721 = [
   { name: "recipient", type: "address" },
   { name: "tokenId", type: "uint256" },
 ] as const;
 
-export const AirdropRequestERC721 = [
+const AirdropRequestERC721 = [
   { name: "uid", type: "bytes32" },
   { name: "tokenAddress", type: "address" },
   { name: "expirationTimestamp", type: "uint256" },

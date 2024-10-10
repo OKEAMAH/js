@@ -1,25 +1,18 @@
-import {
-  Box,
-  Container,
-  Flex,
-  List,
-  ListItem,
-  SimpleGrid,
-} from "@chakra-ui/react";
+import { useForceDarkTheme } from "@/components/theme-provider";
+import { Box, Flex, Grid } from "@chakra-ui/react";
 import { ChakraNextImage } from "components/Image";
+import FastTrackChains from "components/community/FastTrackChains";
+import PartnersSection from "components/community/PartnersSection";
+import StartupCard from "components/community/StartupCards";
 import { HomepageFooter } from "components/footer/Footer";
 import { Aurora } from "components/homepage/Aurora";
 import { LandingImages } from "components/landing-pages/card-with-image";
-import { LandingDesktopMobileImage } from "components/landing-pages/desktop-mobile-image";
-import { LandingFAQ } from "components/landing-pages/faq";
-import { LandingGridSection } from "components/landing-pages/grid-section";
-import { LandingIconSectionItem } from "components/landing-pages/icon-section-item";
 import { LandingSectionHeading } from "components/landing-pages/section-heading";
 import { HomepageTopNav } from "components/product-pages/common/Topnav";
 import { HomepageSection } from "components/product-pages/homepage/HomepageSection";
 import { NextSeo } from "next-seo";
 import { PageId } from "page-id";
-import { Heading, Text, TrackedLink, TrackedLinkButton } from "tw-components";
+import { Heading, Text, TrackedLinkButton } from "tw-components";
 import type { ThirdwebNextPage } from "utils/types";
 
 const TRACKING_CATEGORY = "startup-program";
@@ -30,45 +23,12 @@ const SEO = {
     "The next wave of web3 mass adoption is already happening. If you want to be one of the next big crypto apps, the time to build is now!",
 };
 
-// const judges = [
-//   {
-//     name: "Jason Hitchcock",
-//     twitter: "JasonHitchcock",
-//     description: "Head of Ecosystem",
-//     image: "/assets/landingpage/james.png",
-//   },
-//   {
-//     name: "Phil Ho",
-//     twitter: "arcoraven",
-//     description: "Engineering Lead, Engine",
-//     image: "/assets/landingpage/phil.png",
-//   },
-//   {
-//     name: "Samina Kabir",
-//     twitter: "saminacodes",
-//     description: "Product Manager, Developer Experience",
-//     image: "/assets/landingpage/samina.png",
-//   },
-//   {
-//     name: "Atif Khan",
-//     twitter: "atifkhan31",
-//     description: "VP, Business",
-//     image: "/assets/landingpage/atif.png",
-//   },
-//   {
-//     name: "Mike Shin",
-//     twitter: "mdjshin",
-//     description: "Head of Business Operations",
-//     image: "/assets/landingpage/mike.png",
-//   },
-// ];
-
 const trustedCompanies = [
   {
-    title: "Coinbase",
+    title: "Rug Radio",
     height: 74,
     width: 74,
-    src: require("../../../public/assets/partners/coinbase.png"),
+    src: require("../../../public/assets/startup-program/logo-rugradio.png"),
   },
   {
     title: "Treasure",
@@ -83,178 +43,153 @@ const trustedCompanies = [
     src: require("../../../public/assets/partners/layer3.png"),
   },
   {
-    title: "Courtyard",
+    title: "CoolCats",
     height: 74,
     width: 74,
-    src: require("../../../public/assets/partners/courtyard.png"),
+    src: require("../../../public/assets/startup-program/rarible-icon.png"),
   },
   {
-    title: "Rarible",
+    title: "Fnatic",
     height: 74,
     width: 74,
-    src: require("../../../public/assets/partners/rarible.png"),
+    src: require("../../../public/assets/startup-program/treasure-icon.png"),
+  },
+  {
+    title: "Mynaswap",
+    height: 74,
+    width: 74,
+    src: require("../../../public/assets/startup-program/layer3-icon.png"),
+  },
+  {
+    title: "XAI",
+    height: 74,
+    width: 74,
+    src: require("../../../public/assets/startup-program/courtyard-icon.png"),
   },
 ];
 
-const faqs = [
-  {
-    title: "Who can join the thirdweb Startup Program?",
-    description:
-      "This program is for startups. You will need to be incorporated, have a website, complete a call with the thirdweb's startup team to demonstrate you're a real startup. This program is for startups who have raised less than $1m in total funding to date.",
-  },
-  {
-    title: "What are the benefits of the program?",
-    description:
-      "Qualified startups gain access to an array of benefits including credits, prioritized support, co-marketing opportunities, educational resources, ecosystem connections, and more.",
-  },
-  {
-    title: "How do I apply?",
-    description:
-      "You can apply in less than 2 minutes by filling out the application form and scheduling a call with our team.",
-  },
-  {
-    title: "How do I get approved for credits?",
-    description: (
-      <span>
-        Apply through{" "}
-        <TrackedLink
-          href="https://share.hsforms.com/1WCgMOvmuQqmCjdEqtu1NdAea58c"
-          label="apply_faq"
-          category={TRACKING_CATEGORY}
-          color="primary.500"
-          textDecoration="underline"
-        >
-          this
-        </TrackedLink>{" "}
-        link. Tell us about your project, any partner affiliations, and
-        we&apos;ll schedule an onboarding call to get you started.
-      </span>
-    ),
-  },
-  {
-    title: "Are current thirdweb customers eligible?",
-    description:
-      "Current customers and developers affiliated with a partner can also access benefits. Customers who've already received credits are not eligible for additional credits.",
-  },
-  {
-    title: "How can I use my credits?",
-    description:
-      "Credits can be applied towards annual Growth plans and thirdweb Engine instances and usage.",
-  },
-  {
-    title: "How much is Engine through the startup program?",
-    description:
-      "First 90 days free, $99/month thereafter per engine instance.",
-  },
-  {
-    title: "How much is the Growth plan through the startup program?",
-    description: "First 90 days free, $99 per month after credits expire.",
-  },
+const gradientSecond = {
+  src: require("../../../public/assets/startup-program/gradient-2.png"),
+};
+
+const gradientFive = {
+  src: require("../../../public/assets/startup-program/gradient-5.png"),
+};
+
+const ellipse = {
+  src: require("../../../public/assets/startup-program/ellipse-track.png"),
+};
+
+const cubeTop = {
+  src: require("../../../public/assets/startup-program/cube-top.png"),
+};
+
+const cubeRight = {
+  src: require("../../../public/assets/startup-program/cube-topright.png"),
+};
+
+const cubeBottom = {
+  src: require("../../../public/assets/startup-program/cube-bottom.png"),
+};
+
+const leftColumnItems = [
+  { id: "1", text: "The program is only for startups." },
+  { id: "2", text: "We don't take any equity in your company." },
+  { id: "3", text: "We don't take weeks/months to decide." },
 ];
 
-const partnersCompanies = [
-  { maxWidth: "99px", src: require("../../../public/assets/partners/cpg.png") },
-  {
-    maxWidth: "252px",
-    src: require("../../../public/assets/partners/coinbaseventures.png"),
-  },
-  {
-    maxWidth: "256px",
-    src: require("../../../public/assets/partners/finc.png"),
-  },
-  {
-    maxWidth: "180px",
-    src: require("../../../public/assets/partners/optimism.png"),
-  },
-  {
-    maxWidth: "207px",
-    src: require("../../../public/assets/partners/polygon.png"),
-  },
-  {
-    maxWidth: "180px",
-    src: require("../../../public/assets/partners/techstars.png"),
-  },
-  {
-    maxWidth: "207px",
-    src: require("../../../public/assets/partners/haun.png"),
-  },
-  {
-    maxWidth: "207px",
-    src: require("../../../public/assets/partners/monad.png"),
-  },
-  {
-    maxWidth: "256px",
-    src: require("../../../public/assets/partners/bitkraft.png"),
-  },
-  {
-    maxWidth: "256",
-    src: require("../../../public/assets/partners/helika.png"),
-  },
-
-  {
-    maxWidth: "99px",
-    src: require("../../../public/assets/partners/play.png"),
-  },
+const rightColumnItems = [
+  { id: "4", text: "We don't charge any fees." },
+  { id: "5", text: "We don't tell you what to do." },
+  { id: "6", text: "We don't require decks, business plans, or MBAs." },
 ];
 
 const StartupProgram: ThirdwebNextPage = () => {
+  useForceDarkTheme();
+
   return (
     <>
       <NextSeo {...SEO} />
       <HomepageTopNav />
-      <Box mt="-180px" pt="100px" overflowX="hidden">
-        <HomepageSection isOverflowXHidden>
-          {/* top */}
-          <Aurora
-            pos={{ left: "50%", top: "0%" }}
-            size={{ width: "2400px", height: "1400px" }}
-            color="hsl(260deg 78% 35% / 20%)"
-          />
 
+      {/* gradient topleft */}
+      <Box
+        position="absolute"
+        top="0"
+        left="50%"
+        transform="translateX(-50%)"
+        zIndex="1"
+        width="70%"
+        overflow="hidden"
+      >
+        <ChakraNextImage
+          src={gradientSecond.src}
+          width="100%"
+          height="auto"
+          objectFit="contain"
+          alt="description"
+          opacity={0.7}
+        />
+      </Box>
+
+      {/* Cube Top */}
+      <Box
+        position="absolute"
+        top="-150px"
+        left="50%"
+        transform="translateX(-50%)"
+        zIndex="1"
+        display={{ base: "none", md: "block" }}
+      >
+        <ChakraNextImage src={cubeTop.src} alt="description" maxW="500px" />
+      </Box>
+
+      {/* Aurora gradient */}
+      <HomepageSection overflow="hidden">
+        {/* top */}
+        <Aurora
+          pos={{ left: "50%", top: "0%" }}
+          size={{ width: "2400px", height: "1400px" }}
+          color="hsl(260deg 78% 35% / 20%)"
+        />
+      </HomepageSection>
+
+      {/* CTA hero */}
+      <HomepageSection pb={6} overflowX="hidden" position="relative">
+        <Flex flexDir="column" align={{ base: "initial", md: "center" }}>
           <Flex
             flexDir="column"
-            alignItems="center"
-            mt={{ base: 20, md: 140 }}
+            alignItems={{ base: "center", md: "flex-start" }}
             width="100%"
             pt="50px"
-            px="20px"
+            px="30px"
+            position="relative"
           >
-            <LandingDesktopMobileImage
-              image={require("../../../public/assets/landingpage/desktop/xl-logo.png")}
-              mobileImage={require("../../../public/assets/landingpage/mobile/xl-logo.png")}
-              alt="thirdweb"
-              maxW="279px"
-              w="full"
-            />
-
             <Heading
               fontSize={{ base: "48px", md: "80px" }}
-              textAlign="center"
+              textAlign={{ base: "center", md: "left" }}
               mt={46}
+              letterSpacing="-0.04em"
             >
-              Startup Program
+              Join our Startup <br />
+              Program
             </Heading>
 
-            <Flex flexDir="column" alignItems="center" gap={8} paddingTop={10}>
+            <Flex
+              flexDir="column"
+              alignItems={{ base: "center", md: "flex-start" }}
+              gap={8}
+              paddingTop={4}
+            >
               <Text
-                textAlign="center"
+                textAlign={{ base: "center", md: "left" }}
                 size="body.xl"
                 color="white"
                 maxW="800px"
               >
-                At thirdweb, we&apos;re committed to ensuring that the next wave
-                of consumer applications can focus on creating excellent user
-                experiences with blockchain as a powerful backend tool, without
-                worrying about infrastructure or associated costs.
-              </Text>
-              <Text
-                textAlign="center"
-                size="body.xl"
-                color="white"
-                maxW="800px"
-              >
-                Our startup program is designed to help you build, scale, and
-                generate revenue.
+                We help web3 startups accelerate
+                <br />
+                their progress at every stage.
               </Text>
             </Flex>
 
@@ -271,135 +206,244 @@ const StartupProgram: ThirdwebNextPage = () => {
               category={TRACKING_CATEGORY}
               label="apply"
               fontWeight="bold"
-              mt={46}
+              mt={26}
+              zIndex="1000"
             >
               Apply Now
             </TrackedLinkButton>
           </Flex>
 
-          <Container
-            maxW="container.page"
-            as={Flex}
-            flexDir="column"
-            gap={{ base: "80px", md: "190px" }}
-            mt={{ base: "120px", md: "170px" }}
-            mb={60}
+          {/* Cube Image */}
+          <Box
+            position="absolute"
+            top={0}
+            right={0}
+            zIndex="-1"
+            display={{ base: "none", lg: "block" }}
+            width="60%"
+            maxWidth={{ base: 0, md: "420px", lg: "420px", xl: "500px" }}
           >
-            <LandingGridSection desktopColumns={3}>
-              <LandingIconSectionItem
-                icon={require("../../../public/assets/solutions-pages/loyalty/icon-7.png")}
-                title="GET BUILDING w/ THIRDWEB"
-                customDescription={
-                  <List listStyleType="inherit" ml="20px" opacity={0.7}>
-                    <ListItem>
-                      Free usage credits to scale powerful applications.
-                    </ListItem>
-                    <ListItem margin="4px 0">
-                      Experiment and scale risk-free.
-                    </ListItem>
-                    <ListItem>Best-in-class technical support.</ListItem>
-                  </List>
-                }
-              />
-              <LandingIconSectionItem
-                icon={require("../../../public/assets/solutions-pages/loyalty/icon-2.svg")}
-                title="BUILD WITH OTHERS"
-                customDescription={
-                  <List listStyleType="inherit" ml="20px" opacity={0.7}>
-                    <ListItem>Connect with like-minded founders.</ListItem>
-                    <ListItem margin="4px 0">
-                      Leverage our network and ecosystem.
-                    </ListItem>
-                    <ListItem>Build, share, and grow together.</ListItem>
-                  </List>
-                }
-              />
-              <LandingIconSectionItem
-                icon={require("../../../public/assets/solutions-pages/loyalty/icon-1.png")}
-                title="GET TAILORED ADVICE TO WIN"
-                customDescription={
-                  <List listStyleType="inherit" ml="20px" opacity={0.7}>
-                    <ListItem>
-                      Tactical advice from proven startup founders.
-                    </ListItem>
-                    <ListItem margin="4px 0">
-                      Tailored support for your startup&apos;s success.
-                    </ListItem>
-                  </List>
-                }
-              />
-            </LandingGridSection>
+            <ChakraNextImage
+              src={cubeRight.src}
+              alt="description"
+              objectFit="contain"
+              objectPosition="right"
+            />
+          </Box>
+        </Flex>
+      </HomepageSection>
 
-            <LandingImages
-              title={
+      {/* Boxes Layout */}
+      <HomepageSection pb={32} overflowX="hidden">
+        <Flex
+          pt={24}
+          flexDir="column"
+          gap={{ base: 6, md: 8 }}
+          align={{ base: "initial", md: "center" }}
+        >
+          <StartupCard />
+        </Flex>
+      </HomepageSection>
+
+      {/* Startups logos */}
+      <HomepageSection pb={20} overflow="hidden">
+        <Flex
+          pt={24}
+          flexDir="column"
+          gap={{ base: 6, md: 8 }}
+          align={{ base: "initial", md: "center" }}
+        >
+          <LandingImages
+            title={
+              <Box maxW="700px">
                 <LandingSectionHeading
-                  title="Trusted by the best"
+                  title="The best startups launch with thirdweb"
                   blackToWhiteTitle=""
                 />
-              }
-              gap="44px"
-              images={trustedCompanies}
-            />
+              </Box>
+            }
+            gap="44px"
+            images={trustedCompanies}
+          />
+        </Flex>
+      </HomepageSection>
 
-            <Flex flexDir="column" alignItems="center" w="full">
+      {/* Partners */}
+      <HomepageSection pb={4} overflow="hidden">
+        <Flex
+          pt={24}
+          flexDir="column"
+          gap={{ base: 6, md: 8 }}
+          align={{ base: "initial", md: "center" }}
+        >
+          <Flex
+            flexDir="column"
+            alignItems="center"
+            w="full"
+            mb={{ base: "120px", xl: "200px" }}
+          >
+            <Heading
+              fontSize={{ base: "32px", md: "48px" }}
+              textAlign="center"
+              mt={46}
+            >
+              Partners
+            </Heading>
+
+            <PartnersSection />
+          </Flex>
+        </Flex>
+      </HomepageSection>
+
+      {/* Ellipse fast track */}
+      <Flex display={{ base: "none", lg: "block" }}>
+        <Box width="100%" mx="auto">
+          <ChakraNextImage
+            src={ellipse.src}
+            alt="description"
+            width="100%"
+            height="auto"
+            objectFit="cover"
+          />
+        </Box>
+      </Flex>
+
+      {/* Fast Track */}
+      <HomepageSection pb={22} overflow="hidden">
+        <Flex
+          flexDir="column"
+          gap={{ base: 6, md: 8 }}
+          align={{ base: "initial", md: "center" }}
+        >
+          <Flex
+            pb="60px"
+            flexDir="column"
+            alignItems="center"
+            justifyContent="center"
+            width="100%"
+            position="relative"
+            my="40px"
+          >
+            <FastTrackChains />
+          </Flex>
+        </Flex>
+      </HomepageSection>
+
+      {/* CTA Founders */}
+      <HomepageSection pb={32} overflow="hidden">
+        <Box position="relative" mb="20">
+          <ChakraNextImage
+            src={gradientFive.src}
+            alt="description"
+            width="100%"
+            opacity={0.6}
+            position="absolute"
+            bottom={0}
+            left="50%"
+            top="10%"
+            transform="translateX(-50%)"
+            zIndex={0}
+          />
+          <ChakraNextImage
+            src={cubeBottom.src}
+            alt="description"
+            maxW="500px"
+            position="absolute"
+            left="60%"
+            bottom="-100%"
+            transform="translateX(-50%)"
+            zIndex={1}
+            display={{ base: "none", lg: "block" }}
+          />
+
+          <Flex
+            pt={14}
+            flexDir="column"
+            gap={{ base: 6, md: 8 }}
+            align={{ base: "initial", md: "center" }}
+            zIndex={1}
+            position="relative"
+          >
+            <Flex flexDir="column" alignItems="center" width="100%" px="20px">
               <Heading
-                fontSize={{ base: "32px", md: "48px" }}
+                fontSize={{ base: "48px", md: "80px" }}
                 textAlign="center"
-                mt={46}
+                mb="20px"
+                letterSpacing="-0.04em"
               >
-                Partners
+                We put founders first.
               </Heading>
 
-              <SimpleGrid
-                columns={{ base: 1, lg: 4 }}
-                gap={{ base: 16, md: 24 }}
-                w="full"
-                placeItems="center"
-                mb={{ base: 16, md: "61px" }}
-                mt="57px"
+              <Flex
+                flexDir="column"
+                alignItems="center"
+                gap={8}
+                paddingTop={10}
+                pt={{ base: 0, md: 6 }}
               >
-                {partnersCompanies.slice(0, 4).map((partner, idx) => (
-                  <ChakraNextImage
-                    // biome-ignore lint/suspicious/noArrayIndexKey: FIXME
-                    key={idx}
-                    maxW={partner.maxWidth}
-                    src={partner.src}
-                    alt="partner"
-                  />
-                ))}
-              </SimpleGrid>
+                <Grid
+                  templateColumns={{ base: "1fr", md: "1fr 1fr" }}
+                  gap={{ base: 0, md: 6 }}
+                  w="full"
+                >
+                  {/* Left Column */}
+                  <Box flex="1">
+                    {leftColumnItems.map((item) => (
+                      <Text
+                        key={item.id}
+                        as="li"
+                        mb={{ base: 0, md: 4 }}
+                        color="white"
+                        fontSize={{ base: "14px", md: "20px" }}
+                        fontWeight="medium"
+                      >
+                        {item.text}
+                      </Text>
+                    ))}
+                  </Box>
 
-              <SimpleGrid
-                columns={{ base: 1, lg: 4 }}
-                gap={{ base: 16, md: 24 }}
-                w="full"
-                placeItems="center"
+                  {/* Right Column */}
+                  <Box flex="1">
+                    {rightColumnItems.map((item) => (
+                      <Text
+                        key={item.id}
+                        as="li"
+                        mb={{ base: 0, md: 4 }}
+                        color="white"
+                        fontSize={{ base: "14px", md: "20px" }}
+                        fontWeight="medium"
+                      >
+                        {item.text}
+                      </Text>
+                    ))}
+                  </Box>
+                </Grid>
+              </Flex>
+
+              <TrackedLinkButton
+                py={6}
+                px={8}
+                bgColor="white"
+                _hover={{
+                  bgColor: "white",
+                  opacity: 0.8,
+                }}
+                color="black"
+                href="https://share.hsforms.com/1WCgMOvmuQqmCjdEqtu1NdAea58c"
+                category={TRACKING_CATEGORY}
+                label="apply"
+                fontWeight="bold"
+                mt={46}
+                zIndex="1000"
               >
-                {partnersCompanies.slice(4).map((partner, idx) => (
-                  <ChakraNextImage
-                    // biome-ignore lint/suspicious/noArrayIndexKey: FIXME
-                    key={idx}
-                    maxW={partner.maxWidth}
-                    src={partner.src}
-                    alt="partner"
-                  />
-                ))}
-              </SimpleGrid>
+                Apply Now
+              </TrackedLinkButton>
             </Flex>
+          </Flex>
+        </Box>
+      </HomepageSection>
 
-            <Flex flexDir="column" alignItems="center">
-              <LandingFAQ
-                hideMarginTop
-                TRACKING_CATEGORY={TRACKING_CATEGORY}
-                title={"FAQ"}
-                faqs={faqs}
-                titleSize="title.2xl"
-              />
-            </Flex>
-          </Container>
-        </HomepageSection>
-        <HomepageFooter />
-      </Box>
+      <HomepageFooter />
     </>
   );
 };

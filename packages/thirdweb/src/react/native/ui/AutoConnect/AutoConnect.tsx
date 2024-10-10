@@ -1,8 +1,6 @@
 "use client";
-import { useEffect } from "react";
 import type { AutoConnectProps } from "../../../core/hooks/connection/types.js";
 import { useAutoConnect } from "../../hooks/wallets/useAutoConnect.js";
-import { useSetActiveWalletConnectionStatus } from "../../hooks/wallets/useSetActiveWalletConnectionStatus.js";
 
 /**
  * AutoConnect last connected wallet on page reload or revisit.
@@ -38,22 +36,4 @@ import { useSetActiveWalletConnectionStatus } from "../../hooks/wallets/useSetAc
 export function AutoConnect(props: AutoConnectProps) {
   useAutoConnect(props);
   return <></>;
-}
-
-let noAutoConnectDone = false;
-
-/**
- * @internal
- */
-export function NoAutoConnect() {
-  const setConnectionStatus = useSetActiveWalletConnectionStatus();
-  useEffect(() => {
-    if (noAutoConnectDone) {
-      return;
-    }
-    noAutoConnectDone = true;
-    setConnectionStatus("disconnected");
-  });
-
-  return null;
 }

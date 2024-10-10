@@ -1,17 +1,19 @@
-import { Skeleton } from "@chakra-ui/react";
+"use client";
+
+import { CopyAddressButton } from "@/components/ui/CopyAddressButton";
+import { SkeletonContainer } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
-import { getChainByChainIdAsync } from "@thirdweb-dev/chains";
 import { AsyncContractNameCell } from "components/contract-components/tables/cells";
 import { TWTable } from "components/shared/TWTable";
 import { AsyncFactoryAccountCell } from "components/smart-wallets/AccountFactories/account-cell";
 import type { BasicContract } from "contract-ui/types/types";
-import { Text } from "tw-components";
-import { shortenIfAddress } from "utils/usedapp-external";
+import { useV5DashboardChain } from "lib/v5-adapter";
+import { getChainMetadata } from "thirdweb/chains";
 
 interface FactoryContractsProps {
   contracts: BasicContract[];
-  isLoading: boolean;
+  isPending: boolean;
   isFetched: boolean;
 }
 
@@ -30,7 +32,14 @@ const columns = [
   }),
   columnHelper.accessor("address", {
     header: "Contract address",
-    cell: (cell) => <Text>{shortenIfAddress(cell.getValue())}</Text>,
+    cell: (cell) => (
+      <CopyAddressButton
+        address={cell.getValue()}
+        copyIconPosition="left"
+        variant="ghost"
+        className="-translate-x-2"
+      />
+    ),
   }),
   columnHelper.accessor((row) => row, {
     header: "Accounts",
@@ -41,21 +50,27 @@ const columns = [
 ];
 
 function NetworkName(props: { id: number }) {
+  const chain = useV5DashboardChain(props.id);
   const chainQuery = useQuery({
     queryKey: ["getChainByChainIdAsync", props.id],
-    queryFn: () => getChainByChainIdAsync(props.id),
+    queryFn: () => getChainMetadata(chain),
   });
 
   return (
-    <Skeleton isLoaded={!!chainQuery.data}>
-      <Text>{chainQuery.data?.name || "..."}</Text>
-    </Skeleton>
+    <SkeletonContainer
+      className="inline-block"
+      loadedData={chainQuery.data?.name}
+      skeletonData="Ethereum Mainnet"
+      render={(v) => {
+        return <p className="text-muted-foreground text-sm">{v}</p>;
+      }}
+    />
   );
 }
 
 export const FactoryContracts: React.FC<FactoryContractsProps> = ({
   contracts,
-  isLoading,
+  isPending,
   isFetched,
 }) => {
   return (
@@ -63,7 +78,7 @@ export const FactoryContracts: React.FC<FactoryContractsProps> = ({
       title="account factories"
       data={contracts}
       columns={columns}
-      isLoading={isLoading}
+      isPending={isPending}
       isFetched={isFetched}
     />
   );

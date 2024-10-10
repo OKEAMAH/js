@@ -6,6 +6,11 @@ import type {
 import type { NFTInput } from "../../../utils/nft/parseNft.js";
 import { mintTo as generatedMintTo } from "../__generated__/IMintableERC1155/write/mintTo.js";
 
+export { isMintToSupported } from "../__generated__/IMintableERC1155/write/mintTo.js";
+
+/**
+ * @extension ERC1155
+ */
 export type MintToParams = WithOverrides<{
   to: string;
   nft: NFTInput | string;

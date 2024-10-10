@@ -2,6 +2,9 @@ import { upload } from "../../../storage/upload.js";
 import type { BaseTransactionOptions } from "../../../transaction/types.js";
 import { setContractURI } from "../../common/__generated__/IContractMetadata/write/setContractURI.js";
 
+/**
+ * @extension AIRDROP
+ */
 export type SaveSnapshotParams = {
   merkleRoot: string;
   snapshotUri: string;
@@ -49,7 +52,7 @@ export type SaveSnapshotParams = {
  * await sendTransaction({ setMerkleRootTransaction, account });
  *
  * ```
- * @extension Airdrop
+ * @extension AIRDROP
  * @returns A promise that resolves to the transaction result.
  */
 export function saveSnapshot(

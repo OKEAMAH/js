@@ -4,7 +4,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -29,21 +28,18 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `canClaimRewards` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `canClaimRewards` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `canClaimRewards` method is supported.
  * @extension ERC1155
  * @example
  * ```ts
  * import { isCanClaimRewardsSupported } from "thirdweb/extensions/erc1155";
- *
- * const supported = await isCanClaimRewardsSupported(contract);
+ * const supported = isCanClaimRewardsSupported(["0x..."]);
  * ```
  */
-export async function isCanClaimRewardsSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isCanClaimRewardsSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -55,7 +51,7 @@ export async function isCanClaimRewardsSupported(
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeCanClaimRewardsParams } "thirdweb/extensions/erc1155";
+ * import { encodeCanClaimRewardsParams } from "thirdweb/extensions/erc1155";
  * const result = encodeCanClaimRewardsParams({
  *  opener: ...,
  * });
@@ -72,7 +68,7 @@ export function encodeCanClaimRewardsParams(options: CanClaimRewardsParams) {
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeCanClaimRewards } "thirdweb/extensions/erc1155";
+ * import { encodeCanClaimRewards } from "thirdweb/extensions/erc1155";
  * const result = encodeCanClaimRewards({
  *  opener: ...,
  * });
@@ -95,7 +91,7 @@ export function encodeCanClaimRewards(options: CanClaimRewardsParams) {
  * @example
  * ```ts
  * import { decodeCanClaimRewardsResult } from "thirdweb/extensions/erc1155";
- * const result = decodeCanClaimRewardsResult("...");
+ * const result = decodeCanClaimRewardsResultResult("...");
  * ```
  */
 export function decodeCanClaimRewardsResult(result: Hex) {

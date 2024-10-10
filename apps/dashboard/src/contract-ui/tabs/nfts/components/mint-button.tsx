@@ -1,33 +1,25 @@
+"use client";
+
 import { MinterOnly } from "@3rdweb-sdk/react/components/roles/minter-only";
-import { Icon, useDisclosure } from "@chakra-ui/react";
-import { type useContract, useMintNFT } from "@thirdweb-dev/react";
-import { extensionDetectedState } from "components/buttons/ExtensionDetectButton";
-import { FiPlus } from "react-icons/fi";
+import { useDisclosure } from "@chakra-ui/react";
+import { PlusIcon } from "lucide-react";
+import type { ThirdwebContract } from "thirdweb";
 import { Button, Drawer } from "tw-components";
 import { NFTMintForm } from "./mint-form";
 
 interface NFTMintButtonProps {
-  contractQuery: ReturnType<typeof useContract>;
+  contract: ThirdwebContract;
+  isErc721: boolean;
 }
 
 export const NFTMintButton: React.FC<NFTMintButtonProps> = ({
-  contractQuery,
+  contract,
+  isErc721,
   ...restButtonProps
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const mutation = useMintNFT(contractQuery.contract);
-
-  const detectedState = extensionDetectedState({
-    contractQuery,
-    feature: ["ERC721Mintable", "ERC1155Mintable"],
-  });
-
-  if (detectedState !== "enabled" || !contractQuery.contract) {
-    return null;
-  }
-
   return (
-    <MinterOnly contract={contractQuery.contract}>
+    <MinterOnly contract={contract}>
       <Drawer
         allowPinchZoom
         preserveScrollBarGap
@@ -35,14 +27,11 @@ export const NFTMintButton: React.FC<NFTMintButtonProps> = ({
         onClose={onClose}
         isOpen={isOpen}
       >
-        <NFTMintForm
-          contract={contractQuery.contract}
-          mintMutation={mutation}
-        />
+        <NFTMintForm contract={contract} isErc721={isErc721} />
       </Drawer>
       <Button
         colorScheme="primary"
-        leftIcon={<Icon as={FiPlus} />}
+        leftIcon={<PlusIcon className="size-5" />}
         {...restButtonProps}
         onClick={onOpen}
       >

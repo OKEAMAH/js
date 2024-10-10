@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -57,19 +56,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `permit` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `permit` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `permit` method is supported.
  * @extension ERC20
  * @example
  * ```ts
  * import { isPermitSupported } from "thirdweb/extensions/erc20";
  *
- * const supported = await isPermitSupported(contract);
+ * const supported = isPermitSupported(["0x..."]);
  * ```
  */
-export async function isPermitSupported(contract: ThirdwebContract<any>) {
+export function isPermitSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -81,7 +80,7 @@ export async function isPermitSupported(contract: ThirdwebContract<any>) {
  * @extension ERC20
  * @example
  * ```ts
- * import { encodePermitParams } "thirdweb/extensions/erc20";
+ * import { encodePermitParams } from "thirdweb/extensions/erc20";
  * const result = encodePermitParams({
  *  owner: ...,
  *  spender: ...,
@@ -112,7 +111,7 @@ export function encodePermitParams(options: PermitParams) {
  * @extension ERC20
  * @example
  * ```ts
- * import { encodePermit } "thirdweb/extensions/erc20";
+ * import { encodePermit } from "thirdweb/extensions/erc20";
  * const result = encodePermit({
  *  owner: ...,
  *  spender: ...,
@@ -138,6 +137,7 @@ export function encodePermit(options: PermitParams) {
  * @extension ERC20
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { permit } from "thirdweb/extensions/erc20";
  *
  * const transaction = permit({
@@ -155,8 +155,7 @@ export function encodePermit(options: PermitParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function permit(

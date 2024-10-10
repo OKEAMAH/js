@@ -18,12 +18,12 @@ const SIGNED_KEY_REQUEST_TYPE = [
   { name: "deadline", type: "uint256" },
 ];
 
-export const SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_TYPES = {
+const SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_TYPES = {
   domain: SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_DOMAIN,
   types: { SignedKeyRequest: SIGNED_KEY_REQUEST_TYPE },
 } as const;
 
-export const SIGNED_KEY_REQUEST_METADATA_ABI = [
+const SIGNED_KEY_REQUEST_METADATA_ABI = [
   {
     components: [
       {
@@ -48,6 +48,9 @@ export const SIGNED_KEY_REQUEST_METADATA_ABI = [
   },
 ] as const;
 
+/**
+ * @extension FARCASTER
+ */
 export type SignedKeyRequestMessage = {
   /** FID of user or app requesting key */
   requestFid: bigint;
@@ -57,6 +60,9 @@ export type SignedKeyRequestMessage = {
   deadline: bigint;
 };
 
+/**
+ * @extension FARCASTER
+ */
 export type SignKeyRequestOptions = {
   account: Account;
   message: SignedKeyRequestMessage;
@@ -110,6 +116,9 @@ export async function signKeyRequest(
   return options.account.signTypedData(data);
 }
 
+/**
+ * @extension FARCASTER
+ */
 export type SignedKeyRequestMetadataOptions = Prettify<
   {
     message: SignedKeyRequestMessage;

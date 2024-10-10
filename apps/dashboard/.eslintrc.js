@@ -2,9 +2,8 @@ module.exports = {
   extends: [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
-    "plugin:import/typescript",
     "plugin:@next/next/recommended",
-    "plugin:promise/recommended",
+    "plugin:storybook/recommended",
   ],
   rules: {
     "react-compiler/react-compiler": "error",
@@ -14,6 +13,26 @@ module.exports = {
         selector: "CallExpression[callee.name='useEffect']",
         message:
           'Are you *sure* you need to use "useEffect" here? If you loading any async function prefer using "useQuery".',
+      },
+      {
+        selector: "CallExpression[callee.name='createContext']",
+        message:
+          'Are you *sure* you need to use a "Context"? In almost all cases you should prefer passing props directly.',
+      },
+      {
+        selector: "CallExpression[callee.name='defineChain']",
+        message:
+          "Use useV5DashboardChain instead if you are using it inside a component",
+      },
+      {
+        selector: "CallExpression[callee.name='defineDashboardChain']",
+        message:
+          "Use useV5DashboardChain instead if you are using it inside a component",
+      },
+      {
+        selector: "CallExpression[callee.name='mapV4ChainToV5Chain']",
+        message:
+          "Use useV5DashboardChain instead if you are using it inside a component",
       },
     ],
     "no-restricted-imports": [
@@ -36,6 +55,13 @@ module.exports = {
               "FormErrorMessage",
               "MenuGroup",
               "MenuItem",
+              "VStack",
+              "HStack",
+              "AspectRatio",
+              "useToast",
+              "useClipboard",
+              "Badge",
+              "Stack",
               // also the types
               "ButtonProps",
               "BadgeProps",
@@ -46,6 +72,9 @@ module.exports = {
               "HelpTextProps",
               "MenuGroupProps",
               "MenuItemProps",
+              "AspectRatioProps",
+              "BadgeProps",
+              "StackProps",
             ],
             message:
               'Use the equivalent component from "tw-components" instead.',
@@ -65,12 +94,24 @@ module.exports = {
             message:
               "Import from `@chakra-ui/react` instead of `@chakra-ui/menu`.",
           },
+          {
+            name: "next/navigation",
+            importNames: ["useRouter"],
+            message:
+              'Use `import { useDashboardRouter } from "@/lib/DashboardRouter";` instead',
+          },
+          {
+            name: "lucide-react",
+            importNames: ["Link", "Table", "Sidebar"],
+            message:
+              'This is likely a mistake. If you really want to import this - postfix the imported name with Icon. Example - "LinkIcon"',
+          },
         ],
       },
     ],
   },
   parser: "@typescript-eslint/parser",
-  plugins: ["@typescript-eslint", "import", "react-compiler"],
+  plugins: ["@typescript-eslint", "react-compiler"],
   parserOptions: {
     ecmaVersion: 2019,
     ecmaFeatures: {
@@ -87,31 +128,6 @@ module.exports = {
     },
   },
   overrides: [
-    {
-      files: "src/core-ui/**/*",
-      rules: {
-        // no restricted imports
-        "@typescript-eslint/no-restricted-imports": [
-          "error",
-          {
-            paths: [
-              {
-                name: "@thirdweb-dev/sdk",
-                message:
-                  "core-ui should not import from @thirdweb-dev/sdk. (except for types)",
-                allowTypeImports: true,
-              },
-              {
-                name: "@thirdweb-dev/react",
-                message:
-                  "core-ui should not import from @thirdweb-dev/react. (except for types)",
-                allowTypeImports: true,
-              },
-            ],
-          },
-        ],
-      },
-    },
     // disable restricted imports in tw-components
     {
       files: "src/tw-components/**/*",

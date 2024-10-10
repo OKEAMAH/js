@@ -1,26 +1,32 @@
-import { FormControl, Input, Stack } from "@chakra-ui/react";
-import { type NFTContract, useTransferNFT } from "@thirdweb-dev/react";
+"use client";
+
+import { FormControl, Input } from "@chakra-ui/react";
 import { TransactionButton } from "components/buttons/TransactionButton";
-import { detectFeatures } from "components/contract-components/utils";
 import { SolidityInput } from "contract-ui/components/solidity-inputs";
-import { constants } from "ethers";
 import { useTrack } from "hooks/analytics/useTrack";
 import { useTxNotifications } from "hooks/useTxNotifications";
 import { useForm } from "react-hook-form";
+import { type ThirdwebContract, ZERO_ADDRESS } from "thirdweb";
+import { transferFrom } from "thirdweb/extensions/erc721";
+import { isERC1155, safeTransferFrom } from "thirdweb/extensions/erc1155";
+import {
+  useActiveAccount,
+  useReadContract,
+  useSendAndConfirmTransaction,
+} from "thirdweb/react";
 import { FormErrorMessage, FormHelperText, FormLabel } from "tw-components";
-
 interface TransferTabProps {
-  contract: NFTContract;
+  contract: ThirdwebContract;
   tokenId: string;
 }
 
 const TransferTab: React.FC<TransferTabProps> = ({ contract, tokenId }) => {
+  const account = useActiveAccount();
+
   const trackEvent = useTrack();
   const form = useForm<{ to: string; amount: string }>({
     defaultValues: { to: "", amount: "1" },
   });
-
-  const transfer = useTransferNFT(contract);
 
   const { onSuccess, onError } = useTxNotifications(
     "Transfer successful",
@@ -28,10 +34,15 @@ const TransferTab: React.FC<TransferTabProps> = ({ contract, tokenId }) => {
     contract,
   );
 
-  const isErc1155 = detectFeatures(contract, ["ERC1155"]);
+  const { data: isErc1155, isPending: checking1155 } = useReadContract(
+    isERC1155,
+    { contract },
+  );
+
+  const { mutate, isPending } = useSendAndConfirmTransaction();
 
   return (
-    <Stack w="full">
+    <div className="flex w-full flex-col gap-2">
       <form
         onSubmit={form.handleSubmit((data) => {
           trackEvent({
@@ -39,43 +50,51 @@ const TransferTab: React.FC<TransferTabProps> = ({ contract, tokenId }) => {
             action: "transfer",
             label: "attempt",
           });
-          transfer.mutate(
-            {
-              tokenId,
-              to: data.to,
-              amount: data.amount,
+          const transaction = isErc1155
+            ? safeTransferFrom({
+                contract,
+                to: data.to,
+                tokenId: BigInt(tokenId),
+                value: BigInt(data.amount),
+                data: "0x",
+                from: account?.address ?? "",
+              })
+            : transferFrom({
+                contract,
+                to: data.to,
+                tokenId: BigInt(tokenId),
+                from: account?.address ?? "",
+              });
+          mutate(transaction, {
+            onSuccess: () => {
+              trackEvent({
+                category: "nft",
+                action: "transfer",
+                label: "success",
+              });
+              onSuccess();
+              form.reset();
             },
-            {
-              onSuccess: () => {
-                trackEvent({
-                  category: "nft",
-                  action: "transfer",
-                  label: "success",
-                });
-                onSuccess();
-                form.reset();
-              },
-              onError: (error) => {
-                trackEvent({
-                  category: "nft",
-                  action: "transfer",
-                  label: "error",
-                  error,
-                });
-                onError(error);
-              },
+            onError: (error) => {
+              trackEvent({
+                category: "nft",
+                action: "transfer",
+                label: "error",
+                error,
+              });
+              onError(error);
             },
-          );
+          });
         })}
       >
-        <Stack gap={3}>
-          <Stack spacing={6} w="100%" direction={{ base: "column", md: "row" }}>
+        <div className="flex flex-col gap-3">
+          <div className="flex w-full flex-col gap-6 md:flex-row">
             <FormControl isRequired isInvalid={!!form.formState.errors.to}>
               <FormLabel>To Address</FormLabel>
               <SolidityInput
                 solidityType="address"
                 formContext={form}
-                placeholder={constants.AddressZero}
+                placeholder={ZERO_ADDRESS}
                 {...form.register("to")}
               />
               <FormHelperText>Enter the address to transfer to.</FormHelperText>
@@ -89,7 +108,7 @@ const TransferTab: React.FC<TransferTabProps> = ({ contract, tokenId }) => {
                 isInvalid={!!form.formState.errors.to}
               >
                 <FormLabel>Amount</FormLabel>
-                <Input placeholder={"1"} {...form.register("amount")} />
+                <Input placeholder="1" {...form.register("amount")} />
                 <FormHelperText>
                   How many would you like to transfer?
                 </FormHelperText>
@@ -98,20 +117,23 @@ const TransferTab: React.FC<TransferTabProps> = ({ contract, tokenId }) => {
                 </FormErrorMessage>
               </FormControl>
             )}
-          </Stack>
+          </div>
           <TransactionButton
+            txChainID={contract.chain.id}
             transactionCount={1}
-            isLoading={transfer.isLoading}
+            isLoading={isPending || checking1155}
             type="submit"
             colorScheme="primary"
             alignSelf="flex-end"
-            isDisabled={!form.formState.isDirty}
+            isDisabled={
+              !form.formState.isDirty || checking1155 || isPending || !account
+            }
           >
             Transfer
           </TransactionButton>
-        </Stack>
+        </div>
       </form>
-    </Stack>
+    </div>
   );
 };
 

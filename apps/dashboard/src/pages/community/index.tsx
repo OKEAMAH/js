@@ -1,21 +1,14 @@
-import {
-  Box,
-  Center,
-  Container,
-  DarkMode,
-  Flex,
-  Icon,
-  SimpleGrid,
-} from "@chakra-ui/react";
+import { useForceDarkTheme } from "@/components/theme-provider";
+import { Box, Container, Flex, SimpleGrid } from "@chakra-ui/react";
 import { ChakraNextImage } from "components/Image";
 import { CommunityCard } from "components/community/CommunityCard";
 import { HomepageFooter } from "components/footer/Footer";
 import { Aurora } from "components/homepage/Aurora";
 import { HomepageTopNav } from "components/product-pages/common/Topnav";
 import { useTrack } from "hooks/analytics/useTrack";
+import { ZapIcon } from "lucide-react";
 import { NextSeo } from "next-seo";
 import { PageId } from "page-id";
-import { BsLightningCharge } from "react-icons/bs";
 import { Heading, LinkButton, Text } from "tw-components";
 import type { ThirdwebNextPage } from "utils/types";
 
@@ -105,9 +98,10 @@ const communitySections = [
 
 const Community: ThirdwebNextPage = () => {
   const trackEvent = useTrack();
+  useForceDarkTheme();
 
   return (
-    <DarkMode>
+    <>
       <NextSeo {...SEO} />
       <Flex
         sx={{
@@ -131,11 +125,7 @@ const Community: ThirdwebNextPage = () => {
               color="hsl(280deg 78% 30% / 30%)"
             />
 
-            <Center
-              py={{ base: 12, md: 24 }}
-              px={{ base: 4, md: 8 }}
-              flexDir="column"
-            >
+            <div className="flex flex-col items-center justify-center px-4 py-12 md:px-8 md:py-24">
               <Heading mt={8} textAlign="center" size="title.2xl">
                 A decentralized internet begins
                 <br /> with{" "}
@@ -172,7 +162,7 @@ const Community: ThirdwebNextPage = () => {
                   }}
                   color="#000"
                   fontSize="larger"
-                  leftIcon={<Icon as={BsLightningCharge} />}
+                  leftIcon={<ZapIcon className="size-4" />}
                   isExternal
                   noIcon
                 >
@@ -196,7 +186,7 @@ const Community: ThirdwebNextPage = () => {
                   Get In Touch
                 </LinkButton>
               </Flex>
-            </Center>
+            </div>
           </Container>
 
           {communitySections.map(
@@ -318,19 +308,14 @@ const Community: ThirdwebNextPage = () => {
           </SimpleGrid>
         </Container>
 
-        <Center
-          px={{ base: 4, md: 8 }}
-          flexDir="column"
-          my={{ base: 12, md: 24 }}
-        >
+        <div className="my-12 flex flex-col items-center justify-center px-4 md:my-24 md:px-8">
           <Heading mt={8} size="display.md">
-            Start
+            Start{" "}
             <Box
               as="span"
               bgGradient="linear(to-r, #BFA3DA, #C735B0)"
               bgClip="text"
             >
-              {" "}
               building{" "}
             </Box>
             today.
@@ -361,7 +346,7 @@ const Community: ThirdwebNextPage = () => {
               }}
               color="#000"
               fontSize="larger"
-              leftIcon={<Icon as={BsLightningCharge} />}
+              leftIcon={<ZapIcon className="size-4" />}
               isExternal
               noIcon
             >
@@ -385,11 +370,11 @@ const Community: ThirdwebNextPage = () => {
               Get In Touch
             </LinkButton>
           </Flex>
-        </Center>
+        </div>
 
         <HomepageFooter />
       </Flex>
-    </DarkMode>
+    </>
   );
 };
 

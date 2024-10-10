@@ -1,10 +1,7 @@
 import { type Abi, formatAbi, parseAbi } from "abitype";
-import { getInstalledExtensions } from "../../extensions/modular/__generated__/ModularCore/read/getInstalledExtensions.js";
 import { download } from "../../storage/download.js";
-import { extractIPFSUri } from "../../utils/bytecode/extractIPFS.js";
 import { getClientFetch } from "../../utils/fetch.js";
 import type { ThirdwebContract } from "../contract.js";
-import { getBytecode } from "./get-bytecode.js";
 
 const ABI_RESOLUTION_CACHE = new WeakMap<ThirdwebContract<Abi>, Promise<Abi>>();
 
@@ -47,7 +44,7 @@ export function resolveContractAbi<abi extends Abi>(
     // try to get it from the api
     try {
       return await resolveAbiFromContractApi(contract, contractApiBaseUrl);
-    } catch (e) {
+    } catch {
       // if that fails, try to resolve it from the bytecode
       return await resolveCompositeAbi(contract as ThirdwebContract);
     }
@@ -117,7 +114,11 @@ export async function resolveAbiFromBytecode(
   // biome-ignore lint/suspicious/noExplicitAny: library function that accepts any contract type
   contract: ThirdwebContract<any>,
 ): Promise<Abi> {
-  const bytecode = await getBytecode(contract);
+  const [{ resolveImplementation }, { extractIPFSUri }] = await Promise.all([
+    import("../../utils/bytecode/resolveImplementation.js"),
+    import("../../utils/bytecode/extractIPFS.js"),
+  ]);
+  const { bytecode } = await resolveImplementation(contract);
   if (bytecode === "0x") {
     const { id, name } = contract.chain;
     throw new Error(
@@ -292,7 +293,7 @@ export async function resolveCompositeAbi(
     // check these all at the same time
     resolvePluginPatternAddresses(contract),
     resolveBaseRouterAddresses(contract),
-    resolveModularExtensionAddresses(contract),
+    resolveModularModuleAddresses(contract),
     resolveDiamondFacetAddresses(contract),
   ]);
 
@@ -362,17 +363,20 @@ async function resolveBaseRouterAddresses(
   return [];
 }
 
-async function resolveModularExtensionAddresses(
+async function resolveModularModuleAddresses(
   contract: ThirdwebContract,
 ): Promise<string[]> {
   try {
-    const extensions = await getInstalledExtensions({ contract });
+    const { getInstalledModules } = await import(
+      "../../extensions/modules/__generated__/IModularCore/read/getInstalledModules.js"
+    );
+    const modules = await getInstalledModules({ contract });
     // if there are no plugins, return the root ABI
-    if (!extensions.length) {
+    if (!modules.length) {
       return [];
     }
     // get all the plugin addresses
-    return [...new Set(extensions.map((item) => item.implementation))];
+    return [...new Set(modules.map((item) => item.implementation))];
   } catch {
     // no-op, expected because not everything supports this
   }
@@ -434,14 +438,15 @@ function joinAbis(options: JoinAbisOptions): Abi {
     .filter((item) => item.type !== "constructor");
 
   if (options.rootAbi) {
-    mergedPlugins = [...(options.rootAbi || []), ...mergedPlugins].filter(
-      Boolean,
-    );
+    mergedPlugins = [...options.rootAbi, ...mergedPlugins]
+      .filter((item) => item.type !== "fallback" && item.type !== "receive")
+      .filter(Boolean);
   }
 
   // unique by formatting every abi and then throwing them in a set
   // TODO: this may not be super efficient...
   const humanReadableAbi = [...new Set(formatAbi(mergedPlugins))];
+
   // finally parse it back out
   return parseAbi(humanReadableAbi);
 }

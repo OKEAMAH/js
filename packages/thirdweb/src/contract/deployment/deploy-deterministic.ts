@@ -4,10 +4,13 @@ import type { Prettify } from "../../utils/type-utils.js";
 import type { ClientAndChain } from "../../utils/types.js";
 import { computeCreate2FactoryAddress } from "./utils/create-2-factory.js";
 
-export type DeployDetemisiticParams = Prettify<
+/**
+ * @extension DEPLOY
+ */
+type DeployDetemisiticParams = Prettify<
   ClientAndChain & {
     contractId: string;
-    constructorParams: unknown[];
+    constructorParams?: Record<string, unknown>;
     publisher?: string;
     version?: string;
     salt?: string;

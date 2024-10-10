@@ -1,10 +1,11 @@
 import { StyleSheet, View } from "react-native";
+import { formatNumber } from "../../../../utils/formatNumber.js";
 import type { Account, Wallet } from "../../../../wallets/interfaces/wallet.js";
 import { parseTheme } from "../../../core/design-system/CustomThemeProvider.js";
 import type { ConnectButtonProps } from "../../../core/hooks/connection/ConnectButtonProps.js";
+import { useActiveWalletChain } from "../../../core/hooks/wallets/useActiveWalletChain.js";
 import { useConnectedWalletDetails } from "../../../core/utils/wallet.js";
 import { fontSize, spacing } from "../../design-system/index.js";
-import { useActiveWalletChain } from "../../hooks/wallets/useActiveWalletChain.js";
 import { Skeleton } from "../components/Skeleton.js";
 import { WalletImage } from "../components/WalletImage.js";
 import { ThemedButton } from "../components/button.js";
@@ -21,13 +22,12 @@ export function ConnectedButton(
   const theme = parseTheme(props.theme);
   const { account, wallet } = props;
   const walletChain = useActiveWalletChain();
-  const { ensAvatarQuery, addressOrENS, balanceQuery } =
-    useConnectedWalletDetails(
-      props.client,
-      walletChain,
-      account,
-      props.detailsButton?.displayBalanceToken,
-    );
+  const { pfp, name, balanceQuery } = useConnectedWalletDetails(
+    props.client,
+    walletChain,
+    account,
+    props.detailsButton?.displayBalanceToken,
+  );
   return (
     <ThemedButton
       theme={theme}
@@ -40,12 +40,7 @@ export function ConnectedButton(
       }}
     >
       <View style={styles.row}>
-        <WalletImage
-          theme={theme}
-          size={40}
-          wallet={wallet}
-          ensAvatar={ensAvatarQuery.data}
-        />
+        <WalletImage theme={theme} size={40} wallet={wallet} avatar={pfp} />
         <View style={styles.col}>
           <ThemedText
             theme={theme}
@@ -54,7 +49,7 @@ export function ConnectedButton(
               color: theme.colors.primaryButtonText,
             }}
           >
-            {addressOrENS}
+            {name}
           </ThemedText>
           {balanceQuery.data ? (
             <ThemedText
@@ -64,7 +59,7 @@ export function ConnectedButton(
                 fontSize: fontSize.sm,
               }}
             >
-              {Number(balanceQuery.data.displayValue).toFixed(3)}{" "}
+              {formatBalanceOnButton(Number(balanceQuery.data.displayValue))}{" "}
               {balanceQuery.data?.symbol}
             </ThemedText>
           ) : (
@@ -78,6 +73,10 @@ export function ConnectedButton(
       </View>
     </ThemedButton>
   );
+}
+
+function formatBalanceOnButton(num: number) {
+  return formatNumber(num, num < 1 ? 5 : 4);
 }
 
 const styles = StyleSheet.create({

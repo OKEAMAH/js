@@ -4,7 +4,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -29,19 +28,18 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `getRoleAdmin` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `getRoleAdmin` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `getRoleAdmin` method is supported.
  * @extension PERMISSIONS
  * @example
  * ```ts
  * import { isGetRoleAdminSupported } from "thirdweb/extensions/permissions";
- *
- * const supported = await isGetRoleAdminSupported(contract);
+ * const supported = isGetRoleAdminSupported(["0x..."]);
  * ```
  */
-export async function isGetRoleAdminSupported(contract: ThirdwebContract<any>) {
+export function isGetRoleAdminSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -53,7 +51,7 @@ export async function isGetRoleAdminSupported(contract: ThirdwebContract<any>) {
  * @extension PERMISSIONS
  * @example
  * ```ts
- * import { encodeGetRoleAdminParams } "thirdweb/extensions/permissions";
+ * import { encodeGetRoleAdminParams } from "thirdweb/extensions/permissions";
  * const result = encodeGetRoleAdminParams({
  *  role: ...,
  * });
@@ -70,7 +68,7 @@ export function encodeGetRoleAdminParams(options: GetRoleAdminParams) {
  * @extension PERMISSIONS
  * @example
  * ```ts
- * import { encodeGetRoleAdmin } "thirdweb/extensions/permissions";
+ * import { encodeGetRoleAdmin } from "thirdweb/extensions/permissions";
  * const result = encodeGetRoleAdmin({
  *  role: ...,
  * });
@@ -93,7 +91,7 @@ export function encodeGetRoleAdmin(options: GetRoleAdminParams) {
  * @example
  * ```ts
  * import { decodeGetRoleAdminResult } from "thirdweb/extensions/permissions";
- * const result = decodeGetRoleAdminResult("...");
+ * const result = decodeGetRoleAdminResultResult("...");
  * ```
  */
 export function decodeGetRoleAdminResult(result: Hex) {

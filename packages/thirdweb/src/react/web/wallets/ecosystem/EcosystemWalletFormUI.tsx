@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import type { Chain } from "../../../../chains/types.js";
 import type { ThirdwebClient } from "../../../../client/client.js";
 import type { Wallet } from "../../../../wallets/interfaces/wallet.js";
@@ -8,12 +9,12 @@ import { useScreenContext } from "../../ui/ConnectWallet/Modal/screen.js";
 import { PoweredByThirdweb } from "../../ui/ConnectWallet/PoweredByTW.js";
 import type { ConnectLocale } from "../../ui/ConnectWallet/locale/types.js";
 import { Spacer } from "../../ui/components/Spacer.js";
-import { Container } from "../../ui/components/basic.js";
+import { Container, ModalHeader } from "../../ui/components/basic.js";
 import { ConnectWalletSocialOptions } from "../shared/ConnectWalletSocialOptions.js";
 import type { InAppWalletLocale } from "../shared/locale/types.js";
 import { EcosystemWalletHeader } from "./EcosystemWalletHeader.js";
 
-export type EcosystemWalletFormUIProps = {
+type EcosystemWalletFormUIProps = {
   select: () => void;
   done: () => void;
   locale: InAppWalletLocale;
@@ -26,10 +27,12 @@ export type EcosystemWalletFormUIProps = {
     showThirdwebBranding?: boolean;
     termsOfServiceUrl?: string;
     privacyPolicyUrl?: string;
+    requireApproval?: boolean;
   };
   client: ThirdwebClient;
   chain: Chain | undefined;
   connectLocale: ConnectLocale;
+  isLinking?: boolean;
 };
 
 /**
@@ -38,6 +41,8 @@ export type EcosystemWalletFormUIProps = {
 export function EcosystemWalletFormUIScreen(props: EcosystemWalletFormUIProps) {
   const isCompact = props.size === "compact";
   const { initialScreen, screen } = useScreenContext();
+  // This is only used when requireApproval is true to accept the TOS
+  const [isApproved, setIsApproved] = useState(false);
 
   const onBack =
     screen === props.wallet && initialScreen === props.wallet
@@ -54,11 +59,18 @@ export function EcosystemWalletFormUIScreen(props: EcosystemWalletFormUIProps) {
         minHeight: "250px",
       }}
     >
-      <EcosystemWalletHeader
-        client={props.client}
-        onBack={isCompact ? onBack : undefined}
-        wallet={props.wallet}
-      />
+      {props.isLinking ? (
+        <ModalHeader
+          title={props.connectLocale.manageWallet.linkProfile}
+          onBack={onBack}
+        />
+      ) : (
+        <EcosystemWalletHeader
+          client={props.client}
+          onBack={isCompact ? onBack : undefined}
+          wallet={props.wallet}
+        />
+      )}
       <Spacer y="lg" />
 
       <Container
@@ -67,7 +79,10 @@ export function EcosystemWalletFormUIScreen(props: EcosystemWalletFormUIProps) {
         center="y"
         p={isCompact ? undefined : "lg"}
       >
-        <ConnectWalletSocialOptions {...props} />
+        <ConnectWalletSocialOptions
+          disabled={props.meta.requireApproval && !isApproved}
+          {...props}
+        />
       </Container>
 
       {isCompact &&
@@ -80,6 +95,11 @@ export function EcosystemWalletFormUIScreen(props: EcosystemWalletFormUIProps) {
           termsOfServiceUrl={props.meta.termsOfServiceUrl}
           privacyPolicyUrl={props.meta.privacyPolicyUrl}
           locale={props.connectLocale.agreement}
+          requireApproval={props.meta.requireApproval}
+          onApprove={() => {
+            setIsApproved(!isApproved);
+          }}
+          isApproved={isApproved}
         />
 
         {props.meta.showThirdwebBranding !== false && <PoweredByThirdweb />}

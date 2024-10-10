@@ -4,51 +4,43 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
  * Represents the parameters for the "maxRedeem" function.
  */
 export type MaxRedeemParams = {
-  owner: AbiParameterToPrimitiveType<{
-    name: "owner";
-    type: "address";
-    internalType: "address";
-  }>;
+  owner: AbiParameterToPrimitiveType<{ type: "address"; name: "owner" }>;
 };
 
 export const FN_SELECTOR = "0xd905777e" as const;
 const FN_INPUTS = [
   {
-    name: "owner",
     type: "address",
-    internalType: "address",
+    name: "owner",
   },
 ] as const;
 const FN_OUTPUTS = [
   {
-    name: "maxShares",
     type: "uint256",
-    internalType: "uint256",
+    name: "maxShares",
   },
 ] as const;
 
 /**
  * Checks if the `maxRedeem` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `maxRedeem` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `maxRedeem` method is supported.
  * @extension ERC4626
  * @example
  * ```ts
  * import { isMaxRedeemSupported } from "thirdweb/extensions/erc4626";
- *
- * const supported = await isMaxRedeemSupported(contract);
+ * const supported = isMaxRedeemSupported(["0x..."]);
  * ```
  */
-export async function isMaxRedeemSupported(contract: ThirdwebContract<any>) {
+export function isMaxRedeemSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -60,7 +52,7 @@ export async function isMaxRedeemSupported(contract: ThirdwebContract<any>) {
  * @extension ERC4626
  * @example
  * ```ts
- * import { encodeMaxRedeemParams } "thirdweb/extensions/erc4626";
+ * import { encodeMaxRedeemParams } from "thirdweb/extensions/erc4626";
  * const result = encodeMaxRedeemParams({
  *  owner: ...,
  * });
@@ -77,7 +69,7 @@ export function encodeMaxRedeemParams(options: MaxRedeemParams) {
  * @extension ERC4626
  * @example
  * ```ts
- * import { encodeMaxRedeem } "thirdweb/extensions/erc4626";
+ * import { encodeMaxRedeem } from "thirdweb/extensions/erc4626";
  * const result = encodeMaxRedeem({
  *  owner: ...,
  * });
@@ -100,7 +92,7 @@ export function encodeMaxRedeem(options: MaxRedeemParams) {
  * @example
  * ```ts
  * import { decodeMaxRedeemResult } from "thirdweb/extensions/erc4626";
- * const result = decodeMaxRedeemResult("...");
+ * const result = decodeMaxRedeemResultResult("...");
  * ```
  */
 export function decodeMaxRedeemResult(result: Hex) {

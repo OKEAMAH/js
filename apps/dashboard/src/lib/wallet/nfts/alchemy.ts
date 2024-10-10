@@ -1,5 +1,6 @@
-import type { NFTMetadata } from "@thirdweb-dev/sdk";
-import { StorageSingleton } from "lib/sdk";
+import { getThirdwebClient } from "@/constants/thirdweb.server";
+import { download } from "thirdweb/storage";
+import type { NFTMetadata } from "thirdweb/utils";
 import { handleArbitraryTokenURI, shouldDownloadURI } from "./tokenUri";
 import {
   type AlchemySupportedChainId,
@@ -36,18 +37,22 @@ export async function transformAlchemyResponseToNFT(
 
         try {
           return {
+            id: alchemyNFT.id.tokenId,
             contractAddress: alchemyNFT.contract.address,
-            tokenId: alchemyNFT.id.tokenId,
             metadata: shouldDownloadURI(rawUri)
-              ? await StorageSingleton.downloadJSON(
-                  handleArbitraryTokenURI(rawUri),
-                )
+              ? await download({
+                  uri: handleArbitraryTokenURI(rawUri),
+                  client: getThirdwebClient(),
+                })
+                  .then((res) => res.json())
+                  .catch(() => ({}))
               : rawUri,
             owner,
             supply: alchemyNFT.balance || "1",
             type: alchemyNFT.id.tokenMetadata.tokenType,
+            tokenURI: rawUri,
           } as WalletNFT;
-        } catch (e) {
+        } catch {
           return undefined as unknown as WalletNFT;
         }
       }),

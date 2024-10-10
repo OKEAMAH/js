@@ -4,7 +4,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -42,19 +41,18 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `royaltyInfo` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `royaltyInfo` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `royaltyInfo` method is supported.
  * @extension ERC2981
  * @example
  * ```ts
  * import { isRoyaltyInfoSupported } from "thirdweb/extensions/erc2981";
- *
- * const supported = await isRoyaltyInfoSupported(contract);
+ * const supported = isRoyaltyInfoSupported(["0x..."]);
  * ```
  */
-export async function isRoyaltyInfoSupported(contract: ThirdwebContract<any>) {
+export function isRoyaltyInfoSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -66,7 +64,7 @@ export async function isRoyaltyInfoSupported(contract: ThirdwebContract<any>) {
  * @extension ERC2981
  * @example
  * ```ts
- * import { encodeRoyaltyInfoParams } "thirdweb/extensions/erc2981";
+ * import { encodeRoyaltyInfoParams } from "thirdweb/extensions/erc2981";
  * const result = encodeRoyaltyInfoParams({
  *  tokenId: ...,
  *  salePrice: ...,
@@ -84,7 +82,7 @@ export function encodeRoyaltyInfoParams(options: RoyaltyInfoParams) {
  * @extension ERC2981
  * @example
  * ```ts
- * import { encodeRoyaltyInfo } "thirdweb/extensions/erc2981";
+ * import { encodeRoyaltyInfo } from "thirdweb/extensions/erc2981";
  * const result = encodeRoyaltyInfo({
  *  tokenId: ...,
  *  salePrice: ...,
@@ -108,7 +106,7 @@ export function encodeRoyaltyInfo(options: RoyaltyInfoParams) {
  * @example
  * ```ts
  * import { decodeRoyaltyInfoResult } from "thirdweb/extensions/erc2981";
- * const result = decodeRoyaltyInfoResult("...");
+ * const result = decodeRoyaltyInfoResultResult("...");
  * ```
  */
 export function decodeRoyaltyInfoResult(result: Hex) {

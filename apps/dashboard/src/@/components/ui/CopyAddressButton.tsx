@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { CopyTextButton } from "./CopyTextButton";
 
 export function CopyAddressButton(props: {
@@ -15,14 +16,14 @@ export function CopyAddressButton(props: {
     | "ghost";
   copyIconPosition: "left" | "right";
 }) {
-  const shortenedAddress = `${props.address.slice(0, 6)}...${props.address.slice(0, 4)}`;
+  const shortenedAddress = `${props.address.slice(0, 6)}...${props.address.slice(-4)}`;
 
   return (
     <CopyTextButton
       textToCopy={props.address}
       textToShow={shortenedAddress}
       tooltip="Copy Address"
-      className="font-mono text-sm"
+      className={cn("font-mono text-sm", props.className)}
       variant={props.variant}
       copyIconPosition={props.copyIconPosition}
     />

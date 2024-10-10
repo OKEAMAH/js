@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -57,19 +56,19 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `openPack` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `openPack` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `openPack` method is supported.
  * @extension ERC1155
  * @example
  * ```ts
  * import { isOpenPackSupported } from "thirdweb/extensions/erc1155";
  *
- * const supported = await isOpenPackSupported(contract);
+ * const supported = isOpenPackSupported(["0x..."]);
  * ```
  */
-export async function isOpenPackSupported(contract: ThirdwebContract<any>) {
+export function isOpenPackSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -81,7 +80,7 @@ export async function isOpenPackSupported(contract: ThirdwebContract<any>) {
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeOpenPackParams } "thirdweb/extensions/erc1155";
+ * import { encodeOpenPackParams } from "thirdweb/extensions/erc1155";
  * const result = encodeOpenPackParams({
  *  packId: ...,
  *  amountToOpen: ...,
@@ -99,7 +98,7 @@ export function encodeOpenPackParams(options: OpenPackParams) {
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeOpenPack } "thirdweb/extensions/erc1155";
+ * import { encodeOpenPack } from "thirdweb/extensions/erc1155";
  * const result = encodeOpenPack({
  *  packId: ...,
  *  amountToOpen: ...,
@@ -120,6 +119,7 @@ export function encodeOpenPack(options: OpenPackParams) {
  * @extension ERC1155
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { openPack } from "thirdweb/extensions/erc1155";
  *
  * const transaction = openPack({
@@ -132,8 +132,7 @@ export function encodeOpenPack(options: OpenPackParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function openPack(

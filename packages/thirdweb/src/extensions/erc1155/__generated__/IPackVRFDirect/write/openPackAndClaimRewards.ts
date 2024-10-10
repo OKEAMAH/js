@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -47,21 +46,21 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `openPackAndClaimRewards` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `openPackAndClaimRewards` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `openPackAndClaimRewards` method is supported.
  * @extension ERC1155
  * @example
  * ```ts
  * import { isOpenPackAndClaimRewardsSupported } from "thirdweb/extensions/erc1155";
  *
- * const supported = await isOpenPackAndClaimRewardsSupported(contract);
+ * const supported = isOpenPackAndClaimRewardsSupported(["0x..."]);
  * ```
  */
-export async function isOpenPackAndClaimRewardsSupported(
-  contract: ThirdwebContract<any>,
+export function isOpenPackAndClaimRewardsSupported(
+  availableSelectors: string[],
 ) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -73,7 +72,7 @@ export async function isOpenPackAndClaimRewardsSupported(
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeOpenPackAndClaimRewardsParams } "thirdweb/extensions/erc1155";
+ * import { encodeOpenPackAndClaimRewardsParams } from "thirdweb/extensions/erc1155";
  * const result = encodeOpenPackAndClaimRewardsParams({
  *  packId: ...,
  *  amountToOpen: ...,
@@ -98,7 +97,7 @@ export function encodeOpenPackAndClaimRewardsParams(
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeOpenPackAndClaimRewards } "thirdweb/extensions/erc1155";
+ * import { encodeOpenPackAndClaimRewards } from "thirdweb/extensions/erc1155";
  * const result = encodeOpenPackAndClaimRewards({
  *  packId: ...,
  *  amountToOpen: ...,
@@ -124,6 +123,7 @@ export function encodeOpenPackAndClaimRewards(
  * @extension ERC1155
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { openPackAndClaimRewards } from "thirdweb/extensions/erc1155";
  *
  * const transaction = openPackAndClaimRewards({
@@ -137,8 +137,7 @@ export function encodeOpenPackAndClaimRewards(
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function openPackAndClaimRewards(

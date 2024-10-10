@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -44,19 +43,19 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `register` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `register` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `register` method is supported.
  * @extension FARCASTER
  * @example
  * ```ts
  * import { isRegisterSupported } from "thirdweb/extensions/farcaster";
  *
- * const supported = await isRegisterSupported(contract);
+ * const supported = isRegisterSupported(["0x..."]);
  * ```
  */
-export async function isRegisterSupported(contract: ThirdwebContract<any>) {
+export function isRegisterSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -68,7 +67,7 @@ export async function isRegisterSupported(contract: ThirdwebContract<any>) {
  * @extension FARCASTER
  * @example
  * ```ts
- * import { encodeRegisterParams } "thirdweb/extensions/farcaster";
+ * import { encodeRegisterParams } from "thirdweb/extensions/farcaster";
  * const result = encodeRegisterParams({
  *  recovery: ...,
  *  extraStorage: ...,
@@ -89,7 +88,7 @@ export function encodeRegisterParams(options: RegisterParams) {
  * @extension FARCASTER
  * @example
  * ```ts
- * import { encodeRegister } "thirdweb/extensions/farcaster";
+ * import { encodeRegister } from "thirdweb/extensions/farcaster";
  * const result = encodeRegister({
  *  recovery: ...,
  *  extraStorage: ...,
@@ -110,6 +109,7 @@ export function encodeRegister(options: RegisterParams) {
  * @extension FARCASTER
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { register } from "thirdweb/extensions/farcaster";
  *
  * const transaction = register({
@@ -122,8 +122,7 @@ export function encodeRegister(options: RegisterParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function register(

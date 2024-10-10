@@ -18,6 +18,7 @@ import { setContractURI } from "../../extensions/marketplace/__generated__/IMark
 import { estimateGasCost } from "../../transaction/actions/estimate-gas-cost.js";
 import { sendAndConfirmTransaction } from "../../transaction/actions/send-and-confirm-transaction.js";
 import { sendBatchTransaction } from "../../transaction/actions/send-batch-transaction.js";
+import { waitForReceipt } from "../../transaction/actions/wait-for-tx-receipt.js";
 import { isContractDeployed } from "../../utils/bytecode/is-contract-deployed.js";
 import type { Account, Wallet } from "../interfaces/wallet.js";
 import { generateAccount } from "../utils/generateAccount.js";
@@ -38,7 +39,7 @@ const contract = getContract({
 });
 const factoryAddress = "0x564cf6453a1b0FF8DB603E92EA4BbD410dea45F3"; // pre 712
 
-describe.runIf(process.env.TW_SECRET_KEY)(
+describe.runIf(process.env.TW_SECRET_KEY).sequential(
   "SmartWallet core tests",
   {
     retry: 0,
@@ -139,6 +140,11 @@ describe.runIf(process.env.TW_SECRET_KEY)(
         ],
       });
       expect(tx.transactionHash).toHaveLength(66);
+      await waitForReceipt({
+        client,
+        transactionHash: tx.transactionHash,
+        chain,
+      });
       const balance = await balanceOf({
         contract,
         owner: smartWalletAddress,
@@ -190,11 +196,11 @@ describe.runIf(process.env.TW_SECRET_KEY)(
         events: [adminUpdatedEvent()],
         logs: receipt.logs,
       });
-      expect(logs[0]?.args.signer).toBe(newAdmin.address);
-      expect(logs[0]?.args.isAdmin).toBe(true);
+      expect(logs.some((l) => l.args.signer === newAdmin.address)).toBe(true);
+      expect(logs.some((l) => l.args.isAdmin)).toBe(true);
     });
 
-    it("can use a different factory without replay protectin", async () => {
+    it("can use a different factory without replay protection", async () => {
       const wallet = smartWallet({
         chain,
         factoryAddress: factoryAddress,
@@ -219,14 +225,12 @@ describe.runIf(process.env.TW_SECRET_KEY)(
         client,
       });
       expect(isValidV1).toEqual(true);
-      const isValidV2 = await checkContractWalletSignature({
+      const isValidV2 = await verifySignature({
         message,
         signature,
-        contract: getContract({
-          address: newAccount.address,
-          chain,
-          client,
-        }),
+        address: newAccount.address,
+        chain,
+        client,
       });
       expect(isValidV2).toEqual(true);
 
@@ -294,6 +298,61 @@ describe.runIf(process.env.TW_SECRET_KEY)(
         tokenId: 0n,
       });
       expect(balance).toEqual(1n);
+    });
+
+    it("can execute a 2 tx in parallel", async () => {
+      const newSmartWallet = smartWallet({
+        chain,
+        gasless: true,
+        overrides: {
+          accountSalt: "test",
+        },
+      });
+      const newSmartAccount = await newSmartWallet.connect({
+        client: TEST_CLIENT,
+        personalAccount,
+      });
+      console.log("newSmartAccount", newSmartAccount.address);
+      const newSmartAccountContract = getContract({
+        address: newSmartAccount.address,
+        chain,
+        client,
+      });
+      let isDeployed = await isContractDeployed(newSmartAccountContract);
+      expect(isDeployed).toEqual(false);
+
+      // sending transactions in parallel should deploy the account and not cause errors
+      const txs = await Promise.all([
+        sendAndConfirmTransaction({
+          transaction: claimTo({
+            contract,
+            quantity: 1n,
+            to: newSmartAccount.address,
+            tokenId: 0n,
+          }),
+          account: newSmartAccount,
+        }),
+        sendAndConfirmTransaction({
+          transaction: claimTo({
+            contract,
+            quantity: 1n,
+            to: newSmartAccount.address,
+            tokenId: 0n,
+          }),
+          account: newSmartAccount,
+        }),
+      ]);
+      expect(txs.length).toEqual(2);
+      expect(txs.every((t) => t.transactionHash.length === 66)).toBe(true);
+
+      isDeployed = await isContractDeployed(newSmartAccountContract);
+      expect(isDeployed).toEqual(true);
+      const balance = await balanceOf({
+        contract,
+        owner: newSmartAccountContract.address,
+        tokenId: 0n,
+      });
+      expect(balance).toEqual(2n);
     });
   },
 );

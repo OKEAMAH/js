@@ -1,12 +1,7 @@
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { type Account, useUpdateAccount } from "@3rdweb-sdk/react/hooks/useApi";
-import {
-  Flex,
-  FormControl,
-  HStack,
-  Input,
-  VStack,
-  useColorModeValue,
-} from "@chakra-ui/react";
+import { Flex, FormControl } from "@chakra-ui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ManageBillingButton } from "components/settings/Account/Billing/ManageButton";
 import { useTrack } from "hooks/analytics/useTrack";
@@ -61,8 +56,6 @@ export const AccountForm: React.FC<AccountFormProps> = ({
     showSubscription && !!account.email?.length,
   );
   const trackEvent = useTrack();
-  const bg = useColorModeValue("backgroundCardHighlight", "transparent");
-
   const form = useForm<AccountValidationSchema>({
     resolver: zodResolver(accountValidationSchema),
     defaultValues: {
@@ -138,20 +131,15 @@ export const AccountForm: React.FC<AccountFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit}>
-      <VStack
-        alignItems="flex-start"
-        w="full"
-        gap={horizontal ? 6 : 8}
-        borderRadius="xl"
-        borderColor="borderColor"
-        borderWidth={padded ? 1 : 0}
-        bg={bg}
-        p={padded ? 6 : 0}
+      <div
+        className={cn(
+          "flex w-full flex-col items-start rounded-xl bg-background",
+          horizontal ? "gap-6" : "gap-8",
+          padded ? "border border-border p-6" : "p-0",
+        )}
       >
-        <Flex
-          gap={horizontal ? 4 : 8}
-          flexDir={horizontal ? "row" : "column"}
-          w="full"
+        <div
+          className={cn("flex w-full", horizontal ? "gap-4" : "flex-col gap-6")}
         >
           <FormControl
             isRequired
@@ -228,11 +216,13 @@ export const AccountForm: React.FC<AccountFormProps> = ({
               <Text>Subscribe to new features and key product updates</Text>
             </Checkbox>
           )}
-        </Flex>
+        </div>
 
-        <HStack
-          justifyContent={showBillingButton ? "space-between" : "flex-end"}
-          w="full"
+        <div
+          className={cn(
+            "flex w-full flex-row items-center gap-2",
+            showBillingButton ? "justify-between" : "justify-end",
+          )}
         >
           {showBillingButton && <ManageBillingButton account={account} />}
 
@@ -243,16 +233,16 @@ export const AccountForm: React.FC<AccountFormProps> = ({
               onClick={handleSubmit}
               colorScheme={buttonProps?.variant ? undefined : "blue"}
               isDisabled={
-                updateMutation.isLoading ||
+                updateMutation.isPending ||
                 (disableUnchanged && !form.formState.isDirty)
               }
-              isLoading={updateMutation.isLoading}
+              isLoading={updateMutation.isPending}
             >
               {buttonText}
             </Button>
           )}
-        </HStack>
-      </VStack>
+        </div>
+      </div>
     </form>
   );
 };

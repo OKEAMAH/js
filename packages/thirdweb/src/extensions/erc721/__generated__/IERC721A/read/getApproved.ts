@@ -4,7 +4,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -29,19 +28,18 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `getApproved` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `getApproved` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `getApproved` method is supported.
  * @extension ERC721
  * @example
  * ```ts
  * import { isGetApprovedSupported } from "thirdweb/extensions/erc721";
- *
- * const supported = await isGetApprovedSupported(contract);
+ * const supported = isGetApprovedSupported(["0x..."]);
  * ```
  */
-export async function isGetApprovedSupported(contract: ThirdwebContract<any>) {
+export function isGetApprovedSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -53,7 +51,7 @@ export async function isGetApprovedSupported(contract: ThirdwebContract<any>) {
  * @extension ERC721
  * @example
  * ```ts
- * import { encodeGetApprovedParams } "thirdweb/extensions/erc721";
+ * import { encodeGetApprovedParams } from "thirdweb/extensions/erc721";
  * const result = encodeGetApprovedParams({
  *  tokenId: ...,
  * });
@@ -70,7 +68,7 @@ export function encodeGetApprovedParams(options: GetApprovedParams) {
  * @extension ERC721
  * @example
  * ```ts
- * import { encodeGetApproved } "thirdweb/extensions/erc721";
+ * import { encodeGetApproved } from "thirdweb/extensions/erc721";
  * const result = encodeGetApproved({
  *  tokenId: ...,
  * });
@@ -93,7 +91,7 @@ export function encodeGetApproved(options: GetApprovedParams) {
  * @example
  * ```ts
  * import { decodeGetApprovedResult } from "thirdweb/extensions/erc721";
- * const result = decodeGetApprovedResult("...");
+ * const result = decodeGetApprovedResultResult("...");
  * ```
  */
 export function decodeGetApprovedResult(result: Hex) {

@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -40,19 +39,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `remove` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `remove` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `remove` method is supported.
  * @extension THIRDWEB
  * @example
  * ```ts
  * import { isRemoveSupported } from "thirdweb/extensions/thirdweb";
  *
- * const supported = await isRemoveSupported(contract);
+ * const supported = isRemoveSupported(["0x..."]);
  * ```
  */
-export async function isRemoveSupported(contract: ThirdwebContract<any>) {
+export function isRemoveSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -64,7 +63,7 @@ export async function isRemoveSupported(contract: ThirdwebContract<any>) {
  * @extension THIRDWEB
  * @example
  * ```ts
- * import { encodeRemoveParams } "thirdweb/extensions/thirdweb";
+ * import { encodeRemoveParams } from "thirdweb/extensions/thirdweb";
  * const result = encodeRemoveParams({
  *  deployer: ...,
  *  deployment: ...,
@@ -87,7 +86,7 @@ export function encodeRemoveParams(options: RemoveParams) {
  * @extension THIRDWEB
  * @example
  * ```ts
- * import { encodeRemove } "thirdweb/extensions/thirdweb";
+ * import { encodeRemove } from "thirdweb/extensions/thirdweb";
  * const result = encodeRemove({
  *  deployer: ...,
  *  deployment: ...,
@@ -109,6 +108,7 @@ export function encodeRemove(options: RemoveParams) {
  * @extension THIRDWEB
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { remove } from "thirdweb/extensions/thirdweb";
  *
  * const transaction = remove({
@@ -122,8 +122,7 @@ export function encodeRemove(options: RemoveParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function remove(

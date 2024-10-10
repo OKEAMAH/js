@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -27,21 +26,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `incrementNonce` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `incrementNonce` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `incrementNonce` method is supported.
  * @extension ERC4337
  * @example
  * ```ts
  * import { isIncrementNonceSupported } from "thirdweb/extensions/erc4337";
  *
- * const supported = await isIncrementNonceSupported(contract);
+ * const supported = isIncrementNonceSupported(["0x..."]);
  * ```
  */
-export async function isIncrementNonceSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isIncrementNonceSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -53,7 +50,7 @@ export async function isIncrementNonceSupported(
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeIncrementNonceParams } "thirdweb/extensions/erc4337";
+ * import { encodeIncrementNonceParams } from "thirdweb/extensions/erc4337";
  * const result = encodeIncrementNonceParams({
  *  key: ...,
  * });
@@ -70,7 +67,7 @@ export function encodeIncrementNonceParams(options: IncrementNonceParams) {
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeIncrementNonce } "thirdweb/extensions/erc4337";
+ * import { encodeIncrementNonce } from "thirdweb/extensions/erc4337";
  * const result = encodeIncrementNonce({
  *  key: ...,
  * });
@@ -92,6 +89,7 @@ export function encodeIncrementNonce(options: IncrementNonceParams) {
  * @extension ERC4337
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { incrementNonce } from "thirdweb/extensions/erc4337";
  *
  * const transaction = incrementNonce({
@@ -103,8 +101,7 @@ export function encodeIncrementNonce(options: IncrementNonceParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function incrementNonce(

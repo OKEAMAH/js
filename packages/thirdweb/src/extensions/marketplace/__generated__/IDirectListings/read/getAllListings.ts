@@ -4,7 +4,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -85,21 +84,18 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `getAllListings` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `getAllListings` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `getAllListings` method is supported.
  * @extension MARKETPLACE
  * @example
  * ```ts
  * import { isGetAllListingsSupported } from "thirdweb/extensions/marketplace";
- *
- * const supported = await isGetAllListingsSupported(contract);
+ * const supported = isGetAllListingsSupported(["0x..."]);
  * ```
  */
-export async function isGetAllListingsSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isGetAllListingsSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -111,7 +107,7 @@ export async function isGetAllListingsSupported(
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeGetAllListingsParams } "thirdweb/extensions/marketplace";
+ * import { encodeGetAllListingsParams } from "thirdweb/extensions/marketplace";
  * const result = encodeGetAllListingsParams({
  *  startId: ...,
  *  endId: ...,
@@ -129,7 +125,7 @@ export function encodeGetAllListingsParams(options: GetAllListingsParams) {
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeGetAllListings } "thirdweb/extensions/marketplace";
+ * import { encodeGetAllListings } from "thirdweb/extensions/marketplace";
  * const result = encodeGetAllListings({
  *  startId: ...,
  *  endId: ...,
@@ -153,7 +149,7 @@ export function encodeGetAllListings(options: GetAllListingsParams) {
  * @example
  * ```ts
  * import { decodeGetAllListingsResult } from "thirdweb/extensions/marketplace";
- * const result = decodeGetAllListingsResult("...");
+ * const result = decodeGetAllListingsResultResult("...");
  * ```
  */
 export function decodeGetAllListingsResult(result: Hex) {

@@ -1,46 +1,43 @@
-import { Center, Flex, Skeleton } from "@chakra-ui/react";
-import { useContract } from "@thirdweb-dev/react";
-import type { Abi } from "@thirdweb-dev/sdk";
-import { useContractFunctions } from "components/contract-components/hooks";
+"use client";
+
+import { Flex } from "@chakra-ui/react";
+import type { Abi } from "abitype";
+import { getContractFunctionsFromAbi } from "components/contract-components/getContractFunctionsFromAbi";
 import { ContractFunctionsOverview } from "components/contract-functions/contract-functions";
-import { Heading, Text } from "tw-components";
+import type { ThirdwebContract } from "thirdweb";
 
-interface ContractCodePageProps {
-  contractAddress?: string;
+// TODO - figure out why we have to add "use client" here and it does not work without it
+
+interface ContractExplorePageProps {
+  contract: ThirdwebContract;
+  abi: Abi;
 }
-
-export const ContractExplorerPage: React.FC<ContractCodePageProps> = ({
-  contractAddress,
+export const ContractExplorerPage: React.FC<ContractExplorePageProps> = ({
+  contract,
+  abi,
 }) => {
-  const { contract } = useContract(contractAddress);
-
-  const functions = useContractFunctions(contract?.abi as Abi);
-  if (!contractAddress) {
-    return <div>No contract address provided</div>;
-  }
+  const functions = getContractFunctionsFromAbi(abi);
   return (
     <Flex direction="column" h="70vh">
-      <Skeleton height="100%" isLoaded={!!contract}>
-        {functions && functions.length > 0 ? (
-          <ContractFunctionsOverview
-            onlyFunctions
-            functions={functions}
-            contract={contract}
-          />
-        ) : (
-          <Center>
-            <Flex direction="column" textAlign="center" gap={2}>
-              <Heading as="p" size="label.md">
-                No callable functions discovered in ABI.
-              </Heading>
-              <Text>
-                Please note that proxy contracts are not yet supported in the
-                explorer, check back soon for full proxy support.
-              </Text>
-            </Flex>
-          </Center>
-        )}
-      </Skeleton>
+      {functions && functions.length > 0 ? (
+        <ContractFunctionsOverview
+          onlyFunctions
+          functions={functions}
+          contract={contract}
+        />
+      ) : (
+        <div className="flex items-center justify-center">
+          <Flex direction="column" textAlign="center" gap={2}>
+            <h2 className="font-semibold text-2xl tracking-tight">
+              No callable functions discovered in ABI.
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Please note that proxy contracts are not yet supported in the
+              explorer, check back soon for full proxy support.
+            </p>
+          </Flex>
+        </div>
+      )}
     </Flex>
   );
 };

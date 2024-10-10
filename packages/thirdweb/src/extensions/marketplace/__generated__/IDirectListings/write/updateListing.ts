@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -82,21 +81,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `updateListing` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `updateListing` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `updateListing` method is supported.
  * @extension MARKETPLACE
  * @example
  * ```ts
  * import { isUpdateListingSupported } from "thirdweb/extensions/marketplace";
  *
- * const supported = await isUpdateListingSupported(contract);
+ * const supported = isUpdateListingSupported(["0x..."]);
  * ```
  */
-export async function isUpdateListingSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isUpdateListingSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -108,7 +105,7 @@ export async function isUpdateListingSupported(
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeUpdateListingParams } "thirdweb/extensions/marketplace";
+ * import { encodeUpdateListingParams } from "thirdweb/extensions/marketplace";
  * const result = encodeUpdateListingParams({
  *  listingId: ...,
  *  params: ...,
@@ -126,7 +123,7 @@ export function encodeUpdateListingParams(options: UpdateListingParams) {
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeUpdateListing } "thirdweb/extensions/marketplace";
+ * import { encodeUpdateListing } from "thirdweb/extensions/marketplace";
  * const result = encodeUpdateListing({
  *  listingId: ...,
  *  params: ...,
@@ -149,6 +146,7 @@ export function encodeUpdateListing(options: UpdateListingParams) {
  * @extension MARKETPLACE
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { updateListing } from "thirdweb/extensions/marketplace";
  *
  * const transaction = updateListing({
@@ -161,8 +159,7 @@ export function encodeUpdateListing(options: UpdateListingParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function updateListing(

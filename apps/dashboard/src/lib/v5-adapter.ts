@@ -1,37 +1,42 @@
-import type { Chain } from "@thirdweb-dev/chains";
-import { defineChain } from "thirdweb";
+"use client";
+
+import { defineDashboardChain } from "lib/defineDashboardChain";
+import { useMemo } from "react";
+import type { Chain, ChainMetadata } from "thirdweb/chains";
 import { useActiveWalletChain } from "thirdweb/react";
-import { PROD_OR_DEV_URL } from "../constants/rpc";
-import { useSupportedChainsRecord } from "../hooks/chains/configureChains";
+import { useAllChainsData } from "../hooks/chains/allChains";
 
-export function defineDashboardChain(chainId: number, dashboardChain?: Chain) {
-  return defineChain({
-    id: chainId,
-    rpc:
-      dashboardChain?.rpc?.[0] || `https://${chainId}.rpc.${PROD_OR_DEV_URL}`,
-    slug: dashboardChain?.slug,
-    nativeCurrency: dashboardChain?.nativeCurrency,
-  });
-}
+export function useV5DashboardChain(chainId: undefined): undefined;
+export function useV5DashboardChain(chainId: number): Chain;
+export function useV5DashboardChain(
+  chainId: number | undefined,
+): Chain | undefined;
+export function useV5DashboardChain(
+  chainId: number | undefined,
+): Chain | undefined {
+  const { idToChain } = useAllChainsData();
 
-export function useV5DashboardChain(chainId: number) {
-  const configuredChainsRecord = useSupportedChainsRecord();
-  let configuedChain = undefined;
-  if (chainId in configuredChainsRecord) {
-    configuedChain = configuredChainsRecord[chainId as number];
-  }
-  return defineDashboardChain(chainId, configuedChain);
+  // memo is very very important!
+  return useMemo(() => {
+    if (chainId === undefined) {
+      return undefined;
+    }
+
+    // eslint-disable-next-line no-restricted-syntax
+    return defineDashboardChain(chainId, idToChain.get(chainId));
+  }, [chainId, idToChain]);
 }
 
 /**
  * same behavior as v4 `useChain()` but for v5
  */
-export function useActiveChainAsDashboardChain(): Chain | undefined {
-  const activeChain = useActiveWalletChain()?.id;
-  const configuredChainsRecord = useSupportedChainsRecord();
+export function useActiveChainAsDashboardChain(): ChainMetadata | undefined {
+  // eslint-disable-next-line no-restricted-syntax
+  const activeChainId = useActiveWalletChain()?.id;
+  const { idToChain } = useAllChainsData();
 
-  if (activeChain && activeChain in configuredChainsRecord) {
-    return configuredChainsRecord[activeChain as number];
-  }
-  return undefined;
+  // memo is very very important!
+  return useMemo(() => {
+    return activeChainId ? idToChain.get(activeChainId) : undefined;
+  }, [activeChainId, idToChain]);
 }

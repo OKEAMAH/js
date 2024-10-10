@@ -4,7 +4,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -38,19 +37,18 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `getStakeInfo` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `getStakeInfo` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `getStakeInfo` method is supported.
  * @extension ERC1155
  * @example
  * ```ts
  * import { isGetStakeInfoSupported } from "thirdweb/extensions/erc1155";
- *
- * const supported = await isGetStakeInfoSupported(contract);
+ * const supported = isGetStakeInfoSupported(["0x..."]);
  * ```
  */
-export async function isGetStakeInfoSupported(contract: ThirdwebContract<any>) {
+export function isGetStakeInfoSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -62,7 +60,7 @@ export async function isGetStakeInfoSupported(contract: ThirdwebContract<any>) {
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeGetStakeInfoParams } "thirdweb/extensions/erc1155";
+ * import { encodeGetStakeInfoParams } from "thirdweb/extensions/erc1155";
  * const result = encodeGetStakeInfoParams({
  *  staker: ...,
  * });
@@ -79,7 +77,7 @@ export function encodeGetStakeInfoParams(options: GetStakeInfoParams) {
  * @extension ERC1155
  * @example
  * ```ts
- * import { encodeGetStakeInfo } "thirdweb/extensions/erc1155";
+ * import { encodeGetStakeInfo } from "thirdweb/extensions/erc1155";
  * const result = encodeGetStakeInfo({
  *  staker: ...,
  * });
@@ -102,7 +100,7 @@ export function encodeGetStakeInfo(options: GetStakeInfoParams) {
  * @example
  * ```ts
  * import { decodeGetStakeInfoResult } from "thirdweb/extensions/erc1155";
- * const result = decodeGetStakeInfoResult("...");
+ * const result = decodeGetStakeInfoResultResult("...");
  * ```
  */
 export function decodeGetStakeInfoResult(result: Hex) {

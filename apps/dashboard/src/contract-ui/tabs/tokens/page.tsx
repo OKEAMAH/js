@@ -1,6 +1,7 @@
-import { Box, ButtonGroup, Flex } from "@chakra-ui/react";
-import { type TokenContract, useContract } from "@thirdweb-dev/react";
-import { detectFeatures } from "components/contract-components/utils";
+"use client";
+
+import { Flex } from "@chakra-ui/react";
+import type { ThirdwebContract } from "thirdweb";
 import { Card, Heading, LinkButton, Text } from "tw-components";
 import { TokenAirdropButton } from "./components/airdrop-button";
 import { TokenBurnButton } from "./components/burn-button";
@@ -10,29 +11,18 @@ import { TokenSupply } from "./components/supply";
 import { TokenTransferButton } from "./components/transfer-button";
 
 interface ContractTokenPageProps {
-  contractAddress?: string;
+  contract: ThirdwebContract;
+  isERC20: boolean;
+  isMintToSupported: boolean;
+  isClaimToSupported: boolean;
 }
 
 export const ContractTokensPage: React.FC<ContractTokenPageProps> = ({
-  contractAddress,
+  contract,
+  isERC20,
+  isMintToSupported,
+  isClaimToSupported,
 }) => {
-  const contractQuery = useContract(contractAddress);
-  const chainId = contractQuery.contract?.chainId;
-
-  if (
-    contractQuery.isLoading ||
-    !contractQuery?.contract ||
-    !contractAddress ||
-    !chainId
-  ) {
-    // TODO build a skeleton for this
-    return <div>Loading...</div>;
-  }
-
-  const isERC20 = detectFeatures<TokenContract>(contractQuery.contract, [
-    "ERC20",
-  ]);
-
   if (!isERC20) {
     return (
       <Card as={Flex} flexDir="column" gap={3}>
@@ -42,7 +32,7 @@ export const ContractTokensPage: React.FC<ContractTokenPageProps> = ({
           To enable Token features you will have to extend an ERC20 interface in
           your contract.
         </Text>
-        <Box>
+        <div>
           <LinkButton
             isExternal
             href="https://portal.thirdweb.com/contracts/build/extensions/erc-20/ERC20"
@@ -50,42 +40,25 @@ export const ContractTokensPage: React.FC<ContractTokenPageProps> = ({
           >
             Learn more
           </LinkButton>
-        </Box>
+        </div>
       </Card>
     );
   }
 
   return (
     <Flex direction="column" gap={6}>
-      <Flex direction="row" justify="space-between" align="center">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <Heading size="title.sm">Contract Tokens</Heading>
-        <ButtonGroup
-          flexDirection={{ base: "column", md: "row" }}
-          gap={2}
-          w="inherit"
-        >
-          {/* TODO: update (claimable detection) */}
-          <TokenClaimButton contractQuery={contractQuery} />
-          <TokenBurnButton
-            contractAddress={contractAddress}
-            chainId={chainId}
-          />
+        <div className="flex flex-col gap-3 md:flex-row">
+          {isClaimToSupported && <TokenClaimButton contract={contract} />}
+          <TokenBurnButton contract={contract} />
+          <TokenAirdropButton contract={contract} />
+          <TokenTransferButton contract={contract} />
+          {isMintToSupported && <TokenMintButton contract={contract} />}
+        </div>
+      </div>
 
-          <TokenAirdropButton
-            contractAddress={contractAddress}
-            chainId={chainId}
-          />
-
-          <TokenTransferButton
-            contractAddress={contractAddress}
-            chainId={chainId}
-          />
-          {/* TODO: update (mintable detection) */}
-          <TokenMintButton contractQuery={contractQuery} />
-        </ButtonGroup>
-      </Flex>
-
-      <TokenSupply contractAddress={contractAddress} chainId={chainId} />
+      <TokenSupply contract={contract} />
     </Flex>
   );
 };

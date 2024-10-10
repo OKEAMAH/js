@@ -4,6 +4,9 @@ import { fetchProofsERC1155 } from "../../../utils/extensions/airdrop/fetch-proo
 import { tokenMerkleRoot } from "../__generated__/Airdrop/read/tokenMerkleRoot.js";
 import { claimERC1155 as generatedClaimERC1155 } from "../__generated__/Airdrop/write/claimERC1155.js";
 
+/**
+ * @extension AIRDROP
+ */
 export type ClaimERC1155Params = {
   tokenAddress: string;
   recipient: string;
@@ -29,7 +32,7 @@ export type ClaimERC1155Params = {
  * await sendTransaction({ claimTransaction, account });
  *
  * ```
- * @extension Airdrop
+ * @extension AIRDROP
  * @returns A promise that resolves to the transaction result.
  */
 export function claimERC1155(

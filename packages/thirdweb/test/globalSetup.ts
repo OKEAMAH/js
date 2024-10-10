@@ -1,14 +1,17 @@
-import { sha256 } from "@noble/hashes/sha256";
 import { startProxy } from "@viem/anvil";
-import { FORK_BLOCK_NUMBER, OPTIMISM_FORK_BLOCK_NUMBER } from "./src/chains.js";
+import { computeClientIdFromSecretKey } from "../src/utils/client-id.js";
+import {
+  BASE_FORK_BLOCK_NUMBER,
+  FORK_BLOCK_NUMBER,
+  OPTIMISM_FORK_BLOCK_NUMBER,
+  POLYGON_FORK_BLOCK_NUMBER,
+} from "./src/chains.js";
 
 require("dotenv-mono").load();
 
 const SECRET_KEY = process.env.TW_SECRET_KEY as string;
 
-const clientId = SECRET_KEY
-  ? Buffer.from(sha256(SECRET_KEY)).toString("hex").slice(0, 32)
-  : "";
+const clientId = computeClientIdFromSecretKey(SECRET_KEY);
 
 export default async function globalSetup() {
   const shutdownMainnet = await startProxy({
@@ -61,10 +64,51 @@ export default async function globalSetup() {
     port: 8648,
   });
 
+  // TODO re-enable thirdweb RPC for this fork
+  // forkUrl: SECRET_KEY
+  //       ? `https://137.rpc.thirdweb.com/${clientId}`
+  //       : "https://polygon-rpc.com",
+  //     forkHeader: SECRET_KEY ? { "x-secret-key": SECRET_KEY } : {},
+  const shutdownPolygon = await startProxy({
+    port: 8649,
+    options: {
+      chainId: 137,
+      // using public rpc for now
+      forkUrl: "https://polygon-rpc.com",
+      forkHeader: SECRET_KEY ? { "x-secret-key": SECRET_KEY } : {},
+      forkChainId: 137,
+      forkBlockNumber: POLYGON_FORK_BLOCK_NUMBER,
+      noMining: false,
+      startTimeout: 20000,
+    },
+  });
+
+  const shutdownBase = await startProxy({
+    port: 8650,
+    options: {
+      chainId: 8453,
+      forkUrl: SECRET_KEY
+        ? `https://8453.rpc.thirdweb.com/${clientId}`
+        : "https://mainnet.base.org",
+      forkHeader: SECRET_KEY ? { "x-secret-key": SECRET_KEY } : {},
+      forkChainId: 8453,
+      forkBlockNumber: BASE_FORK_BLOCK_NUMBER,
+      noMining: true,
+      startTimeout: 20000,
+    },
+  });
+
+  const shutdownCleanAnvil = await startProxy({
+    port: 8651,
+  });
+
   return async () => {
     await shutdownMainnet();
     await shutdownMainnetWithMining();
     await shutdownOptimism();
     await shutdownAnvil();
+    await shutdownPolygon();
+    await shutdownBase();
+    await shutdownCleanAnvil();
   };
 }

@@ -1,5 +1,5 @@
 import {
-  ADDRESS_ZERO,
+  ZERO_ADDRESS,
   isNativeTokenAddress,
 } from "../../../constants/addresses.js";
 import type { BaseTransactionOptions } from "../../../transaction/types.js";
@@ -8,6 +8,9 @@ import { fetchProofsERC20 } from "../../../utils/extensions/airdrop/fetch-proofs
 import { tokenMerkleRoot } from "../__generated__/Airdrop/read/tokenMerkleRoot.js";
 import { claimERC20 as generatedClaimERC20 } from "../__generated__/Airdrop/write/claimERC20.js";
 
+/**
+ * @extension AIRDROP
+ */
 export type ClaimERC20Params = {
   tokenAddress: string;
   recipient: string;
@@ -33,7 +36,7 @@ export type ClaimERC20Params = {
  * await sendTransaction({ claimTransaction, account });
  *
  * ```
- * @extension Airdrop
+ * @extension AIRDROP
  * @returns A promise that resolves to the transaction result.
  */
 export function claimERC20(options: BaseTransactionOptions<ClaimERC20Params>) {
@@ -49,7 +52,7 @@ export function claimERC20(options: BaseTransactionOptions<ClaimERC20Params>) {
       const tokenDecimals = await (async () => {
         if (
           isNativeTokenAddress(tokenAddress) ||
-          tokenAddress === ADDRESS_ZERO
+          tokenAddress === ZERO_ADDRESS
         ) {
           throw new Error(
             "Token address can't be zero address or native token",

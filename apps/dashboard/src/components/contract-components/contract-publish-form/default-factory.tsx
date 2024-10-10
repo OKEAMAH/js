@@ -1,20 +1,15 @@
 import { Flex, FormControl, ListItem, UnorderedList } from "@chakra-ui/react";
-import type { Abi } from "@thirdweb-dev/sdk";
+import type { Abi } from "abitype";
 import { useFormContext } from "react-hook-form";
 import { Heading, Link, Text } from "tw-components";
 import { AbiSelector } from "./abi-selector";
-import { DynamicContractsFieldset } from "./dynamic-contract-fieldset";
 import { NetworksFieldset } from "./networks-fieldset";
 
 interface DefaultFactoryProps {
   abi: Abi;
-  shouldShowDynamicFactoryInput: boolean;
 }
 
-export const DefaultFactory: React.FC<DefaultFactoryProps> = ({
-  abi,
-  shouldShowDynamicFactoryInput,
-}) => {
+export const DefaultFactory: React.FC<DefaultFactoryProps> = ({ abi }) => {
   const form = useFormContext();
 
   return (
@@ -68,7 +63,6 @@ export const DefaultFactory: React.FC<DefaultFactoryProps> = ({
         </FormControl>
       </Flex>
       <NetworksFieldset />
-      {shouldShowDynamicFactoryInput && <DynamicContractsFieldset />}
     </Flex>
   );
 };

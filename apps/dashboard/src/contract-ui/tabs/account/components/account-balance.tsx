@@ -1,16 +1,23 @@
-import { useBalanceForAddress } from "@3rdweb-sdk/react/hooks/useBalanceForAddress";
+"use client";
+
 import { useSplitBalances } from "@3rdweb-sdk/react/hooks/useSplit";
 import { SimpleGrid, Stat, StatLabel, StatNumber } from "@chakra-ui/react";
+import type { ThirdwebContract } from "thirdweb";
+import { useActiveWalletChain, useWalletBalance } from "thirdweb/react";
 import { Card } from "tw-components";
 
 interface AccountBalanceProps {
-  address: string;
+  contract: ThirdwebContract;
 }
 
-export const AccountBalance: React.FC<AccountBalanceProps> = ({ address }) => {
-  const { data: balance } = useBalanceForAddress(address);
-
-  const balanceQuery = useSplitBalances(address);
+export const AccountBalance: React.FC<AccountBalanceProps> = ({ contract }) => {
+  const activeChain = useActiveWalletChain();
+  const { data: balance } = useWalletBalance({
+    address: contract.address,
+    chain: activeChain,
+    client: contract.client,
+  });
+  const balanceQuery = useSplitBalances(contract);
 
   return (
     <SimpleGrid spacing={{ base: 3, md: 6 }} columns={{ base: 2, md: 4 }}>

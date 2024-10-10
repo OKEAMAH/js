@@ -2,7 +2,10 @@ import { keccakId } from "../../utils/any-evm/keccak-id.js";
 import { LruMap } from "../../utils/caching/lru.js";
 import { type Hex, isHex, padHex } from "../../utils/encoding/hex.js";
 
-const roleMap = {
+/**
+ * A map of all current thirdweb's smart contract roles
+ */
+export const roleMap = {
   admin: "",
   transfer: "TRANSFER_ROLE",
   minter: "MINTER_ROLE",
@@ -17,14 +20,12 @@ const roleMap = {
   migration: "MIGRATION_ROLE",
 } as const;
 
-export type ThirdwebContractRole = keyof typeof roleMap;
+/**
+ * @extension PERMISSIONS
+ */
+type ThirdwebContractRole = keyof typeof roleMap;
 
-export const ALL_ROLES = /* @__PURE__ */ (() =>
-  Object.keys(roleMap))() as ThirdwebContractRole[];
-
-export function isThirdwebContractRole(
-  role: string,
-): role is ThirdwebContractRole {
+function isThirdwebContractRole(role: string): role is ThirdwebContractRole {
   return role in roleMap;
 }
 
@@ -32,6 +33,18 @@ export type RoleInput = ThirdwebContractRole | Hex | (string & {});
 
 const roleCache = new LruMap<Hex>(128);
 
+/**
+ * Get a hex value of a smart contract role
+ * You need the hex value to interact with the smart contracts.
+ * @param role string
+ * @returns hex value of the contract role
+ *
+ * @example
+ * ```ts
+ * const adminRoleHash = getRoleHash("admin"); // 0x0000000...000000
+ * ```
+ * @extension PERMISSIONS
+ */
 export function getRoleHash(role: RoleInput) {
   if (roleCache.has(role)) {
     // biome-ignore lint/style/noNonNullAssertion: we know it's in the cache

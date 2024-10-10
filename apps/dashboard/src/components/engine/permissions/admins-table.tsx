@@ -1,3 +1,5 @@
+import { WalletAddress } from "@/components/blocks/wallet-address";
+import { Badge } from "@/components/ui/badge";
 import {
   type EngineAdmin,
   useEngineGrantPermissions,
@@ -14,7 +16,6 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
-  Stack,
   type UseDisclosureReturn,
   useDisclosure,
 } from "@chakra-ui/react";
@@ -25,13 +26,12 @@ import { useTxNotifications } from "hooks/useTxNotifications";
 import { useState } from "react";
 import { BiPencil } from "react-icons/bi";
 import { FiTrash } from "react-icons/fi";
-import { Badge, Button, FormLabel, Text } from "tw-components";
-import { AddressCopyButton } from "tw-components/AddressCopyButton";
+import { Button, FormLabel, Text } from "tw-components";
 
 interface AdminsTableProps {
   instanceUrl: string;
   admins: EngineAdmin[];
-  isLoading: boolean;
+  isPending: boolean;
   isFetched: boolean;
 }
 
@@ -42,14 +42,7 @@ const columns = [
     header: "Address",
     cell: (cell) => {
       const address = cell.getValue();
-      return (
-        <AddressCopyButton
-          address={address}
-          shortenAddress={false}
-          size="xs"
-          my={2}
-        />
-      );
+      return <WalletAddress address={address} />;
     },
   }),
   columnHelper.accessor("label", {
@@ -65,18 +58,7 @@ const columns = [
   columnHelper.accessor("permissions", {
     header: "Role",
     cell: (cell) => {
-      return (
-        <Badge
-          borderRadius="full"
-          size="label.sm"
-          variant="subtle"
-          px={3}
-          py={1.5}
-          colorScheme="black"
-        >
-          {cell.getValue()}
-        </Badge>
-      );
+      return <Badge variant="default">{cell.getValue()}</Badge>;
     },
   }),
 ];
@@ -84,7 +66,7 @@ const columns = [
 export const AdminsTable: React.FC<AdminsTableProps> = ({
   instanceUrl,
   admins,
-  isLoading,
+  isPending,
   isFetched,
 }) => {
   const editDisclosure = useDisclosure();
@@ -97,7 +79,7 @@ export const AdminsTable: React.FC<AdminsTableProps> = ({
         title="admins"
         data={admins}
         columns={columns}
-        isLoading={isLoading}
+        isPending={isPending}
         isFetched={isFetched}
         onMenuClick={[
           {
@@ -191,11 +173,11 @@ const EditModal = ({
   return (
     <Modal isOpen={disclosure.isOpen} onClose={disclosure.onClose} isCentered>
       <ModalOverlay />
-      <ModalContent>
+      <ModalContent className="!bg-background rounded-lg border border-border">
         <ModalHeader>Update Admin</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          <Stack spacing={4}>
+          <div className="flex flex-col gap-4">
             <FormControl>
               <FormLabel>Wallet Address</FormLabel>
               <Text>{admin.walletAddress}</Text>
@@ -209,7 +191,7 @@ const EditModal = ({
                 placeholder="Enter a description for this admin"
               />
             </FormControl>
-          </Stack>
+          </div>
         </ModalBody>
 
         <ModalFooter as={Flex} gap={3}>
@@ -274,11 +256,11 @@ const RemoveModal = ({
   return (
     <Modal isOpen={disclosure.isOpen} onClose={disclosure.onClose} isCentered>
       <ModalOverlay />
-      <ModalContent>
+      <ModalContent className="!bg-background rounded-lg border border-border">
         <ModalHeader>Remove Admin</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          <Stack spacing={4}>
+          <div className="flex flex-col gap-4">
             <Text>Are you sure you want to remove this admin?</Text>
             <FormControl>
               <FormLabel>Wallet Address</FormLabel>
@@ -288,7 +270,7 @@ const RemoveModal = ({
               <FormLabel>Label</FormLabel>
               <Text>{admin.label ?? <em>N/A</em>}</Text>
             </FormControl>
-          </Stack>
+          </div>
         </ModalBody>
 
         <ModalFooter as={Flex} gap={3}>

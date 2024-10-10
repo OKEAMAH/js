@@ -1,25 +1,23 @@
 import { useIsAdmin } from "@3rdweb-sdk/react/hooks/useContractRoles";
-import { Flex, Icon, Select, Spinner, Stack } from "@chakra-ui/react";
-import type { ValidContractInstance } from "@thirdweb-dev/sdk";
-import { constants } from "ethers";
+import { Flex, Icon, Select, Spinner } from "@chakra-ui/react";
 import { useFormContext } from "react-hook-form";
 import { FiInfo } from "react-icons/fi";
+import { type ThirdwebContract, ZERO_ADDRESS } from "thirdweb";
 import { Card, Heading, Text } from "tw-components";
 import { PermissionEditor } from "./permissions-editor";
 
 interface ContractPermissionProps {
   role: string;
   description: string;
-  isLoading: boolean;
-  isPrebuilt: boolean;
-  contract: ValidContractInstance;
+  isPending: boolean;
+  contract: ThirdwebContract;
 }
 
 export const ContractPermission: React.FC<ContractPermissionProps> = ({
   role,
   description,
-  isLoading,
-  isPrebuilt,
+  isPending,
+
   contract,
 }) => {
   const {
@@ -30,29 +28,28 @@ export const ContractPermission: React.FC<ContractPermissionProps> = ({
 
   const roleMembers: string[] = watch()?.[role] || [];
   const isRestricted =
-    !roleMembers.includes(constants.AddressZero) ||
+    !roleMembers.includes(ZERO_ADDRESS) ||
     (role !== "transfer" && role !== "lister" && role !== "asset");
-
-  const isAdmin = useIsAdmin(contract as ValidContractInstance);
+  const isAdmin = useIsAdmin(contract);
 
   return (
     <Card position="relative">
       <Flex direction="column" gap={3}>
-        <Stack spacing={2} mb="12px">
-          <Flex>
-            <Stack spacing={1} flexGrow={1}>
+        <div className="mb-3 flex flex-col gap-2">
+          <div className="flex flex-row">
+            <div className="flex grow flex-col gap-1">
               <Heading size="subtitle.sm" textTransform="capitalize">
                 {role === "minter" ? "Minter / Creator" : role}
               </Heading>
               <Text>{description}</Text>
-            </Stack>
+            </div>
 
             {role === "transfer" && (
               <Flex align="center" justify="center" flexGrow={0} flexShrink={0}>
-                {isLoading || isSubmitting ? (
+                {isPending || isSubmitting ? (
                   <Flex align="center" gap={2} px={2}>
                     <Spinner size="sm" />
-                    <Text>{isLoading ? "Loading ..." : "Updating ..."}</Text>
+                    <Text>{isPending ? "Loading ..." : "Updating ..."}</Text>
                   </Flex>
                 ) : (
                   <Select
@@ -64,18 +61,14 @@ export const ContractPermission: React.FC<ContractPermissionProps> = ({
                         setValue(
                           role,
                           roleMembers.filter(
-                            (address) => address !== constants.AddressZero,
+                            (address) => address !== ZERO_ADDRESS,
                           ),
                           { shouldDirty: true },
                         );
                       } else {
-                        setValue(
-                          role,
-                          [constants.AddressZero, ...roleMembers],
-                          {
-                            shouldDirty: true,
-                          },
-                        );
+                        setValue(role, [ZERO_ADDRESS, ...roleMembers], {
+                          shouldDirty: true,
+                        });
                       }
                     }}
                   >
@@ -86,12 +79,12 @@ export const ContractPermission: React.FC<ContractPermissionProps> = ({
               </Flex>
             )}
 
-            {role === "lister" && isPrebuilt && (
+            {role === "lister" && (
               <Flex align="center" justify="center" flexGrow={0} flexShrink={0}>
-                {isLoading || isSubmitting ? (
+                {isPending || isSubmitting ? (
                   <Flex align="center" gap={2} px={2}>
                     <Spinner size="sm" />
-                    <Text>{isLoading ? "Loading ..." : "Updating ..."}</Text>
+                    <Text>{isPending ? "Loading ..." : "Updating ..."}</Text>
                   </Flex>
                 ) : (
                   <Select
@@ -103,18 +96,14 @@ export const ContractPermission: React.FC<ContractPermissionProps> = ({
                         setValue(
                           role,
                           roleMembers.filter(
-                            (address) => address !== constants.AddressZero,
+                            (address) => address !== ZERO_ADDRESS,
                           ),
                           { shouldDirty: true },
                         );
                       } else {
-                        setValue(
-                          role,
-                          [constants.AddressZero, ...roleMembers],
-                          {
-                            shouldDirty: true,
-                          },
-                        );
+                        setValue(role, [ZERO_ADDRESS, ...roleMembers], {
+                          shouldDirty: true,
+                        });
                       }
                     }}
                   >
@@ -125,12 +114,12 @@ export const ContractPermission: React.FC<ContractPermissionProps> = ({
               </Flex>
             )}
 
-            {role === "asset" && isPrebuilt && (
+            {role === "asset" && (
               <Flex align="center" justify="center" flexGrow={0} flexShrink={0}>
-                {isLoading || isSubmitting ? (
+                {isPending || isSubmitting ? (
                   <Flex align="center" gap={2} px={2}>
                     <Spinner size="sm" />
-                    <Text>{isLoading ? "Loading ..." : "Updating ..."}</Text>
+                    <Text>{isPending ? "Loading ..." : "Updating ..."}</Text>
                   </Flex>
                 ) : (
                   <Select
@@ -142,18 +131,14 @@ export const ContractPermission: React.FC<ContractPermissionProps> = ({
                         setValue(
                           role,
                           roleMembers.filter(
-                            (address) => address !== constants.AddressZero,
+                            (address) => address !== ZERO_ADDRESS,
                           ),
                           { shouldDirty: true },
                         );
                       } else {
-                        setValue(
-                          role,
-                          [constants.AddressZero, ...roleMembers],
-                          {
-                            shouldDirty: true,
-                          },
-                        );
+                        setValue(role, [ZERO_ADDRESS, ...roleMembers], {
+                          shouldDirty: true,
+                        });
                       }
                     }}
                   >
@@ -163,7 +148,7 @@ export const ContractPermission: React.FC<ContractPermissionProps> = ({
                 )}
               </Flex>
             )}
-          </Flex>
+          </div>
 
           {role === "transfer" && (
             <Flex
@@ -205,7 +190,7 @@ export const ContractPermission: React.FC<ContractPermissionProps> = ({
             </Flex>
           )}
 
-          {role === "lister" && isPrebuilt && (
+          {role === "lister" && (
             <Flex
               direction="row"
               borderRadius="md"
@@ -239,7 +224,7 @@ export const ContractPermission: React.FC<ContractPermissionProps> = ({
             </Flex>
           )}
 
-          {role === "asset" && isPrebuilt && (
+          {role === "asset" && (
             <Flex
               direction="row"
               borderRadius="md"
@@ -276,14 +261,13 @@ export const ContractPermission: React.FC<ContractPermissionProps> = ({
             </Flex>
           )}
 
-          {isLoading ? (
+          {isPending ? (
             <Spinner />
           ) : (
             isRestricted &&
-            role &&
-            contract && <PermissionEditor role={role} contract={contract} />
+            role && <PermissionEditor role={role} contract={contract} />
           )}
-        </Stack>
+        </div>
       </Flex>
     </Card>
   );

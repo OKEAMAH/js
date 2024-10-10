@@ -1,14 +1,17 @@
 import type { ThirdwebClient } from "../../../../../client/client.js";
+import type { ClientScopedStorage } from "../../../core/authentication/client-scoped-storage.js";
 import type {
   AuthAndWalletRpcReturnType,
   AuthLoginReturnType,
   AuthStoredTokenWithCookieReturnType,
   LogoutReturnType,
   SendEmailOtpReturnType,
-} from "../../../core/authentication/type.js";
-import type { ClientIdWithQuerierType, Ecosystem } from "../../types.js";
-import { LocalStorage } from "../../utils/Storage/LocalStorage.js";
+} from "../../../core/authentication/types.js";
+import type { Ecosystem } from "../../../core/wallet/types.js";
+import type { ClientIdWithQuerierType } from "../../types.js";
 import type { InAppWalletIframeCommunicator } from "../../utils/iFrameCommunication/InAppWalletIframeCommunicator.js";
+import { generateWallet } from "../actions/generate-wallet.enclave.js";
+import { getUserStatus } from "../actions/get-enclave-user-status.js";
 import { BaseLogin } from "./base-login.js";
 
 export type AuthQuerierTypes = {
@@ -19,11 +22,14 @@ export type AuthQuerierTypes = {
     clientId: string;
     authCookie: string;
     walletUserId: string;
-    deviceShareStored: string;
+    deviceShareStored: string | null;
   };
   loginWithStoredTokenDetails: {
     storedToken: AuthStoredTokenWithCookieReturnType["storedToken"];
     recoveryCode?: string;
+  };
+  migrateFromShardToEnclave: {
+    storedToken: AuthStoredTokenWithCookieReturnType["storedToken"];
   };
 };
 
@@ -32,8 +38,9 @@ export type AuthQuerierTypes = {
  */
 export class Auth {
   protected client: ThirdwebClient;
+  protected ecosystem?: Ecosystem;
   protected AuthQuerier: InAppWalletIframeCommunicator<AuthQuerierTypes>;
-  protected localStorage: LocalStorage;
+  protected localStorage: ClientScopedStorage;
   protected onAuthSuccess: (
     authResults: AuthAndWalletRpcReturnType,
   ) => Promise<AuthLoginReturnType>;
@@ -49,20 +56,20 @@ export class Auth {
     onAuthSuccess,
     ecosystem,
     baseUrl,
+    localStorage,
   }: ClientIdWithQuerierType & {
     baseUrl: string;
     ecosystem?: Ecosystem;
     onAuthSuccess: (
       authDetails: AuthAndWalletRpcReturnType,
     ) => Promise<AuthLoginReturnType>;
+    localStorage: ClientScopedStorage;
   }) {
     this.client = client;
+    this.ecosystem = ecosystem;
 
     this.AuthQuerier = querier;
-    this.localStorage = new LocalStorage({
-      clientId: client.clientId,
-      ecosystemId: ecosystem?.id,
-    });
+    this.localStorage = localStorage;
     this.onAuthSuccess = onAuthSuccess;
     this.BaseLogin = new BaseLogin({
       postLogin: async (result) => {
@@ -101,6 +108,42 @@ export class Auth {
     recoveryCode?: string,
   ): Promise<AuthLoginReturnType> {
     await this.preLogin();
+
+    const user = await getUserStatus({
+      authToken: authToken.storedToken.cookieString,
+      client: this.client,
+      ecosystem: this.ecosystem,
+    });
+    if (!user) {
+      throw new Error("Cannot login, no user found for auth token");
+    }
+
+    // If they're already an enclave wallet, proceed to login
+    if (user.wallets.length > 0 && user.wallets[0]?.type === "enclave") {
+      return this.postLogin({
+        storedToken: authToken.storedToken,
+        walletDetails: {
+          walletAddress: user.wallets[0].address,
+        },
+      });
+    }
+
+    if (user.wallets.length === 0 && this.ecosystem) {
+      // If this is a new ecosystem wallet without an enclave yet, we'll generate an enclave
+      const result = await generateWallet({
+        authToken: authToken.storedToken.cookieString,
+        client: this.client,
+        ecosystem: this.ecosystem,
+      });
+      return this.postLogin({
+        storedToken: authToken.storedToken,
+        walletDetails: {
+          walletAddress: result.address,
+        },
+      });
+    }
+
+    // If this is an existing sharded wallet or in-app wallet, we'll login with the sharded wallet
     const result = await this.AuthQuerier.call<AuthAndWalletRpcReturnType>({
       procedureName: "loginWithStoredTokenDetails",
       params: {
@@ -129,6 +172,9 @@ export class Auth {
   async loginWithModal(): Promise<AuthLoginReturnType> {
     return this.BaseLogin.loginWithModal();
   }
+  async authenticateWithModal(): Promise<AuthAndWalletRpcReturnType> {
+    return this.BaseLogin.authenticateWithModal();
+  }
 
   /**
    * Used to log the user into their thirdweb wallet using email OTP
@@ -148,10 +194,15 @@ export class Auth {
    * @param args - args.email: We will send the email an OTP that needs to be entered in order for them to be logged in.
    * @returns `{{user: InitializedUser}}` An InitializedUser object. See {@link InAppWalletSdk.getUser} for more
    */
-  async loginWithEmailOtp(
-    args: Parameters<BaseLogin["loginWithEmailOtp"]>[0],
+  async loginWithIframe(
+    args: Parameters<BaseLogin["loginWithIframe"]>[0],
   ): Promise<AuthLoginReturnType> {
-    return this.BaseLogin.loginWithEmailOtp(args);
+    return this.BaseLogin.loginWithIframe(args);
+  }
+  async authenticateWithIframe(
+    args: Parameters<BaseLogin["authenticateWithIframe"]>[0],
+  ): Promise<AuthAndWalletRpcReturnType> {
+    return this.BaseLogin.authenticateWithIframe(args);
   }
 
   /**
@@ -162,6 +213,11 @@ export class Auth {
   ): Promise<AuthLoginReturnType> {
     return this.BaseLogin.loginWithCustomJwt(args);
   }
+  async authenticateWithCustomJwt(
+    args: Parameters<BaseLogin["authenticateWithCustomJwt"]>[0],
+  ): Promise<AuthAndWalletRpcReturnType> {
+    return this.BaseLogin.authenticateWithCustomJwt(args);
+  }
 
   /**
    * @internal
@@ -171,19 +227,15 @@ export class Auth {
   ): Promise<AuthLoginReturnType> {
     return this.BaseLogin.loginWithCustomAuthEndpoint(args);
   }
-
-  /**
-   * @internal
-   */
-  async loginWithOauth(
-    args: Parameters<BaseLogin["loginWithOauth"]>[0],
-  ): Promise<AuthLoginReturnType> {
-    return this.BaseLogin.loginWithOauth(args);
+  async authenticateWithCustomAuthEndpoint(
+    args: Parameters<BaseLogin["authenticateWithCustomAuthEndpoint"]>[0],
+  ): Promise<AuthAndWalletRpcReturnType> {
+    return this.BaseLogin.authenticateWithCustomAuthEndpoint(args);
   }
 
   /**
    * A headless way to send the users at the passed email an OTP code.
-   * You need to then call {@link Auth.verifyEmailLoginOtp} in order to complete the login process
+   * You need to then call {@link Auth.loginWithEmailOtp} in order to complete the login process
    * @example
    * @param param0.email
    * ```typescript
@@ -240,17 +292,27 @@ export class Auth {
    * @returns `{{user: InitializedUser}}` An InitializedUser object containing the user's status, wallet, authDetails, and more
    * @internal
    */
-  async verifyEmailLoginOtp(
-    args: Parameters<BaseLogin["verifyEmailLoginOtp"]>[0],
+  async loginWithEmailOtp(args: Parameters<BaseLogin["loginWithEmailOtp"]>[0]) {
+    await this.preLogin();
+    return this.BaseLogin.loginWithEmailOtp(args);
+  }
+  async authenticateWithEmailOtp(
+    args: Parameters<BaseLogin["authenticateWithEmailOtp"]>[0],
   ) {
-    return this.BaseLogin.verifyEmailLoginOtp(args);
+    return this.BaseLogin.authenticateWithEmailOtp(args);
   }
 
   /**
    * @internal
    */
-  async verifySmsLoginOtp(args: Parameters<BaseLogin["verifySmsLoginOtp"]>[0]) {
-    return this.BaseLogin.verifySmsLoginOtp(args);
+  async loginWithSmsOtp(args: Parameters<BaseLogin["loginWithSmsOtp"]>[0]) {
+    await this.preLogin();
+    return this.BaseLogin.loginWithSmsOtp(args);
+  }
+  async authenticateWithSmsOtp(
+    args: Parameters<BaseLogin["authenticateWithSmsOtp"]>[0],
+  ) {
+    return this.BaseLogin.authenticateWithSmsOtp(args);
   }
 
   /**
@@ -259,15 +321,18 @@ export class Auth {
    * @internal
    */
   async logout(): Promise<LogoutReturnType> {
-    const { success } = await this.AuthQuerier.call<LogoutReturnType>({
-      procedureName: "logout",
-      params: undefined,
-    });
+    if (this.AuthQuerier) {
+      await this.AuthQuerier.call<LogoutReturnType>({
+        procedureName: "logout",
+        params: undefined,
+      });
+    }
+
     const isRemoveAuthCookie = await this.localStorage.removeAuthCookie();
     const isRemoveUserId = await this.localStorage.removeWalletUserId();
 
     return {
-      success: success || isRemoveAuthCookie || isRemoveUserId,
+      success: isRemoveAuthCookie || isRemoveUserId,
     };
   }
 }

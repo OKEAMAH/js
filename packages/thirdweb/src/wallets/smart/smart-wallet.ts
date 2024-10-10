@@ -1,5 +1,6 @@
 import { trackConnect } from "../../analytics/track.js";
 import type { Chain } from "../../chains/types.js";
+import { getCachedChainIfExists } from "../../chains/utils.js";
 import { getContract } from "../../contract/contract.js";
 import { isContractDeployed } from "../../utils/bytecode/is-contract-deployed.js";
 import type { Account, Wallet } from "../interfaces/wallet.js";
@@ -8,26 +9,126 @@ import type {
   CreateWalletArgs,
   WalletConnectionOption,
 } from "../wallet-types.js";
-import { DEFAULT_ACCOUNT_FACTORY } from "./lib/constants.js";
+import { getDefaultAccountFactory } from "./lib/constants.js";
 
 /**
- * Creates a smart wallet.
+ * Creates a ERC4337 smart wallet based on a admin account.
+ *
+ * Smart wallets are smart contract wallets that enable multiple benefits for users:
+ *
+ * - Sponsor gas fees for transactions
+ * - Multiple owners
+ * - Session keys
+ * - Batch transactions
+ * - Predictable addresses
+ * - Programmable features
+ *
+ * [Learn more about account abstraction](https://portal.thirdweb.com/connect/account-abstraction/how-it-works)
+ *
  * @param createOptions - The options for creating the wallet.
+ * Refer to [SmartWalletCreationOptions](https://portal.thirdweb.com/references/typescript/v5/SmartWalletCreationOptions) for more details.
  * @returns The created smart wallet.
  * @example
+ *
+ * ## Connect to a smart wallet
+ *
+ * To connect to a smart wallet, you need to provide an admin account as the `personalAccount` option.
+ *
+ * Any wallet can be used as an admin account, including an in-app wallets.
+ *
+ * The `sponsorGas` option is used to enable sponsored gas for transactions automatically.
+ *
  * ```ts
- * import { smartWallet } from "thirdweb/wallets";
+ * import { smartWallet, inAppWallet } from "thirdweb/wallets";
+ * import { sepolia } from "thirdweb/chains";
+ * import { sendTransaction } from "thirdweb";
  *
  * const wallet = smartWallet({
  *  chain: sepolia,
- *  gasless: true,
+ *  sponsorGas: true, // enable sponsored transactions
  * });
  *
- * const account = await wallet.connect({
+ * // any wallet can be used as an admin account
+ * // in this example we use an in-app wallet
+ * const adminWallet = inAppWallet();
+ * const personalAccount = await adminWallet.connect({
  *   client,
- *   personalAccount: account,
+ *   chain: sepolia,
+ *   strategy: "google",
+ * });
+ *
+ * const smartAccount = await wallet.connect({
+ *   client,
+ *   personalAccount, // pass the admin account
+ * });
+ *
+ * // sending sponsored transactions with the smartAccount
+ * await sendTransaction({
+ *   account: smartAccount,
+ *   transaction,
  * });
  * ```
+ *
+ * ## Using a custom account factory
+ *
+ * You can pass a custom account factory to the `smartWallet` function to use a your own account factory.
+ *
+ * ```ts
+ * import { smartWallet } from "thirdweb/wallets";
+ * import { sepolia } from "thirdweb/chains";
+ *
+ * const wallet = smartWallet({
+ *  chain: sepolia,
+ *  sponsorGas: true, // enable sponsored transactions
+ *  factoryAddress: "0x...", // custom factory address
+ * });
+ *
+ * ## Using v0.7 Entrypoint
+ *
+ * Both v0.6 (default) and v0.7 ERC4337 Entrypoints are supported. To use the v0.7 Entrypoint, you can pass the `entrypointAddress` option to the `smartWallet` function, as well as a compatible account factory.
+ *
+ * You can use the predeployed `DEFAULT_ACCOUNT_FACTORY_V0_7` or deploy your own [AccountFactory  v0.7](https://thirdweb.com/thirdweb.eth/AccountFactory_0_7).
+ *
+ * ```ts
+ * import { smartWallet, DEFAULT_ACCOUNT_FACTORY_V0_7, ENTRYPOINT_ADDRESS_v0_7 } from "thirdweb/wallets/smart";
+ * import { sepolia } from "thirdweb/chains";
+ *
+ * const wallet = smartWallet({
+ *  chain: sepolia,
+ *  sponsorGas: true, // enable sponsored transactions
+ *  factoryAddress: DEFAULT_ACCOUNT_FACTORY_V0_7,
+ *  overrides: {
+ *    entrypointAddress: ENTRYPOINT_ADDRESS_v0_7
+ *  }
+ * });
+ * ```
+ *
+ * ## Configuring the smart wallet
+ *
+ * You can pass options to the `smartWallet` function to configure the smart wallet.
+ *
+ * ```ts
+ * import { smartWallet } from "thirdweb/wallets";
+ * import { sepolia } from "thirdweb/chains";
+ *
+ * const wallet = smartWallet({
+ *  chain: sepolia,
+ *  sponsorGas: true, // enable sponsored transactions
+ *  factoryAddress: "0x...", // custom factory address
+ *  overrides: {
+ *    accountAddress: "0x...", // override account address
+ *    accountSalt: "0x...", // override account salt
+ *    entrypointAddress: "0x...", // override entrypoint address
+ *    erc20Paymaster: { ... }, // enable erc20 paymaster
+ *    bundlerUrl: "https://...", // override bundler url
+ *    paymaster: (userOp) => { ... }, // override paymaster
+ *    ...
+ *  }
+ * });
+ * ```
+ *
+ * Refer to [SmartWalletOptions](https://portal.thirdweb.com/references/typescript/v5/SmartWalletOptions) for more details.
+ *
  * @wallet
  */
 export function smartWallet(
@@ -35,15 +136,24 @@ export function smartWallet(
 ): Wallet<"smart"> {
   const emitter = createWalletEmitter<"smart">();
   let account: Account | undefined = undefined;
+  let adminAccount: Account | undefined = undefined;
   let chain: Chain | undefined = undefined;
   let lastConnectOptions: WalletConnectionOption<"smart"> | undefined;
 
   const _smartWallet: Wallet<"smart"> = {
     id: "smart",
     subscribe: emitter.subscribe,
-    getChain: () => chain,
+    getChain() {
+      if (!chain) {
+        return undefined;
+      }
+
+      chain = getCachedChainIfExists(chain.id) || chain;
+      return chain;
+    },
     getConfig: () => createOptions,
     getAccount: () => account,
+    getAdminAccount: () => adminAccount,
     autoConnect: async (options) => {
       const { connectSmartWallet } = await import("./index.js");
       const [connectedAccount, connectedChain] = await connectSmartWallet(
@@ -71,6 +181,7 @@ export function smartWallet(
         createOptions,
       );
       // set the states
+      adminAccount = options.personalAccount;
       lastConnectOptions = options;
       account = connectedAccount;
       chain = connectedChain;
@@ -96,7 +207,9 @@ export function smartWallet(
       }
       // check if factory is deployed
       const factory = getContract({
-        address: createOptions.factoryAddress || DEFAULT_ACCOUNT_FACTORY,
+        address:
+          createOptions.factoryAddress ||
+          getDefaultAccountFactory(createOptions.overrides?.entrypointAddress),
         chain: newChain,
         client: lastConnectOptions.client,
       });

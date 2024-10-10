@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -37,21 +36,19 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `createAccount` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `createAccount` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `createAccount` method is supported.
  * @extension ERC4337
  * @example
  * ```ts
  * import { isCreateAccountSupported } from "thirdweb/extensions/erc4337";
  *
- * const supported = await isCreateAccountSupported(contract);
+ * const supported = isCreateAccountSupported(["0x..."]);
  * ```
  */
-export async function isCreateAccountSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isCreateAccountSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -63,7 +60,7 @@ export async function isCreateAccountSupported(
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeCreateAccountParams } "thirdweb/extensions/erc4337";
+ * import { encodeCreateAccountParams } from "thirdweb/extensions/erc4337";
  * const result = encodeCreateAccountParams({
  *  admin: ...,
  *  data: ...,
@@ -81,7 +78,7 @@ export function encodeCreateAccountParams(options: CreateAccountParams) {
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeCreateAccount } "thirdweb/extensions/erc4337";
+ * import { encodeCreateAccount } from "thirdweb/extensions/erc4337";
  * const result = encodeCreateAccount({
  *  admin: ...,
  *  data: ...,
@@ -104,6 +101,7 @@ export function encodeCreateAccount(options: CreateAccountParams) {
  * @extension ERC4337
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { createAccount } from "thirdweb/extensions/erc4337";
  *
  * const transaction = createAccount({
@@ -116,8 +114,7 @@ export function encodeCreateAccount(options: CreateAccountParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function createAccount(

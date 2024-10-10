@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -32,19 +31,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `approve` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `approve` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `approve` method is supported.
  * @extension ERC721
  * @example
  * ```ts
  * import { isApproveSupported } from "thirdweb/extensions/erc721";
  *
- * const supported = await isApproveSupported(contract);
+ * const supported = isApproveSupported(["0x..."]);
  * ```
  */
-export async function isApproveSupported(contract: ThirdwebContract<any>) {
+export function isApproveSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -56,7 +55,7 @@ export async function isApproveSupported(contract: ThirdwebContract<any>) {
  * @extension ERC721
  * @example
  * ```ts
- * import { encodeApproveParams } "thirdweb/extensions/erc721";
+ * import { encodeApproveParams } from "thirdweb/extensions/erc721";
  * const result = encodeApproveParams({
  *  to: ...,
  *  tokenId: ...,
@@ -74,7 +73,7 @@ export function encodeApproveParams(options: ApproveParams) {
  * @extension ERC721
  * @example
  * ```ts
- * import { encodeApprove } "thirdweb/extensions/erc721";
+ * import { encodeApprove } from "thirdweb/extensions/erc721";
  * const result = encodeApprove({
  *  to: ...,
  *  tokenId: ...,
@@ -95,6 +94,7 @@ export function encodeApprove(options: ApproveParams) {
  * @extension ERC721
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { approve } from "thirdweb/extensions/erc721";
  *
  * const transaction = approve({
@@ -107,8 +107,7 @@ export function encodeApprove(options: ApproveParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function approve(

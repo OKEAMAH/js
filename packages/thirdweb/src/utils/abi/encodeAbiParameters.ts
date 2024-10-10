@@ -158,8 +158,9 @@ function encodeParams(preparedParams: PreparedParam[]): Hex {
  * @internal Export for unit test
  */
 export function encodeAddress(value: Hex): PreparedParam {
-  if (!isAddress(value)) {
-    throw new Error("Invalid address.");
+  // We allow empty strings for deployment transactions where there is no to address
+  if ((value as string) !== "" && value !== undefined && !isAddress(value)) {
+    throw new Error(`Invalid address: ${value}`);
   }
   return { dynamic: false, encoded: padHex(value.toLowerCase() as Hex) };
 }

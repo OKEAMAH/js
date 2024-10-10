@@ -4,53 +4,43 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
  * Represents the parameters for the "previewWithdraw" function.
  */
 export type PreviewWithdrawParams = {
-  assets: AbiParameterToPrimitiveType<{
-    name: "assets";
-    type: "uint256";
-    internalType: "uint256";
-  }>;
+  assets: AbiParameterToPrimitiveType<{ type: "uint256"; name: "assets" }>;
 };
 
 export const FN_SELECTOR = "0x0a28a477" as const;
 const FN_INPUTS = [
   {
-    name: "assets",
     type: "uint256",
-    internalType: "uint256",
+    name: "assets",
   },
 ] as const;
 const FN_OUTPUTS = [
   {
-    name: "shares",
     type: "uint256",
-    internalType: "uint256",
+    name: "shares",
   },
 ] as const;
 
 /**
  * Checks if the `previewWithdraw` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `previewWithdraw` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `previewWithdraw` method is supported.
  * @extension ERC4626
  * @example
  * ```ts
  * import { isPreviewWithdrawSupported } from "thirdweb/extensions/erc4626";
- *
- * const supported = await isPreviewWithdrawSupported(contract);
+ * const supported = isPreviewWithdrawSupported(["0x..."]);
  * ```
  */
-export async function isPreviewWithdrawSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isPreviewWithdrawSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -62,7 +52,7 @@ export async function isPreviewWithdrawSupported(
  * @extension ERC4626
  * @example
  * ```ts
- * import { encodePreviewWithdrawParams } "thirdweb/extensions/erc4626";
+ * import { encodePreviewWithdrawParams } from "thirdweb/extensions/erc4626";
  * const result = encodePreviewWithdrawParams({
  *  assets: ...,
  * });
@@ -79,7 +69,7 @@ export function encodePreviewWithdrawParams(options: PreviewWithdrawParams) {
  * @extension ERC4626
  * @example
  * ```ts
- * import { encodePreviewWithdraw } "thirdweb/extensions/erc4626";
+ * import { encodePreviewWithdraw } from "thirdweb/extensions/erc4626";
  * const result = encodePreviewWithdraw({
  *  assets: ...,
  * });
@@ -102,7 +92,7 @@ export function encodePreviewWithdraw(options: PreviewWithdrawParams) {
  * @example
  * ```ts
  * import { decodePreviewWithdrawResult } from "thirdweb/extensions/erc4626";
- * const result = decodePreviewWithdrawResult("...");
+ * const result = decodePreviewWithdrawResultResult("...");
  * ```
  */
 export function decodePreviewWithdrawResult(result: Hex) {

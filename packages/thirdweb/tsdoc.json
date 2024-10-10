@@ -68,6 +68,14 @@
     {
       "tagName": "@chain",
       "syntaxKind": "block"
+    },
+    {
+      "tagName": "@modules",
+      "syntaxKind": "block"
+    },
+    {
+      "tagName": "@social",
+      "syntaxKind": "block"
     }
   ],
   "supportForTags": {
@@ -87,6 +95,8 @@
     "@storage": true,
     "@auth": true,
     "@utils": true,
-    "@chain": true
+    "@chain": true,
+    "@modules": true,
+    "@social": true
   }
 }

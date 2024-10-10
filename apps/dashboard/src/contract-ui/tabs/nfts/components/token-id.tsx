@@ -1,22 +1,22 @@
-import { useDashboardEVMChainId } from "@3rdweb-sdk/react";
+"use client";
+
+import { WalletAddress } from "@/components/blocks/wallet-address";
+import { Spinner } from "@/components/ui/Spinner/Spinner";
+import { useDashboardRouter } from "@/lib/DashboardRouter";
 import {
   Box,
   ButtonGroup,
   Divider,
   Flex,
   GridItem,
-  Icon,
   IconButton,
   SimpleGrid,
   Tooltip,
   useBreakpointValue,
 } from "@chakra-ui/react";
-import type { useContract } from "@thirdweb-dev/react";
 import { useNFTDrawerTabs } from "core-ui/nft-drawer/useNftDrawerTabs";
-import { useChainSlug } from "hooks/chains/chainSlug";
-import { useRouter } from "next/router";
+import { ChevronLeftIcon } from "lucide-react";
 import { useState } from "react";
-import { IoChevronBack } from "react-icons/io5";
 import type { ThirdwebContract } from "thirdweb";
 import { getNFT as getErc721NFT } from "thirdweb/extensions/erc721";
 import { getNFT as getErc1155NFT } from "thirdweb/extensions/erc1155";
@@ -24,6 +24,7 @@ import { useReadContract } from "thirdweb/react";
 import { Badge, Button, Card, CodeBlock, Heading, Text } from "tw-components";
 import { AddressCopyButton } from "tw-components/AddressCopyButton";
 import { NFTMediaWithEmptyState } from "tw-components/nft-media";
+import { useChainSlug } from "../../../../hooks/chains/chainSlug";
 import { NftProperty } from "./nft-property";
 
 function isValidUrl(possibleUrl?: string | null) {
@@ -43,34 +44,28 @@ function isValidUrl(possibleUrl?: string | null) {
 }
 
 interface TokenIdPageProps {
-  contractQueryV4?: ReturnType<typeof useContract>;
   tokenId: string;
   contract: ThirdwebContract;
   isErc721: boolean;
 }
 
 export const TokenIdPage: React.FC<TokenIdPageProps> = ({
-  contractQueryV4,
   contract,
   tokenId,
   isErc721,
 }) => {
   const [tab, setTab] = useState("Details");
   const isMobile = useBreakpointValue({ base: true, md: false });
-  const router = useRouter();
-
-  const chainId = useDashboardEVMChainId();
-
+  const router = useDashboardRouter();
+  const chainId = contract.chain.id;
   const chainSlug = useChainSlug(chainId || 1);
-  const url = `/${chainSlug}/${contract.address}/nfts`;
 
   const tabs = useNFTDrawerTabs({
-    oldContract: contractQueryV4?.contract,
     contract,
     tokenId,
   });
 
-  const { data: nft } = useReadContract(
+  const { data: nft, isPending } = useReadContract(
     isErc721 ? getErc721NFT : getErc1155NFT,
     {
       contract,
@@ -78,6 +73,14 @@ export const TokenIdPage: React.FC<TokenIdPageProps> = ({
       includeOwner: true,
     },
   );
+
+  if (isPending) {
+    return (
+      <div className="flex h-[400px] items-center justify-center">
+        <Spinner className="size-10" />
+      </div>
+    );
+  }
 
   if (!nft) {
     return (
@@ -102,15 +105,16 @@ export const TokenIdPage: React.FC<TokenIdPageProps> = ({
     <Flex flexDir={{ base: "column", lg: "row" }} gap={6}>
       <Card h="full" position="relative" minH="100px">
         <Box w="50px" position="absolute" zIndex={1000} top={6} left={6}>
+          {/* TODO - replace this with breadcrumbs  */}
           <Card p={1} bgColor="backgroundCardHighlight">
             <IconButton
               w="inherit"
               variant="ghost"
               onClick={() =>
-                router.asPath !== "/" ? router.push(url) : router.back()
+                router.push(`/${chainSlug}/${contract.address}/nfts`)
               }
               aria-label="Back"
-              icon={<Icon as={IoChevronBack} boxSize={6} />}
+              icon={<ChevronLeftIcon className="size-6" />}
             >
               Back
             </IconButton>
@@ -160,7 +164,7 @@ export const TokenIdPage: React.FC<TokenIdPageProps> = ({
                   key={tb.title}
                   p={0}
                   bg="transparent"
-                  boxShadow={"none"}
+                  boxShadow="none"
                   label={
                     tb.isDisabled ? (
                       <Card py={2} px={4} bgColor="backgroundHighlight">
@@ -212,7 +216,7 @@ export const TokenIdPage: React.FC<TokenIdPageProps> = ({
                       <Heading size="label.md">Owner</Heading>
                     </GridItem>
                     <GridItem colSpan={8}>
-                      <AddressCopyButton size="xs" address={nft.owner} />
+                      <WalletAddress address={nft.owner} />
                     </GridItem>
                   </>
                 )}

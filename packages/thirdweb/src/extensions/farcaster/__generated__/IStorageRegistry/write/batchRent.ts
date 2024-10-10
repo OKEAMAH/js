@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -32,19 +31,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `batchRent` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `batchRent` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `batchRent` method is supported.
  * @extension FARCASTER
  * @example
  * ```ts
  * import { isBatchRentSupported } from "thirdweb/extensions/farcaster";
  *
- * const supported = await isBatchRentSupported(contract);
+ * const supported = isBatchRentSupported(["0x..."]);
  * ```
  */
-export async function isBatchRentSupported(contract: ThirdwebContract<any>) {
+export function isBatchRentSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -56,7 +55,7 @@ export async function isBatchRentSupported(contract: ThirdwebContract<any>) {
  * @extension FARCASTER
  * @example
  * ```ts
- * import { encodeBatchRentParams } "thirdweb/extensions/farcaster";
+ * import { encodeBatchRentParams } from "thirdweb/extensions/farcaster";
  * const result = encodeBatchRentParams({
  *  fids: ...,
  *  units: ...,
@@ -74,7 +73,7 @@ export function encodeBatchRentParams(options: BatchRentParams) {
  * @extension FARCASTER
  * @example
  * ```ts
- * import { encodeBatchRent } "thirdweb/extensions/farcaster";
+ * import { encodeBatchRent } from "thirdweb/extensions/farcaster";
  * const result = encodeBatchRent({
  *  fids: ...,
  *  units: ...,
@@ -97,6 +96,7 @@ export function encodeBatchRent(options: BatchRentParams) {
  * @extension FARCASTER
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { batchRent } from "thirdweb/extensions/farcaster";
  *
  * const transaction = batchRent({
@@ -109,8 +109,7 @@ export function encodeBatchRent(options: BatchRentParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function batchRent(

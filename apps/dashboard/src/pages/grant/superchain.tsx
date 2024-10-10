@@ -1,4 +1,5 @@
-import { Box, Container, DarkMode, Flex, SimpleGrid } from "@chakra-ui/react";
+import { useForceDarkTheme } from "@/components/theme-provider";
+import { Box, Container, Flex, SimpleGrid } from "@chakra-ui/react";
 import { ChakraNextImage } from "components/Image";
 import { HomepageFooter } from "components/footer/Footer";
 import HeroSection from "components/grant/superchain/HeroSection";
@@ -70,6 +71,38 @@ const superchains = [
     src: require("../../../public/assets/grant/superchain/icon-redstone.png"),
   },
   {
+    id: "ancient8",
+    name: "Ancient8",
+    link: "/ancient8?switch",
+    src: require("../../../public/assets/grant/superchain/icon-ancient8.png"),
+  },
+  {
+    id: "donatuz",
+    name: "Donatuz",
+    link: "/donatuz?switch",
+    src: require("../../../public/assets/grant/superchain/icon-donatuz.png"),
+  },
+  {
+    id: "mantle",
+    name: "Mantle",
+    link: "/mantle?switch",
+    src: require("../../../public/assets/grant/superchain/mantle-icon.png"),
+  },
+  {
+    id: "soneium",
+    name: "Soneium",
+    link: "/soneium-minato?switch",
+    src: require("../../../public/assets/grant/superchain/soneium-icon.png"),
+    isComingSoon: true,
+  },
+  {
+    id: "campNetworkv2",
+    name: "CampNetworkV2",
+    link: "/camp-network-testnet-v2?switch",
+    src: require("../../../public/assets/grant/superchain/campNetwork-icon.jpg"),
+    isComingSoon: true,
+  },
+  {
     id: "lisk",
     name: "Lisk",
     link: "/lisk-sepolia-testnet",
@@ -80,6 +113,7 @@ const superchains = [
 
 const GrantSuperChain = () => {
   const mySectionRef = useRef<HTMLDivElement>(null);
+  useForceDarkTheme();
 
   // Function to scroll to the section
   const scrollToSection = () => {
@@ -92,7 +126,7 @@ const GrantSuperChain = () => {
   };
 
   return (
-    <DarkMode>
+    <>
       <NextSeo
         title={title}
         description={description}
@@ -473,7 +507,7 @@ const GrantSuperChain = () => {
 
         <HomepageFooter />
       </Flex>
-    </DarkMode>
+    </>
   );
 };
 

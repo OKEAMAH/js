@@ -1,18 +1,28 @@
+import { Spinner } from "@/components/ui/Spinner/Spinner";
 import {
   type Account,
   AccountStatus,
   useAccount,
 } from "@3rdweb-sdk/react/hooks/useApi";
 import { useLoggedInUser } from "@3rdweb-sdk/react/hooks/useLoggedInUser";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { useActiveWallet } from "thirdweb/react";
 import { useTrack } from "../../hooks/analytics/useTrack";
-import { OnboardingBilling } from "./Billing";
-import { OnboardingChoosePlan } from "./ChoosePlan";
-import { OnboardingConfirmEmail } from "./ConfirmEmail";
-import { OnboardingGeneral } from "./General";
-import { OnboardingLinkWallet } from "./LinkWallet";
+import { LazyOnboardingBilling } from "./LazyOnboardingBilling";
 import { OnboardingModal } from "./Modal";
+
+const OnboardingConfirmEmail = lazy(() => import("./ConfirmEmail"));
+const OnboardingLinkWallet = lazy(() => import("./LinkWallet"));
+const OnboardingGeneral = lazy(() => import("./General"));
+const OnboardingChoosePlan = lazy(() => import("./ChoosePlan"));
+
+function Loading() {
+  return (
+    <div className="flex h-[200px] items-center justify-center">
+      <Spinner className="size-5" />
+    </div>
+  );
+}
 
 const skipBilling = (account: Account) => {
   return (
@@ -114,7 +124,7 @@ export const Onboarding: React.FC = () => {
   // FIXME: this entire flow needs reworked - re-vist as part of FTUX improvements
   // eslint-disable-next-line no-restricted-syntax
   useEffect(() => {
-    if (!isLoggedIn || meQuery.isLoading) {
+    if (!isLoggedIn || meQuery.isPending) {
       return;
     }
     const loadedAccount = meQuery.data;
@@ -192,45 +202,55 @@ export const Onboarding: React.FC = () => {
   }
 
   return (
-    <OnboardingModal
-      isOpen={!!state}
-      onClose={() => setState("skipped")}
-      wide={state === "plan"}
-    >
+    <OnboardingModal isOpen={!!state} wide={state === "plan"}>
       {state === "onboarding" && (
-        <OnboardingGeneral
-          account={account}
-          onSave={(email) => {
-            setUpdatedEmail(email);
-            handleSave(email);
-          }}
-          onDuplicate={(email) => {
-            setUpdatedEmail(email);
-            handleDuplicateEmail(email);
-          }}
-        />
+        <Suspense fallback={<Loading />}>
+          <OnboardingGeneral
+            account={account}
+            onSave={(email) => {
+              setUpdatedEmail(email);
+              handleSave(email);
+            }}
+            onDuplicate={(email) => {
+              setUpdatedEmail(email);
+              handleDuplicateEmail(email);
+            }}
+          />
+        </Suspense>
       )}
+
       {state === "linking" && (
-        <OnboardingLinkWallet
-          onSave={handleSave}
-          onBack={() => {
-            setUpdatedEmail(undefined);
-            setState("onboarding");
-          }}
-          email={updatedEmail as string}
-        />
+        <Suspense fallback={<Loading />}>
+          <OnboardingLinkWallet
+            onSave={handleSave}
+            onBack={() => {
+              setUpdatedEmail(undefined);
+              setState("onboarding");
+            }}
+            email={updatedEmail as string}
+          />
+        </Suspense>
       )}
+
       {(state === "confirming" || state === "confirmLinking") && (
-        <OnboardingConfirmEmail
-          linking={state === "confirmLinking"}
-          onSave={handleSave}
-          onBack={() => setState("onboarding")}
-          email={(account.unconfirmedEmail || updatedEmail) as string}
-        />
+        <Suspense fallback={<Loading />}>
+          <OnboardingConfirmEmail
+            linking={state === "confirmLinking"}
+            onSave={handleSave}
+            onBack={() => setState("onboarding")}
+            email={(account.unconfirmedEmail || updatedEmail) as string}
+          />
+        </Suspense>
       )}
-      {state === "plan" && <OnboardingChoosePlan onSave={handleSave} />}
+
+      {state === "plan" && (
+        <Suspense fallback={<Loading />}>
+          <OnboardingChoosePlan onSave={handleSave} />
+        </Suspense>
+      )}
+
       {state === "billing" && (
-        <OnboardingBilling
+        <LazyOnboardingBilling
           onSave={handleSave}
           onCancel={() => setState("skipped")}
         />

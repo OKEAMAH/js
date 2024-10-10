@@ -3,7 +3,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 export const FN_SELECTOR = "0xd5bac7f3" as const;
@@ -16,21 +15,20 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `CHANGE_RECOVERY_ADDRESS_TYPEHASH` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `CHANGE_RECOVERY_ADDRESS_TYPEHASH` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `CHANGE_RECOVERY_ADDRESS_TYPEHASH` method is supported.
  * @extension FARCASTER
  * @example
  * ```ts
  * import { isCHANGE_RECOVERY_ADDRESS_TYPEHASHSupported } from "thirdweb/extensions/farcaster";
- *
- * const supported = await isCHANGE_RECOVERY_ADDRESS_TYPEHASHSupported(contract);
+ * const supported = isCHANGE_RECOVERY_ADDRESS_TYPEHASHSupported(["0x..."]);
  * ```
  */
-export async function isCHANGE_RECOVERY_ADDRESS_TYPEHASHSupported(
-  contract: ThirdwebContract<any>,
+export function isCHANGE_RECOVERY_ADDRESS_TYPEHASHSupported(
+  availableSelectors: string[],
 ) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -43,7 +41,7 @@ export async function isCHANGE_RECOVERY_ADDRESS_TYPEHASHSupported(
  * @example
  * ```ts
  * import { decodeCHANGE_RECOVERY_ADDRESS_TYPEHASHResult } from "thirdweb/extensions/farcaster";
- * const result = decodeCHANGE_RECOVERY_ADDRESS_TYPEHASHResult("...");
+ * const result = decodeCHANGE_RECOVERY_ADDRESS_TYPEHASHResultResult("...");
  * ```
  */
 export function decodeCHANGE_RECOVERY_ADDRESS_TYPEHASHResult(result: Hex) {

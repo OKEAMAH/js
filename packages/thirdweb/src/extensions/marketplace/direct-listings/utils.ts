@@ -64,14 +64,15 @@ export async function mapDirectListing(
     endTimeInSeconds: rawListing.endTimestamp,
     isReservedListing: rawListing.reserved,
     status,
+    type: "direct-listing",
   };
 }
 
-export type IsListingValidParams = {
+type IsListingValidParams = {
   listing: DirectListing;
   quantity?: bigint;
 };
-export type ValidReturn = { valid: true } | { valid: false; reason: string };
+type ValidReturn = { valid: true } | { valid: false; reason: string };
 
 export async function isListingValid(
   options: BaseTransactionOptions<IsListingValidParams>,

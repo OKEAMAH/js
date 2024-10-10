@@ -1,12 +1,15 @@
-import { LOGGED_IN_ONLY_PATHS } from "@/constants/auth";
+"use client";
+
+import { isLoginRequired } from "@/constants/auth";
+import { useDashboardRouter } from "@/lib/DashboardRouter";
 import { useQuery } from "@tanstack/react-query";
-import { usePathname, useRouter } from "next/navigation";
-import { useRef } from "react";
+import type { EnsureLoginResponse } from "app/api/auth/ensure-login/route";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   useActiveAccount,
   useActiveWalletConnectionStatus,
 } from "thirdweb/react";
-import type { EnsureLoginResponse } from "../../../app/api/auth/ensure-login/route";
 
 // define "TW_AUTH_TOKEN" to exist on the window object
 declare global {
@@ -16,40 +19,44 @@ declare global {
 }
 
 export function useLoggedInUser(): {
-  isLoading: boolean;
+  isPending: boolean;
   isLoggedIn: boolean;
   user: { address: string; jwt?: string } | null;
 } {
-  const router = useRouter();
+  const router = useDashboardRouter();
   const pathname = usePathname();
   const connectedAddress = useActiveAccount()?.address;
   const connectionStatus = useActiveWalletConnectionStatus();
   // this is to work around the fact that `connectionStatus` ends up as "disconnected"
   // which we *do* care about, but only after we have been "connecting" at least once
-  const statusWasEverConnecting = useRef(false);
-  if (connectionStatus === "connecting" || connectionStatus === "connected") {
-    statusWasEverConnecting.current = true;
-  }
+  const [statusWasEverConnecting, setStatusWasEverConnecting] = useState(
+    connectionStatus === "connecting" || connectionStatus === "connected",
+  );
+  // needs to be a useEffect for now
+  // eslint-disable-next-line no-restricted-syntax
+  useEffect(() => {
+    if (connectionStatus === "connecting" || connectionStatus === "connected") {
+      setStatusWasEverConnecting(true);
+    }
+  }, [connectionStatus]);
 
   const query = useQuery({
     // enabled if:
     // - there is a pathname
     // - we are not already currently connecting
-    // - the pathname is one of the LOGGED_IN_ONLY_PATHS
+    // - the pathname requires login
     enabled:
       !!pathname &&
       connectionStatus !== "connecting" &&
-      statusWasEverConnecting.current &&
-      LOGGED_IN_ONLY_PATHS.some((path) => pathname.startsWith(path)),
+      statusWasEverConnecting &&
+      isLoginRequired(pathname),
     // the last "persist", part of the queryKey, is to make sure that we do not cache this query in indexDB
     // convention in v4 of the SDK that we are (ab)using here
     queryKey: ["logged_in_user", connectedAddress, { persist: false }],
     retry: false,
     queryFn: async () => {
       const searchParams = new URLSearchParams();
-      if (pathname) {
-        searchParams.set("pathname", pathname);
-      }
+
       if (connectedAddress) {
         searchParams.set("address", connectedAddress);
       }
@@ -62,24 +69,28 @@ export function useLoggedInUser(): {
 
       return (await res.json()) as EnsureLoginResponse;
     },
-    onSuccess: (data) => {
-      if (data.redirectTo) {
-        router.replace(data.redirectTo);
-      }
-      if (data.jwt) {
-        // necessary for legacy things for now (SDK picks it up from there)
-        // eslint-disable-next-line react-compiler/react-compiler
-        window.TW_AUTH_TOKEN = data.jwt;
-      } else {
-        window.TW_AUTH_TOKEN = undefined;
-      }
-    },
   });
+
+  // legit use-case for now
+  // eslint-disable-next-line no-restricted-syntax
+  useEffect(() => {
+    if (query.data?.isLoggedIn === false) {
+      // not using useSearchParams hook here to avoid adding Suspense boundaries everywhere this hook is being used
+      const currentHref = new URL(window.location.href);
+      const currentPathname = currentHref.pathname;
+      const currentSearchParams = currentHref.searchParams.toString();
+      router.replace(
+        buildLoginPath(
+          `${currentPathname}${currentSearchParams ? `?${currentSearchParams}` : ""}`,
+        ),
+      );
+    }
+  }, [query.data?.isLoggedIn, router]);
 
   // if we are "disconnected" we are not logged in
   if (connectionStatus === "disconnected") {
     return {
-      isLoading: false,
+      isPending: false,
       isLoggedIn: false,
       user: null,
     };
@@ -88,7 +99,7 @@ export function useLoggedInUser(): {
   // if we are still connecting, we are "loading"
   if (connectionStatus === "connecting") {
     return {
-      isLoading: true,
+      isPending: true,
       isLoggedIn: false,
       user: null,
     };
@@ -97,7 +108,7 @@ export function useLoggedInUser(): {
   // same if we do not yet have a path
   if (!pathname) {
     return {
-      isLoading: true,
+      isPending: true,
       isLoggedIn: false,
       user: null,
     };
@@ -106,16 +117,16 @@ export function useLoggedInUser(): {
   // if we do not have an address we are not logged in
   if (!connectedAddress) {
     return {
-      isLoading: false,
+      isPending: false,
       isLoggedIn: false,
       user: null,
     };
   }
 
   // if we are not on a logged in path, we can simply return the connected address
-  if (!LOGGED_IN_ONLY_PATHS.some((path) => pathname.startsWith(path))) {
+  if (!isLoginRequired(pathname)) {
     return {
-      isLoading: false,
+      isPending: false,
       isLoggedIn: true,
       user: { address: connectedAddress },
     };
@@ -123,10 +134,14 @@ export function useLoggedInUser(): {
 
   // otherwise we return the query data
   return {
-    isLoading: query.isLoading,
+    isPending: query.isPending,
     isLoggedIn: query.data ? query.data.isLoggedIn : false,
     user: query.data?.isLoggedIn
       ? { address: connectedAddress, jwt: query.data.jwt }
       : null,
   };
+}
+
+function buildLoginPath(pathname: string | undefined): string {
+  return `/login${pathname ? `?next=${encodeURIComponent(pathname)}` : ""}`;
 }

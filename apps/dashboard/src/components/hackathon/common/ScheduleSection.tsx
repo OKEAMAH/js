@@ -1,6 +1,6 @@
-import { Flex, Icon, LinkBox, LinkOverlay } from "@chakra-ui/react";
-import { BiRightArrowAlt } from "@react-icons/all-files/bi/BiRightArrowAlt";
+import { Flex, LinkBox, LinkOverlay } from "@chakra-ui/react";
 import { useTrack } from "hooks/analytics/useTrack";
+import { MoveRightIcon } from "lucide-react";
 import { Badge, Heading, LinkButton, Text } from "tw-components";
 
 interface ScheduleItem {
@@ -69,12 +69,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
             py={3}
             gap={{ base: 4, md: 12 }}
           >
-            <Flex
-              flexDir="column"
-              alignItems="center"
-              w={"60px"}
-              flexShrink={0}
-            >
+            <Flex flexDir="column" alignItems="center" w="60px" flexShrink={0}>
               <Text color="gray.300" textTransform="uppercase">
                 {month}
               </Text>
@@ -113,14 +108,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
                 </Flex>
               </LinkOverlay>
             </Flex>
-            <Icon
-              as={BiRightArrowAlt}
-              boxSize={6}
-              color="gray.300"
-              _groupHover={{ color: "#e984f3" }}
-              display={{ base: "none", md: "block" }}
-              marginLeft="auto"
-            />
+            <MoveRightIcon className="ml-auto hidden size-4 text-gray-300 md:block" />
           </Flex>
         ))}
       </Flex>

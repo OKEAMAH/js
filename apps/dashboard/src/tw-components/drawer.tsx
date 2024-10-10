@@ -61,6 +61,7 @@ export const Drawer: ComponentWithChildren<DrawerProps> = ({
           base: noTopBorderRadius ? "none" : "2xl",
           md: "none",
         }}
+        className="border-border border-l"
       >
         <DrawerCloseButton {...closeButtonProps} />
         {header && (

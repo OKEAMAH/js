@@ -1,22 +1,24 @@
+import { Button } from "@/components/ui/button";
 import {
   AccountStatus,
   useAccount,
   useApiKeys,
 } from "@3rdweb-sdk/react/hooks/useApi";
-import { Flex } from "@chakra-ui/react";
 import { AppLayout } from "components/app-layouts/app";
 import { ApiKeys } from "components/settings/ApiKeys";
 import { SmartWalletsBillingAlert } from "components/settings/ApiKeys/Alerts";
-import { CreateApiKeyButton } from "components/settings/ApiKeys/Create";
-import { SettingsSidebar } from "core-ui/sidebar/settings";
+import { SettingsSidebarLayout } from "core-ui/sidebar/settings";
+import { PlusIcon } from "lucide-react";
 import { PageId } from "page-id";
-import { useMemo } from "react";
-import { Heading, Link, Text } from "tw-components";
+import { useMemo, useState } from "react";
+import { Link } from "tw-components";
 import type { ThirdwebNextPage } from "utils/types";
+import { LazyCreateAPIKeyDialog } from "../../../../components/settings/ApiKeys/Create/LazyCreateAPIKeyDialog";
 
 const SettingsApiKeysPage: ThirdwebNextPage = () => {
   const keysQuery = useApiKeys();
   const meQuery = useAccount();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const account = meQuery?.data;
   const apiKeys = keysQuery?.data;
@@ -35,20 +37,23 @@ const SettingsApiKeysPage: ThirdwebNextPage = () => {
   }, [apiKeys, account]);
 
   return (
-    <Flex flexDir="column" gap={8}>
-      <Flex direction="column" gap={2}>
-        <Flex
-          justifyContent="space-between"
-          direction={{ base: "column", md: "row" }}
-          gap={4}
-        >
-          <Heading size="title.lg" as="h1">
-            API Keys
-          </Heading>
-          <CreateApiKeyButton />
-        </Flex>
+    <div className="flex flex-col gap-8">
+      <LazyCreateAPIKeyDialog
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+        wording="api-key"
+      />
 
-        <Text>
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-col justify-between gap-4 md:flex-row">
+          <h1 className="font-semibold text-3xl tracking-tight">API Keys</h1>
+          <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2">
+            <PlusIcon className="size-4" />
+            Create API Key
+          </Button>
+        </div>
+
+        <p className="text-muted-foreground text-sm">
           An API key is required to use thirdweb&apos;s services through the SDK
           and CLI.{" "}
           <Link
@@ -59,8 +64,8 @@ const SettingsApiKeysPage: ThirdwebNextPage = () => {
           >
             Learn more
           </Link>
-        </Text>
-      </Flex>
+        </p>
+      </div>
 
       {hasSmartWalletsWithoutBilling && (
         <SmartWalletsBillingAlert dismissable />
@@ -68,17 +73,20 @@ const SettingsApiKeysPage: ThirdwebNextPage = () => {
 
       <ApiKeys
         keys={apiKeys || []}
-        isLoading={keysQuery.isLoading}
+        isPending={keysQuery.isPending}
         isFetched={keysQuery.isFetched}
       />
-    </Flex>
+    </div>
   );
 };
 
 SettingsApiKeysPage.getLayout = (page, props) => (
-  <AppLayout {...props} hasSidebar={true}>
-    <SettingsSidebar activePage="apiKeys" />
-    {page}
+  <AppLayout
+    {...props}
+    pageContainerClassName="!max-w-full !px-0"
+    mainClassName="!pt-0"
+  >
+    <SettingsSidebarLayout>{page}</SettingsSidebarLayout>
   </AppLayout>
 );
 

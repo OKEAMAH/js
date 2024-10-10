@@ -32,9 +32,9 @@ import {
   useChainName,
   useChainsQuery,
 } from "../../../core/hooks/others/useChainQuery.js";
+import { useActiveWalletChain } from "../../../core/hooks/wallets/useActiveWalletChain.js";
+import { useSwitchActiveWalletChain } from "../../../core/hooks/wallets/useSwitchActiveWalletChain.js";
 import { SetRootElementContext } from "../../../core/providers/RootElementContext.js";
-import { useActiveWalletChain } from "../../hooks/wallets/useActiveWalletChain.js";
-import { useSwitchActiveWalletChain } from "../../hooks/wallets/useSwitchActiveWalletChain.js";
 import { ChainIcon } from "../components/ChainIcon.js";
 import { Modal } from "../components/Modal.js";
 import { Skeleton } from "../components/Skeleton.js";
@@ -897,6 +897,7 @@ export type UseNetworkSwitcherModalOptions = {
  *   return <button onClick={handleClick}> Switch Network </button>
  * }
  * ```
+ * @wallet
  */
 export function useNetworkSwitcherModal() {
   const activeChain = useActiveWalletChain();
@@ -915,7 +916,7 @@ export function useNetworkSwitcherModal() {
       setRootEl(
         <CustomThemeProvider theme={props.theme}>
           <Modal
-            size={"compact"}
+            size="compact"
             open={true}
             setOpen={(value) => {
               if (!value) {

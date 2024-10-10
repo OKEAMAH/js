@@ -10,22 +10,36 @@ import {
 } from "@radix-ui/react-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useContext, useEffect, useState } from "react";
+import { trackPayEvent } from "../../../../analytics/track.js";
 import type { Chain } from "../../../../chains/types.js";
 import type { ThirdwebClient } from "../../../../client/client.js";
 import { getContract } from "../../../../contract/contract.js";
+import { getLastAuthProvider } from "../../../../react/core/utils/storage.js";
 import { isContractDeployed } from "../../../../utils/bytecode/is-contract-deployed.js";
+import { formatNumber } from "../../../../utils/formatNumber.js";
+import { webLocalStorage } from "../../../../utils/storage/webStorage.js";
+import { isEcosystemWallet } from "../../../../wallets/ecosystem/is-ecosystem-wallet.js";
+import type { Ecosystem } from "../../../../wallets/in-app/core/wallet/types.js";
 import type { Account, Wallet } from "../../../../wallets/interfaces/wallet.js";
 import type { SmartWalletOptions } from "../../../../wallets/smart/types.js";
-import type { AppMetadata } from "../../../../wallets/types.js";
+import {
+  type AppMetadata,
+  type SocialAuthOption,
+  socialAuthOptions,
+} from "../../../../wallets/types.js";
+import type {
+  EcosystemWalletId,
+  WalletId,
+} from "../../../../wallets/wallet-types.js";
 import {
   CustomThemeProvider,
+  parseTheme,
   useCustomTheme,
 } from "../../../core/design-system/CustomThemeProvider.js";
 import {
   type Theme,
   fontSize,
   iconSize,
-  media,
   radius,
   spacing,
 } from "../../../core/design-system/index.js";
@@ -41,25 +55,31 @@ import {
   useChainIconUrl,
   useChainName,
 } from "../../../core/hooks/others/useChainQuery.js";
+import { useActiveAccount } from "../../../core/hooks/wallets/useActiveAccount.js";
+import { useActiveWallet } from "../../../core/hooks/wallets/useActiveWallet.js";
+import { useActiveWalletChain } from "../../../core/hooks/wallets/useActiveWalletChain.js";
+import { useAdminWallet } from "../../../core/hooks/wallets/useAdminWallet.js";
+import { useDisconnect } from "../../../core/hooks/wallets/useDisconnect.js";
+import { useSwitchActiveWalletChain } from "../../../core/hooks/wallets/useSwitchActiveWalletChain.js";
 import { SetRootElementContext } from "../../../core/providers/RootElementContext.js";
 import type {
   SupportedNFTs,
   SupportedTokens,
 } from "../../../core/utils/defaultTokens.js";
 import { hasSmartAccount } from "../../../core/utils/isSmartWallet.js";
-import { useConnectedWalletDetails } from "../../../core/utils/wallet.js";
-import { useActiveAccount } from "../../hooks/wallets/useActiveAccount.js";
-import { useActiveWallet } from "../../hooks/wallets/useActiveWallet.js";
-import { useActiveWalletChain } from "../../hooks/wallets/useActiveWalletChain.js";
-import { useDisconnect } from "../../hooks/wallets/useDisconnect.js";
-import { useSwitchActiveWalletChain } from "../../hooks/wallets/useSwitchActiveWalletChain.js";
+import {
+  useConnectedWalletDetails,
+  useWalletInfo,
+} from "../../../core/utils/wallet.js";
+import { WalletUIStatesProvider } from "../../providers/wallet-ui-states-provider.js";
 import { ChainIcon } from "../components/ChainIcon.js";
 import { CopyIcon } from "../components/CopyIcon.js";
-import { Img } from "../components/Img.js";
+import { IconContainer } from "../components/IconContainer.js";
 import { Modal } from "../components/Modal.js";
 import { Skeleton } from "../components/Skeleton.js";
 import { Spacer } from "../components/Spacer.js";
 import { Spinner } from "../components/Spinner.js";
+import { ToolTip } from "../components/Tooltip.js";
 import { WalletImage } from "../components/WalletImage.js";
 import { Container, Line } from "../components/basic.js";
 import { Button, IconButton } from "../components/buttons.js";
@@ -67,7 +87,9 @@ import { Link, Text } from "../components/text.js";
 import { fadeInAnimation } from "../design-system/animations.js";
 import { StyledButton } from "../design-system/elements.js";
 import type { LocaleId } from "../types.js";
+import { Blobbie } from "./Blobbie.js";
 import { MenuButton, MenuLink } from "./MenuButton.js";
+import { ScreenSetupContext, useSetupScreen } from "./Modal/screen.js";
 import {
   NetworkSelectorContent,
   type NetworkSelectorProps,
@@ -76,19 +98,18 @@ import { TransactionsScreen } from "./TransactionsScreen.js";
 import { onModalUnmount } from "./constants.js";
 import { CoinsIcon } from "./icons/CoinsIcon.js";
 import { FundsIcon } from "./icons/FundsIcon.js";
-import { GenericWalletIcon } from "./icons/GenericWalletIcon.js";
 import { OutlineWalletIcon } from "./icons/OutlineWalletIcon.js";
-import { ShuffleIconLucide } from "./icons/ShuffleIconLucide.js";
-import { SmartWalletBadgeIcon } from "./icons/SmartAccountBadgeIcon.js";
 import { getConnectLocale } from "./locale/getConnectLocale.js";
 import type { ConnectLocale } from "./locale/types.js";
 import { LazyBuyScreen } from "./screens/Buy/LazyBuyScreen.js";
 import { WalletManagerScreen } from "./screens/Details/WalletManagerScreen.js";
+import { LinkProfileScreen } from "./screens/LinkProfileScreen.js";
+import { LinkedProfilesScreen } from "./screens/LinkedProfilesScreen.js";
 import { ManageWalletScreen } from "./screens/ManageWalletScreen.js";
 import { PrivateKey } from "./screens/PrivateKey.js";
 import { ReceiveFunds } from "./screens/ReceiveFunds.js";
 import { SendFunds } from "./screens/SendFunds.js";
-import { ViewFunds } from "./screens/ViewFunds.js";
+import { ViewAssets } from "./screens/ViewAssets.js";
 import { ViewNFTs } from "./screens/ViewNFTs.js";
 import { ViewTokens } from "./screens/ViewTokens.js";
 import { WalletConnectReceiverScreen } from "./screens/WalletConnectReceiverScreen.js";
@@ -121,17 +142,15 @@ export const ConnectedWalletDetails: React.FC<{
   const { connectLocale: locale, client } = props;
 
   const setRootEl = useContext(SetRootElementContext);
-  const activeWallet = useActiveWallet();
   const activeAccount = useActiveAccount();
   const walletChain = useActiveWalletChain();
 
-  const { ensAvatarQuery, addressOrENS, balanceQuery } =
-    useConnectedWalletDetails(
-      client,
-      walletChain,
-      activeAccount,
-      props.detailsButton?.displayBalanceToken,
-    );
+  const { pfp, name, balanceQuery } = useConnectedWalletDetails(
+    client,
+    walletChain,
+    activeAccount,
+    props.detailsButton?.displayBalanceToken,
+  );
 
   function closeModal() {
     setRootEl(null);
@@ -179,60 +198,73 @@ export const ConnectedWalletDetails: React.FC<{
     );
   }
 
+  const avatarSrc = props.detailsButton?.connectedAccountAvatarUrl || pfp;
+
+  const combinedClassName = `${TW_CONNECTED_WALLET} ${
+    props.detailsButton?.className || ""
+  }`;
+
   return (
     <WalletInfoButton
       type="button"
-      className={`${TW_CONNECTED_WALLET} ${
-        props.detailsButton?.className || ""
-      }`}
+      className={combinedClassName}
       style={props.detailsButton?.style}
       data-test="connected-wallet-details"
       onClick={openModal}
     >
-      {ensAvatarQuery.data ? (
-        <Img
-          src={ensAvatarQuery.data}
-          width={iconSize.lg}
-          height={iconSize.lg}
-          style={{
-            borderRadius: radius.sm,
-          }}
-          client={client}
-        />
-      ) : activeWallet?.id ? (
-        <WalletImage size={iconSize.lg} id={activeWallet.id} client={client} />
-      ) : (
-        <GenericWalletIcon size={iconSize.lg} />
-      )}
-
-      <Container flex="column" gap="xxs">
-        {/* Address */}
-
-        {addressOrENS ? (
-          <Text
-            size="sm"
-            color="primaryText"
-            weight={500}
-            className={`${TW_CONNECTED_WALLET}__address`}
-          >
-            {addressOrENS}
-          </Text>
+      <Container
+        style={{
+          borderRadius: "100%",
+          overflow: "hidden",
+          width: "35px",
+          height: "35px",
+        }}
+      >
+        {avatarSrc ? (
+          <img
+            alt=""
+            src={avatarSrc}
+            style={{
+              width: "100%",
+              height: "100%",
+            }}
+          />
         ) : (
-          <Skeleton height={fontSize.sm} width="88px" />
+          activeAccount && <Blobbie address={activeAccount.address} size={35} />
         )}
+      </Container>
+      <Container
+        flex="column"
+        gap="4xs"
+        style={{
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          borderRadius: `0 ${radius.md} ${radius.md} 0`,
+        }}
+      >
+        {/* Address */}
+        <Text
+          size="xs"
+          color="primaryText"
+          weight={500}
+          className={`${TW_CONNECTED_WALLET}__address`}
+        >
+          {props.detailsButton?.connectedAccountName ?? name}
+        </Text>
 
         {/* Balance */}
         {balanceQuery.data ? (
           <Text
             className={`${TW_CONNECTED_WALLET}__balance`}
             size="xs"
-            weight={500}
+            color="secondaryText"
+            weight={400}
           >
-            {Number(balanceQuery.data.displayValue).toFixed(3)}{" "}
+            {formatBalanceOnButton(Number(balanceQuery.data.displayValue))}{" "}
             {balanceQuery.data.symbol}
           </Text>
         ) : (
-          <Skeleton height={fontSize.xs} width="82px" />
+          <Skeleton height={fontSize.xs} width="70px" />
         )}
       </Container>
     </WalletInfoButton>
@@ -262,13 +294,13 @@ function DetailsModal(props: {
   const { client, locale } = props;
   const walletChain = useActiveWalletChain();
   const activeAccount = useActiveAccount();
-  const { ensAvatarQuery, addressOrENS, balanceQuery } =
-    useConnectedWalletDetails(
-      client,
-      walletChain,
-      activeAccount,
-      props.displayBalanceToken,
-    );
+  const { pfp, name, balanceQuery } = useConnectedWalletDetails(
+    client,
+    walletChain,
+    activeAccount,
+    props.displayBalanceToken,
+  );
+  const theme = parseTheme(props.theme);
 
   const activeWallet = useActiveWallet();
   const chainIconQuery = useChainIconUrl(walletChain);
@@ -276,6 +308,12 @@ function DetailsModal(props: {
   const chainFaucetsQuery = useChainFaucets(walletChain);
 
   const disableSwitchChain = !activeWallet?.switchChain;
+
+  const screenSetup = useSetupScreen({
+    size: "compact",
+    welcomeScreen: undefined,
+    wallets: activeWallet ? [activeWallet] : [],
+  });
 
   function closeModal() {
     setIsOpen(false);
@@ -319,10 +357,18 @@ function DetailsModal(props: {
       </div>
 
       {chainNameQuery.isLoading ? (
-        <Skeleton height={"16px"} width={"150px"} />
+        <Skeleton height="16px" width="150px" />
       ) : (
-        <Text color="primaryText" multiline>
+        <Text color="primaryText" size="md" multiline>
           {chainNameQuery.name || `Unknown chain #${walletChain?.id}`}
+          <Text color="secondaryText" size="xs">
+            {balanceQuery.data ? (
+              formatNumber(Number(balanceQuery.data.displayValue), 5)
+            ) : (
+              <Skeleton height="1em" width="100px" />
+            )}{" "}
+            {balanceQuery.data?.symbol}
+          </Text>
         </Text>
       )}
 
@@ -337,179 +383,226 @@ function DetailsModal(props: {
     </MenuButton>
   );
 
-  let content = (
-    <div>
-      <Spacer y="xl" />
+  const avatarSrc = props.detailsModal?.connectedAccountAvatarUrl ?? pfp;
 
-      <IconButton
+  const { hideSendFunds, hideReceiveFunds, hideBuyFunds } =
+    props.detailsModal || {};
+
+  const hideAllButtons = hideSendFunds && hideReceiveFunds && hideBuyFunds;
+
+  const avatarContent = (
+    <Container
+      style={{
+        position: "relative",
+        height: `${iconSize.xl}px`,
+        width: `${iconSize.xl}px`,
+      }}
+    >
+      <Container
         style={{
-          position: "absolute",
-          top: spacing.lg,
-          left: spacing.lg,
-          transform: "translateX(-6px)",
-        }}
-        onClick={() => {
-          setScreen("wallet-manager");
+          width: "100%",
+          height: "100%",
+          borderRadius: "100%",
+          overflow: "hidden",
         }}
       >
-        <div
-          style={{
-            width: `${iconSize.md}px`,
-            height: `${iconSize.md}px`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <ShuffleIconLucide size="20" />
-        </div>
-      </IconButton>
-
-      <Container px="lg" flex="column" center="x">
-        {ensAvatarQuery.data ? (
-          <Img
-            src={ensAvatarQuery.data}
-            width={iconSize.xxl}
-            height={iconSize.xxl}
+        {avatarSrc ? (
+          <img
+            src={avatarSrc}
             style={{
-              borderRadius: radius.lg,
+              width: iconSize.xxl,
+              height: iconSize.xxl,
             }}
-            client={client}
-          />
-        ) : activeWallet?.id ? (
-          <WalletImage
-            size={iconSize.xxl}
-            id={activeWallet.id}
-            client={client}
+            alt=""
           />
         ) : (
-          <GenericWalletIcon size={iconSize.xxl} />
-        )}
-
-        <Spacer y="md" />
-
-        <ConnectedToSmartWallet client={props.client} connectLocale={locale} />
-
-        {(activeWallet?.id === "embedded" || activeWallet?.id === "inApp") && (
-          <InAppWalletUserInfo client={props.client} />
-        )}
-
-        {/* Address */}
-        <div
-          style={{
-            display: "flex",
-            gap: spacing.xxs,
-            alignItems: "center",
-            transform: "translateX(10px)",
-          }}
-          data-test="connected-wallet-address"
-          data-address={activeAccount?.address}
-        >
-          <Text color="primaryText" weight={500} size="md">
-            {addressOrENS}
-          </Text>
-          <IconButton
-            style={{
-              padding: "3px",
-            }}
-            data-test="copy-address"
-          >
-            <CopyIcon
-              text={activeAccount?.address || ""}
-              tip={locale.copyAddress}
-              side="top"
+          activeAccount && (
+            <Blobbie
+              address={activeAccount.address}
+              size={Number(iconSize.xxl)}
             />
-          </IconButton>
-        </div>
-
-        <Spacer y="xxs" />
-
-        {/* Balance */}
-        <Text weight={500} size="sm">
-          {balanceQuery.data ? (
-            Number(balanceQuery.data.displayValue).toFixed(3)
-          ) : (
-            <Skeleton height="1em" width="100px" />
-          )}{" "}
-          {balanceQuery.data?.symbol}{" "}
-        </Text>
+          )
+        )}
       </Container>
-      <Spacer y="lg" />
-      <Container px="lg">
-        {/* Send, Receive, Swap */}
+      {!props.detailsModal?.hideSwitchWallet ? (
         <Container
           style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
-            gap: spacing.xs,
+            position: "absolute",
+            bottom: -2,
+            right: -2,
           }}
         >
-          <Button
-            variant="outline"
+          <IconContainer
             style={{
-              fontSize: fontSize.sm,
-              display: "flex",
-              gap: spacing.xs,
-              alignItems: "center",
-              padding: spacing.sm,
+              background: theme.colors.modalBg,
             }}
-            onClick={() => {
-              setScreen("send");
-            }}
+            padding="4px"
           >
-            <Container color="secondaryText" flex="row" center="both">
-              <PaperPlaneIcon
-                width={iconSize.sm}
-                height={iconSize.sm}
-                style={{
-                  transform: "translateY(-10%) rotate(-45deg) ",
-                }}
+            {activeWallet && (
+              <WalletImage
+                style={{ borderRadius: 0 }}
+                id={activeWallet.id}
+                client={client}
+                size="12"
               />
-            </Container>
+            )}
+          </IconContainer>
+        </Container>
+      ) : null}
+    </Container>
+  );
 
-            {locale.send}
-          </Button>
-
-          <Button
-            variant="outline"
+  let content = (
+    <div>
+      <Spacer y="xs" />
+      <Container
+        px="lg"
+        gap="sm"
+        flex="row"
+        center="y"
+        style={{
+          paddingTop: spacing.lg,
+          paddingBottom: hideAllButtons ? spacing.md : spacing.lg,
+        }}
+      >
+        {props.detailsModal?.hideSwitchWallet ? (
+          avatarContent
+        ) : (
+          <ToolTip tip="Switch wallet">
+            <div
+              style={{
+                cursor: "pointer",
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "w") {
+                  setScreen("wallet-manager");
+                }
+              }}
+              onClick={() => {
+                setScreen("wallet-manager");
+              }}
+            >
+              {avatarContent}
+            </div>
+          </ToolTip>
+        )}
+        <Container flex="column" gap="3xs">
+          <div
             style={{
-              fontSize: fontSize.sm,
               display: "flex",
-              gap: spacing.xs,
+              gap: spacing.xxs,
               alignItems: "center",
-              padding: spacing.sm,
-            }}
-            onClick={() => {
-              setScreen("receive");
             }}
           >
-            <Container color="secondaryText" flex="row" center="both">
-              <PinBottomIcon width={iconSize.sm} height={iconSize.sm} />{" "}
-            </Container>
-            {locale.receive}{" "}
-          </Button>
-
-          <Button
-            variant="outline"
-            style={{
-              fontSize: fontSize.sm,
-              display: "flex",
-              gap: spacing.xs,
-              alignItems: "center",
-              padding: spacing.sm,
-            }}
-            onClick={() => {
-              setScreen("buy");
-            }}
-          >
-            <Container color="secondaryText" flex="row" center="both">
-              <PlusIcon width={iconSize.sm} height={iconSize.sm} />
-            </Container>
-            {locale.buy}
-          </Button>
+            <Text color="primaryText" weight={500} size="md">
+              {props.detailsModal?.connectedAccountName ?? name}
+            </Text>
+            <IconButton>
+              <CopyIcon
+                text={activeAccount?.address || ""}
+                tip={locale.copyAddress}
+              />
+            </IconButton>
+          </div>
+          <InAppWalletUserInfo client={client} locale={locale} />
         </Container>
       </Container>
-      <Spacer y="md" />
+
+      {!hideAllButtons && (
+        <>
+          <Container px="lg">
+            {/* Send, Receive, Swap */}
+            <Container
+              style={{
+                display: "flex",
+                gap: spacing.xs,
+              }}
+            >
+              {!hideSendFunds && (
+                <Button
+                  variant="outline"
+                  style={{
+                    fontSize: fontSize.sm,
+                    display: "flex",
+                    gap: spacing.xs,
+                    alignItems: "center",
+                    padding: spacing.sm,
+                    flex: 1,
+                  }}
+                  onClick={() => {
+                    setScreen("send");
+                  }}
+                >
+                  <Container color="secondaryText" flex="row" center="both">
+                    <PaperPlaneIcon
+                      width={iconSize.sm}
+                      height={iconSize.sm}
+                      style={{
+                        transform: "translateY(-10%) rotate(-45deg) ",
+                      }}
+                    />
+                  </Container>
+
+                  {locale.send}
+                </Button>
+              )}
+
+              {!hideReceiveFunds && (
+                <Button
+                  variant="outline"
+                  style={{
+                    fontSize: fontSize.sm,
+                    display: "flex",
+                    gap: spacing.xs,
+                    alignItems: "center",
+                    padding: spacing.sm,
+                    flex: 1,
+                  }}
+                  onClick={() => {
+                    setScreen("receive");
+                  }}
+                >
+                  <Container color="secondaryText" flex="row" center="both">
+                    <PinBottomIcon width={iconSize.sm} height={iconSize.sm} />
+                  </Container>
+                  {locale.receive}
+                </Button>
+              )}
+
+              {!hideBuyFunds && (
+                <Button
+                  variant="outline"
+                  style={{
+                    fontSize: fontSize.sm,
+                    display: "flex",
+                    gap: spacing.xs,
+                    alignItems: "center",
+                    padding: spacing.sm,
+                    flex: 1,
+                  }}
+                  onClick={() => {
+                    trackPayEvent({
+                      event: "details_modal_buy_click",
+                      client: client,
+                      walletAddress: activeAccount?.address,
+                      walletType: activeWallet?.id,
+                    });
+                    setScreen("buy");
+                  }}
+                >
+                  <Container color="secondaryText" flex="row" center="both">
+                    <PlusIcon width={iconSize.sm} height={iconSize.sm} />
+                  </Container>
+                  {locale.buy}
+                </Button>
+              )}
+            </Container>
+          </Container>
+
+          <Spacer y="md" />
+        </>
+      )}
+
       <Container px="md">
         <Container
           flex="column"
@@ -538,7 +631,7 @@ function DetailsModal(props: {
           {/* View Funds */}
           <MenuButton
             onClick={() => {
-              setScreen("view-funds");
+              setScreen("view-assets");
             }}
             style={{
               fontSize: fontSize.sm,
@@ -639,7 +732,7 @@ function DetailsModal(props: {
   if (screen === "transactions") {
     content = (
       <TransactionsScreen
-        title="Buy"
+        title={locale.buy}
         onBack={() => setScreen("main")}
         closeModal={closeModal}
         locale={locale}
@@ -663,6 +756,7 @@ function DetailsModal(props: {
         chain={props.connectOptions?.chain}
         chains={props.connectOptions?.chains}
         client={client}
+        hiddenWallets={props.connectOptions?.hiddenWallets}
         connectLocale={locale}
         recommendedWallets={props.connectOptions?.recommendedWallets}
         showAllWallets={!!props.connectOptions?.showAllWallets}
@@ -694,15 +788,16 @@ function DetailsModal(props: {
         client={client}
       />
     );
-  } else if (screen === "view-funds") {
+  } else if (screen === "view-assets") {
     if (props.supportedNFTs) {
       content = (
-        <ViewFunds
+        <ViewAssets
           supportedTokens={props.supportedTokens}
           supportedNFTs={props.supportedNFTs}
           onBack={() => {
             setScreen("main");
           }}
+          theme={props.theme}
           setScreen={setScreen}
           client={client}
           connectLocale={locale}
@@ -777,6 +872,26 @@ function DetailsModal(props: {
         client={client}
       />
     );
+  } else if (screen === "linked-profiles") {
+    content = (
+      <LinkedProfilesScreen
+        onBack={() => setScreen("manage-wallet")}
+        client={client}
+        locale={locale}
+        setScreen={setScreen}
+      />
+    );
+  } else if (screen === "link-profile") {
+    content = (
+      <LinkProfileScreen
+        onBack={() => {
+          setScreen("linked-profiles");
+        }}
+        client={client}
+        locale={locale}
+        walletConnect={props.connectOptions?.walletConnect}
+      />
+    );
   }
 
   // send funds
@@ -811,37 +926,48 @@ function DetailsModal(props: {
   else if (screen === "buy") {
     content = (
       <LazyBuyScreen
-        title="Buy"
+        title={locale.buy}
         isEmbed={false}
         client={client}
         onBack={() => setScreen("main")}
         supportedTokens={props.supportedTokens}
-        onViewPendingTx={() => setScreen("transactions")}
         connectLocale={locale}
-        payOptions={props.detailsModal?.payOptions || {}}
+        payOptions={
+          props.detailsModal?.payOptions || {
+            mode: "fund_wallet",
+          }
+        }
+        hiddenWallets={props.detailsModal?.hiddenWallets}
         theme={typeof props.theme === "string" ? props.theme : props.theme.type}
         onDone={closeModal}
         connectOptions={undefined}
-        buyForTx={undefined}
       />
     );
   }
 
   return (
     <CustomThemeProvider theme={props.theme}>
-      <Modal
-        size={"compact"}
-        open={isOpen}
-        setOpen={(_open) => {
-          if (!_open) {
-            closeModal();
-          }
-        }}
-      >
-        {content}
-      </Modal>
+      <WalletUIStatesProvider theme={props.theme} isOpen={false}>
+        <ScreenSetupContext.Provider value={screenSetup}>
+          <Modal
+            size="compact"
+            open={isOpen}
+            setOpen={(_open) => {
+              if (!_open) {
+                closeModal();
+              }
+            }}
+          >
+            {content}
+          </Modal>
+        </ScreenSetupContext.Provider>
+      </WalletUIStatesProvider>
     </CustomThemeProvider>
   );
+}
+
+function formatBalanceOnButton(num: number) {
+  return formatNumber(num, num < 1 ? 5 : 4);
 }
 
 const WalletInfoButton = /* @__PURE__ */ StyledButton((_) => {
@@ -849,26 +975,20 @@ const WalletInfoButton = /* @__PURE__ */ StyledButton((_) => {
   return {
     all: "unset",
     background: theme.colors.connectedButtonBg,
-    border: `1px solid ${theme.colors.borderColor}`,
-    padding: `${spacing.sm} ${spacing.sm}`,
-    borderRadius: radius.lg,
+    overflow: "hidden",
+    borderRadius: radius.md,
     cursor: "pointer",
     display: "inline-flex",
+    gap: spacing.xs,
+    padding: spacing.xs,
     alignItems: "center",
-    minWidth: "180px",
-    gap: spacing.sm,
+    minWidth: "165px",
+    height: "50px",
     boxSizing: "border-box",
+    border: `1px solid ${theme.colors.borderColor}`,
     WebkitTapHighlightColor: "transparent",
     lineHeight: "normal",
     animation: `${fadeInAnimation} 300ms ease`,
-    [media.mobile]: {
-      gap: spacing.sm,
-      padding: `${spacing.xs} ${spacing.sm}`,
-      img: {
-        width: `${iconSize.md}px`,
-        height: `${iconSize.md}px`,
-      },
-    },
     "&:hover": {
       transition: "background 250ms ease",
       background: theme.colors.connectedButtonBgHover,
@@ -914,20 +1034,8 @@ function ConnectedToSmartWallet(props: {
   }, [activeAccount, chain, client, isSmartWallet]);
 
   const content = (
-    <Container
-      flex="row"
-      bg="secondaryButtonBg"
-      gap="xxs"
-      style={{
-        borderRadius: radius.md,
-        padding: `${spacing.xxs} ${spacing.sm} ${spacing.xxs} ${spacing.xs}`,
-      }}
-      center="y"
-    >
-      <Container flex="row" color="accentText" center="both">
-        <SmartWalletBadgeIcon size={iconSize.xs} />
-      </Container>
-      <Text size="xs" color="secondaryButtonText">
+    <Container flex="row" gap="3xs" center="y">
+      <Text size="xs" weight={400} color="secondaryText">
         {locale.connectedToSmartWallet}
       </Text>
     </Container>
@@ -949,8 +1057,6 @@ function ConnectedToSmartWallet(props: {
         ) : (
           <Text size="sm"> {content}</Text>
         )}
-
-        <Spacer y="xs" />
       </>
     );
   }
@@ -958,13 +1064,61 @@ function ConnectedToSmartWallet(props: {
   return null;
 }
 
-function InAppWalletUserInfo(props: { client: ThirdwebClient }) {
-  const { client } = props;
+function InAppWalletUserInfo(props: {
+  client: ThirdwebClient;
+  locale: ConnectLocale;
+}) {
+  const { client, locale } = props;
   const account = useActiveAccount();
+  const activeWallet = useActiveWallet();
+  const adminWallet = useAdminWallet();
+  const { data: walletInfo } = useWalletInfo(activeWallet?.id);
+  const isSmartWallet = hasSmartAccount(activeWallet);
+  const { data: walletName } = useQuery({
+    queryKey: [
+      "wallet-name",
+      { walletId: activeWallet?.id, walletAddress: account?.address },
+    ],
+    queryFn: async () => {
+      const lastAuthProvider = await getLastAuthProvider(webLocalStorage);
+      if (lastAuthProvider === "guest") {
+        return "Guest";
+      }
+      if (
+        lastAuthProvider &&
+        (activeWallet?.id === "inApp" || activeWallet?.id === "smart") &&
+        socialAuthOptions.includes(lastAuthProvider as SocialAuthOption)
+      ) {
+        return (
+          lastAuthProvider.slice(0, 1).toUpperCase() + lastAuthProvider.slice(1)
+        );
+      }
+      return walletInfo?.name;
+    },
+    enabled: !!activeWallet?.id && !!walletInfo,
+  });
 
   const userInfoQuery = useQuery({
     queryKey: ["in-app-wallet-user", client, account?.address],
     queryFn: async () => {
+      const isInAppWallet =
+        adminWallet &&
+        (adminWallet.id === "inApp" || adminWallet.id.startsWith("ecosystem."));
+
+      if (!isInAppWallet) {
+        return null;
+      }
+
+      let ecosystem: Ecosystem | undefined;
+      if (isEcosystemWallet(adminWallet)) {
+        const ecosystemWallet = adminWallet as Wallet<EcosystemWalletId>;
+        const partnerId = ecosystemWallet.getConfig()?.partnerId;
+        ecosystem = {
+          id: ecosystemWallet.id,
+          partnerId,
+        };
+      }
+
       const { getUserEmail, getUserPhoneNumber } = await import(
         "../../../../wallets/in-app/web/lib/auth/index.js"
       );
@@ -972,31 +1126,32 @@ function InAppWalletUserInfo(props: { client: ThirdwebClient }) {
       const [email, phone] = await Promise.all([
         getUserEmail({
           client: client,
+          ecosystem,
         }),
         getUserPhoneNumber({
           client: client,
+          ecosystem,
         }),
       ]);
 
       return email || phone || null;
     },
+    enabled: !!adminWallet,
   });
 
-  if (userInfoQuery.data) {
+  if (!userInfoQuery.data && isSmartWallet) {
+    return <ConnectedToSmartWallet client={client} connectLocale={locale} />;
+  }
+
+  if (userInfoQuery.data || walletName) {
     return (
-      <Container
-        flex="row"
-        center="x"
-        style={{
-          paddingBottom: spacing.xs,
-        }}
-      >
-        <Text size="sm">{userInfoQuery.data}</Text>
-      </Container>
+      <Text size="xs" weight={400}>
+        {userInfoQuery.data || walletName}
+      </Text>
     );
   }
 
-  return null;
+  return <Skeleton width="50px" height="10px" />;
 }
 
 /**
@@ -1048,7 +1203,7 @@ function SwitchNetworkButton(props: {
   );
 }
 
-export type DetailsModalConnectOptions = {
+type DetailsModalConnectOptions = {
   connectModal?: ConnectButton_connectModalOptions;
   walletConnect?: {
     projectId?: string;
@@ -1059,6 +1214,7 @@ export type DetailsModalConnectOptions = {
   chain?: Chain;
   chains?: Chain[];
   recommendedWallets?: Wallet[];
+  hiddenWallets?: WalletId[];
   showAllWallets?: boolean;
 };
 
@@ -1188,6 +1344,7 @@ export type UseWalletDetailsModalOptions = {
    * ```
    */
   chains?: Chain[];
+
   /**
    * Show a "Request Testnet funds" link in Wallet Details Modal when user is connected to a testnet.
    *
@@ -1206,6 +1363,13 @@ export type UseWalletDetailsModalOptions = {
    * By default it is `false`
    */
   hideDisconnect?: boolean;
+
+  /**
+   * Hide the "Switch Wallet" button in the Wallet Details Modal.
+   *
+   * By default it is `false`
+   */
+  hideSwitchWallet?: boolean;
 
   /**
    * Callback to be called when a wallet is disconnected by clicking the "Disconnect Wallet" button in the Wallet Details Modal.
@@ -1246,7 +1410,7 @@ export type UseWalletDetailsModalOptions = {
    *
    * thirdweb Pay allows users to buy tokens using crypto or fiat currency.
    */
-  payOptions?: PayUIOptions;
+  payOptions?: Extract<PayUIOptions, { mode?: "fund_wallet" }>;
 
   /**
    * Display the balance of a token instead of the native token
@@ -1265,6 +1429,37 @@ export type UseWalletDetailsModalOptions = {
    * Options to configure the Connect UI shown when user clicks the "Connect Wallet" button in the Wallet Switcher screen.
    */
   connectOptions?: DetailsModalConnectOptions;
+
+  /**
+   * Render custom UI for the connected wallet name in the `ConnectButton` Details Modal, overriding ENS name or wallet address.
+   */
+  connectedAccountName?: React.ReactNode;
+
+  /**
+   * Use custom avatar URL for the connected wallet image in the `ConnectButton` Details Modal, overriding ENS avatar or Blobbie icon.
+   */
+  connectedAccountAvatarUrl?: string;
+
+  /**
+   * Hide the "Send Funds" button in the Details Modal.
+   *
+   * By default the "Send Funds" button is shown.
+   */
+  hideSendFunds?: boolean;
+
+  /**
+   * Hide the "Receive Funds" button in the Details Modal.
+   *
+   * By default the "Receive Funds" button is shown.
+   */
+  hideReceiveFunds?: boolean;
+
+  /**
+   * Hide the "Buy Funds" button in the Details Modal.
+   *
+   * By default the "Buy Funds" button is shown.
+   */
+  hideBuyFunds?: boolean;
 };
 
 /**
@@ -1313,9 +1508,15 @@ export function useWalletDetailsModal() {
             detailsModal={{
               footer: props.footer,
               hideDisconnect: props.hideDisconnect,
+              hideSwitchWallet: props.hideSwitchWallet,
               networkSelector: props.networkSelector,
               payOptions: props.payOptions,
               showTestnetFaucet: props.showTestnetFaucet,
+              connectedAccountName: props.connectedAccountName,
+              connectedAccountAvatarUrl: props.connectedAccountAvatarUrl,
+              hideBuyFunds: props.hideBuyFunds,
+              hideReceiveFunds: props.hideReceiveFunds,
+              hideSendFunds: props.hideSendFunds,
             }}
             displayBalanceToken={props.displayBalanceToken}
             theme={props.theme || "dark"}

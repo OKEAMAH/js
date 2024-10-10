@@ -1,3 +1,4 @@
+import { WalletAddress } from "@/components/blocks/wallet-address";
 import type { Transaction } from "@3rdweb-sdk/react/hooks/useEngine";
 import { useLoggedInUser } from "@3rdweb-sdk/react/hooks/useLoggedInUser";
 import {
@@ -9,7 +10,6 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
-  Stack,
   Step,
   StepIndicator,
   StepSeparator,
@@ -135,23 +135,21 @@ export const TransactionTimeline = ({
             <StepIndicator>
               <StepStatus complete={<FiCheck />} active={<FiCheck />} />
             </StepIndicator>
-
             <Flex justify="space-between" w="full" mt={-1}>
-              <Stack>
+              <div className="flex flex-col gap-2">
                 {isFilled ? (
                   <Text>{step.step}</Text>
                 ) : (
                   <Text color="gray.600">{step.step}</Text>
                 )}
                 {step.cta}
-              </Stack>
+              </div>
               {step.date && (
                 <Text fontSize="small">
                   {prettyPrintTimestamp(step.date, index === 0)}
                 </Text>
               )}
             </Flex>
-
             <StepSeparator />
           </Step>
         );
@@ -217,10 +215,10 @@ const CancelTransactionButton = ({
     <>
       <Modal isOpen={isOpen} onClose={onClose} initialFocusRef={closeButtonRef}>
         <ModalOverlay />
-        <ModalContent>
+        <ModalContent className="!bg-background rounded-lg border border-border">
           <ModalHeader>Cancel Transaction</ModalHeader>
           <ModalBody>
-            <Stack gap={4}>
+            <div className="flex flex-col gap-4">
               <Text>Are you sure you want to cancel this transaction?</Text>
               <FormControl>
                 <FormLabel>Queue ID</FormLabel>
@@ -234,9 +232,8 @@ const CancelTransactionButton = ({
               </FormControl>
               <FormControl>
                 <FormLabel>From</FormLabel>
-                <AddressCopyButton
+                <WalletAddress
                   address={transaction.fromAddress ?? ""}
-                  size="xs"
                   shortenAddress={false}
                 />
               </FormControl>
@@ -257,7 +254,7 @@ const CancelTransactionButton = ({
                 If this transaction is already submitted, it may complete before
                 the cancellation is submitted.
               </Text>
-            </Stack>
+            </div>
           </ModalBody>
 
           <ModalFooter as={Flex} gap={3}>

@@ -1,8 +1,7 @@
+import { WalletAddress } from "@/components/blocks/wallet-address";
 import {
   ButtonGroup,
-  Center,
   Flex,
-  Icon,
   IconButton,
   Select,
   Skeleton,
@@ -16,10 +15,16 @@ import {
   Tr,
   usePrevious,
 } from "@chakra-ui/react";
-import type { MarketplaceV3 } from "@thirdweb-dev/sdk";
+import type { UseQueryResult } from "@tanstack/react-query";
 import { MediaCell } from "components/contract-pages/table/table-columns/cells/media-cell";
 import { ListingDrawer } from "contract-ui/tabs/shared-components/listing-drawer";
-import { BigNumber } from "ethers";
+import {
+  ChevronFirstIcon,
+  ChevronLastIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MoveRightIcon,
+} from "lucide-react";
 import {
   type Dispatch,
   type SetStateAction,
@@ -27,21 +32,14 @@ import {
   useMemo,
   useState,
 } from "react";
-import { FiArrowRight } from "react-icons/fi";
-import {
-  MdFirstPage,
-  MdLastPage,
-  MdNavigateBefore,
-  MdNavigateNext,
-} from "react-icons/md";
-import type { UseQueryResult } from "react-query-v5";
 import { type Cell, type Column, usePagination, useTable } from "react-table";
+import type { ThirdwebContract } from "thirdweb";
 import type {
   DirectListing,
   EnglishAuction,
 } from "thirdweb/extensions/marketplace";
+import { min } from "thirdweb/utils";
 import { Button, Text } from "tw-components";
-import { AddressCopyButton } from "tw-components/AddressCopyButton";
 import { LISTING_STATUS } from "./types";
 
 const tableColumns: Column<DirectListing | EnglishAuction>[] = [
@@ -64,7 +62,7 @@ const tableColumns: Column<DirectListing | EnglishAuction>[] = [
     accessor: (row) => row.creatorAddress,
     // biome-ignore lint/suspicious/noExplicitAny: FIXME
     Cell: ({ cell }: { cell: Cell<any, string> }) => (
-      <AddressCopyButton variant="outline" address={cell.value} />
+      <WalletAddress address={cell.value} />
     ),
   },
   {
@@ -88,7 +86,7 @@ const tableColumns: Column<DirectListing | EnglishAuction>[] = [
 ];
 
 interface MarketplaceTableProps {
-  contract: MarketplaceV3;
+  contract: ThirdwebContract;
   getAllQueryResult: UseQueryResult<DirectListing[] | EnglishAuction[]>;
   getValidQueryResult: UseQueryResult<DirectListing[] | EnglishAuction[]>;
   totalCountQuery: UseQueryResult<bigint>;
@@ -162,8 +160,10 @@ export const MarketplaceTable: React.FC<MarketplaceTableProps> = ({
       manualPagination: true,
       pageCount: Math.max(
         Math.ceil(
-          BigNumber.from(totalCountQuery.data || 0).toNumber() /
-            queryParams.count,
+          Number(
+            // To avoid overflow issue
+            min(totalCountQuery.data || 0n, BigInt(Number.MAX_SAFE_INTEGER)),
+          ) / queryParams.count,
         ),
         1,
       ),
@@ -199,8 +199,7 @@ export const MarketplaceTable: React.FC<MarketplaceTableProps> = ({
           Valid
         </Button>
       </ButtonGroup>
-
-      <TableContainer maxW="100%">
+      <TableContainer maxW="100%" className="relative">
         {((listingsToShow === "all" && getAllQueryResult.isFetching) ||
           (listingsToShow === "valid" && getValidQueryResult.isFetching)) && (
           <Spinner
@@ -247,7 +246,7 @@ export const MarketplaceTable: React.FC<MarketplaceTableProps> = ({
                 <Tr
                   {...row.getRowProps()}
                   role="group"
-                  _hover={{ bg: "accent.100" }}
+                  className="hover:bg-muted/50"
                   style={{ cursor: "pointer" }}
                   onClick={() => setTokenRow(row.original)}
                   borderBottomWidth={1}
@@ -268,7 +267,7 @@ export const MarketplaceTable: React.FC<MarketplaceTableProps> = ({
                     </Td>
                   ))}
                   <Td borderBottomWidth="inherit" borderColor="borderColor">
-                    <Icon as={FiArrowRight} />
+                    <MoveRightIcon className="size-3" />
                   </Td>
                 </Tr>
               );
@@ -276,18 +275,18 @@ export const MarketplaceTable: React.FC<MarketplaceTableProps> = ({
           </Tbody>
         </Table>
       </TableContainer>
-      <Center w="100%">
+      <div className="flex w-full items-center justify-center">
         <Flex gap={2} direction="row" align="center">
           <IconButton
-            isDisabled={!canPreviousPage || totalCountQuery.isLoading}
+            isDisabled={!canPreviousPage || totalCountQuery.isPending}
             aria-label="first page"
-            icon={<Icon as={MdFirstPage} />}
+            icon={<ChevronFirstIcon className="size-4" />}
             onClick={() => gotoPage(0)}
           />
           <IconButton
-            isDisabled={!canPreviousPage || totalCountQuery.isLoading}
+            isDisabled={!canPreviousPage || totalCountQuery.isPending}
             aria-label="previous page"
-            icon={<Icon as={MdNavigateBefore} />}
+            icon={<ChevronLeftIcon className="size-4" />}
             onClick={() => previousPage()}
           />
           <Text whiteSpace="nowrap">
@@ -301,15 +300,15 @@ export const MarketplaceTable: React.FC<MarketplaceTableProps> = ({
             </Skeleton>
           </Text>
           <IconButton
-            isDisabled={!canNextPage || totalCountQuery.isLoading}
+            isDisabled={!canNextPage || totalCountQuery.isPending}
             aria-label="next page"
-            icon={<Icon as={MdNavigateNext} />}
+            icon={<ChevronRightIcon className="size-4" />}
             onClick={() => nextPage()}
           />
           <IconButton
-            isDisabled={!canNextPage || totalCountQuery.isLoading}
+            isDisabled={!canNextPage || totalCountQuery.isPending}
             aria-label="last page"
-            icon={<Icon as={MdLastPage} />}
+            icon={<ChevronLastIcon className="size-4" />}
             onClick={() => gotoPage(pageCount - 1)}
           />
 
@@ -318,7 +317,7 @@ export const MarketplaceTable: React.FC<MarketplaceTableProps> = ({
               setPageSize(Number.parseInt(e.target.value as string, 10));
             }}
             value={pageSize}
-            isDisabled={totalCountQuery.isLoading}
+            isDisabled={totalCountQuery.isPending}
           >
             <option value="25">25</option>
             <option value="50">50</option>
@@ -327,7 +326,7 @@ export const MarketplaceTable: React.FC<MarketplaceTableProps> = ({
             <option value="500">500</option>
           </Select>
         </Flex>
-      </Center>
+      </div>
     </Flex>
   );
 };

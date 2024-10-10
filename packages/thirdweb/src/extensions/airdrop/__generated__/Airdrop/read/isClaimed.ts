@@ -4,71 +4,52 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
  * Represents the parameters for the "isClaimed" function.
  */
 export type IsClaimedParams = {
-  receiver: AbiParameterToPrimitiveType<{
-    name: "_receiver";
-    type: "address";
-    internalType: "address";
-  }>;
-  token: AbiParameterToPrimitiveType<{
-    name: "_token";
-    type: "address";
-    internalType: "address";
-  }>;
-  tokenId: AbiParameterToPrimitiveType<{
-    name: "_tokenId";
-    type: "uint256";
-    internalType: "uint256";
-  }>;
+  receiver: AbiParameterToPrimitiveType<{ type: "address"; name: "_receiver" }>;
+  token: AbiParameterToPrimitiveType<{ type: "address"; name: "_token" }>;
+  tokenId: AbiParameterToPrimitiveType<{ type: "uint256"; name: "_tokenId" }>;
 };
 
 export const FN_SELECTOR = "0xd12acf73" as const;
 const FN_INPUTS = [
   {
+    type: "address",
     name: "_receiver",
-    type: "address",
-    internalType: "address",
   },
   {
+    type: "address",
     name: "_token",
-    type: "address",
-    internalType: "address",
   },
   {
-    name: "_tokenId",
     type: "uint256",
-    internalType: "uint256",
+    name: "_tokenId",
   },
 ] as const;
 const FN_OUTPUTS = [
   {
-    name: "",
     type: "bool",
-    internalType: "bool",
   },
 ] as const;
 
 /**
  * Checks if the `isClaimed` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `isClaimed` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `isClaimed` method is supported.
  * @extension AIRDROP
  * @example
  * ```ts
  * import { isIsClaimedSupported } from "thirdweb/extensions/airdrop";
- *
- * const supported = await isIsClaimedSupported(contract);
+ * const supported = isIsClaimedSupported(["0x..."]);
  * ```
  */
-export async function isIsClaimedSupported(contract: ThirdwebContract<any>) {
+export function isIsClaimedSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -80,7 +61,7 @@ export async function isIsClaimedSupported(contract: ThirdwebContract<any>) {
  * @extension AIRDROP
  * @example
  * ```ts
- * import { encodeIsClaimedParams } "thirdweb/extensions/airdrop";
+ * import { encodeIsClaimedParams } from "thirdweb/extensions/airdrop";
  * const result = encodeIsClaimedParams({
  *  receiver: ...,
  *  token: ...,
@@ -103,7 +84,7 @@ export function encodeIsClaimedParams(options: IsClaimedParams) {
  * @extension AIRDROP
  * @example
  * ```ts
- * import { encodeIsClaimed } "thirdweb/extensions/airdrop";
+ * import { encodeIsClaimed } from "thirdweb/extensions/airdrop";
  * const result = encodeIsClaimed({
  *  receiver: ...,
  *  token: ...,
@@ -128,7 +109,7 @@ export function encodeIsClaimed(options: IsClaimedParams) {
  * @example
  * ```ts
  * import { decodeIsClaimedResult } from "thirdweb/extensions/airdrop";
- * const result = decodeIsClaimedResult("...");
+ * const result = decodeIsClaimedResultResult("...");
  * ```
  */
 export function decodeIsClaimedResult(result: Hex) {

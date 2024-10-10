@@ -1,7 +1,7 @@
-import { Box, Flex, Icon } from "@chakra-ui/react";
+import { Flex } from "@chakra-ui/react";
+import { PlusIcon } from "lucide-react";
 import { useEffect } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
-import { FiPlus } from "react-icons/fi";
 import { Button, Heading, Text } from "tw-components";
 import { ExternalLinksInput } from "./external-links-input";
 
@@ -37,13 +37,13 @@ export const ExternalLinksFieldset = () => {
         {fields.map((item, index) => (
           <ExternalLinksInput key={item.id} remove={remove} index={index} />
         ))}
-        <Box>
+        <div>
           <Button
             type="button"
             size="sm"
             colorScheme="primary"
             borderRadius="md"
-            leftIcon={<Icon as={FiPlus} />}
+            leftIcon={<PlusIcon className="size-5" />}
             onClick={() =>
               append({
                 name: "",
@@ -53,7 +53,7 @@ export const ExternalLinksFieldset = () => {
           >
             Add Resource
           </Button>
-        </Box>
+        </div>
       </Flex>
     </Flex>
   );

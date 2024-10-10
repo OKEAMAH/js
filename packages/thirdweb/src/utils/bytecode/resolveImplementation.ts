@@ -4,10 +4,13 @@ import { eth_getStorageAt } from "../../rpc/actions/eth_getStorageAt.js";
 import { getRpcClient } from "../../rpc/rpc.js";
 import { readContract } from "../../transaction/read-contract.js";
 import { isAddress } from "../address.js";
+import type { Hex } from "../encoding/hex.js";
 import { extractMinimalProxyImplementationAddress } from "./extractMnimalProxyImplementationAddress.js";
 
 // TODO: move to const exports
 const AddressZero = "0x0000000000000000000000000000000000000000";
+const ZERO_BYTES32 =
+  "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 /**
  * Resolves the implementation address and bytecode for a given proxy contract.
@@ -23,7 +26,7 @@ const AddressZero = "0x0000000000000000000000000000000000000000";
 export async function resolveImplementation(
   // biome-ignore lint/suspicious/noExplicitAny: TODO: fix any
   contract: ThirdwebContract<any>,
-): Promise<{ address: string; bytecode: string }> {
+): Promise<{ address: string; bytecode: Hex }> {
   const [originalBytecode, beacon] = await Promise.all([
     getBytecode(contract),
     getBeaconFromStorageSlot(contract),
@@ -42,40 +45,39 @@ export async function resolveImplementation(
   }
 
   // check other proxy types
+  let implementationAddress: string | undefined;
   if (beacon && beacon !== AddressZero) {
     // In case of a BeaconProxy, it is setup as BeaconProxy --> Beacon --> Implementation
     // Hence we replace the proxy address with Beacon address, and continue further resolving below
     // biome-ignore lint/style/noParameterAssign: we purposefully mutate the contract object here
     contract = { ...contract, address: beacon };
-  }
-  const implementations = await Promise.all([
-    getImplementationFromStorageSlot(contract),
-    getImplementationFromContractCall(contract),
-  ]);
-  // this seems inefficient
-  for (const implementationAddress of implementations) {
-    if (
-      implementationAddress &&
-      isAddress(implementationAddress) &&
-      implementationAddress !== AddressZero
-    ) {
-      const implementationBytecode = await getBytecode({
-        ...contract,
-        address: implementationAddress,
-      });
-      // return the original contract bytecode if the implementation bytecode is empty
-      if (implementationBytecode === "0x") {
-        return {
-          address: contract.address,
-          bytecode: originalBytecode,
-        };
-      }
 
+    implementationAddress = await getImplementationFromContractCall(contract);
+  } else {
+    implementationAddress = await getImplementationFromStorageSlot(contract);
+  }
+
+  if (
+    implementationAddress &&
+    isAddress(implementationAddress) &&
+    implementationAddress !== AddressZero
+  ) {
+    const implementationBytecode = await getBytecode({
+      ...contract,
+      address: implementationAddress,
+    });
+    // return the original contract bytecode if the implementation bytecode is empty
+    if (implementationBytecode === "0x") {
       return {
-        address: implementationAddress,
-        bytecode: implementationBytecode,
+        address: contract.address,
+        bytecode: originalBytecode,
       };
     }
+
+    return {
+      address: implementationAddress,
+      bytecode: implementationBytecode,
+    };
   }
 
   return { address: contract.address, bytecode: originalBytecode };
@@ -118,12 +120,32 @@ async function getImplementationFromStorageSlot(
   });
 
   try {
-    const proxyStorage = await eth_getStorageAt(rpcRequest, {
-      address: contract.address,
-      position:
-        "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
-    });
-    return `0x${proxyStorage.slice(-40)}`;
+    const proxyStoragePromises = [
+      eth_getStorageAt(rpcRequest, {
+        address: contract.address,
+        position:
+          "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+      }),
+      eth_getStorageAt(rpcRequest, {
+        address: contract.address,
+        position:
+          // keccak256("matic.network.proxy.implementation") - used in polygon USDT proxy: https://polygonscan.com/address/0xc2132d05d31c914a87c6611c10748aeb04b58e8f#code
+          "0xbaab7dbf64751104133af04abc7d9979f0fda3b059a322a8333f533d3f32bf7f",
+      }),
+      eth_getStorageAt(rpcRequest, {
+        address: contract.address,
+        position:
+          // keccak256("org.zeppelinos.proxy.implementation") - e.g. base USDC proxy: https://basescan.org/address/0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913#code
+          "0x7050c9e0f4ca769c69bd3a8ef740bc37934f8e2c036e5a723fd8ee048ed3f8c3",
+      }),
+    ];
+
+    const proxyStorages = await Promise.all(proxyStoragePromises);
+    const proxyStorage = proxyStorages.find(
+      (storage) => storage !== ZERO_BYTES32,
+    );
+
+    return proxyStorage ? `0x${proxyStorage.slice(-40)}` : AddressZero;
   } catch {
     return undefined;
   }

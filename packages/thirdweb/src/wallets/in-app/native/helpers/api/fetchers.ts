@@ -1,25 +1,16 @@
-import type { CognitoUserSession } from "amazon-cognito-identity-js";
 import type { ThirdwebClient } from "../../../../../client/client.js";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
 import { getClientFetch } from "../../../../../utils/fetch.js";
 import { randomBytesHex } from "../../../../../utils/random.js";
-import type { UserDetailsApiType } from "../../../core/authentication/type.js";
+import type { ClientScopedStorage } from "../../../core/authentication/client-scoped-storage.js";
+import type { UserDetailsApiType } from "../../../core/authentication/types.js";
 import {
   ROUTE_EMBEDDED_WALLET_DETAILS,
-  ROUTE_IS_VALID_USER_MANAGED_OTP,
   ROUTE_STORE_USER_SHARES,
-  ROUTE_USER_MANAGED_OTP,
-  ROUTE_VALIDATE_USER_MANAGED_OTP,
-  ROUTE_VERIFY_COGNITO_OTP,
   ROUTE_VERIFY_THIRDWEB_CLIENT_ID,
   THIRDWEB_SESSION_NONCE_HEADER,
 } from "../constants.js";
 import { createErrorMessage } from "../errors.js";
-import { getAuthTokenClient } from "../storage/local.js";
-import type {
-  IsValidUserManagedEmailOTPResponse,
-  VerifiedTokenResponse,
-} from "../types.js";
 
 const EMBEDDED_WALLET_TOKEN_HEADER = "embedded-wallet-token";
 const PAPER_CLIENT_ID_HEADER = "x-thirdweb-client-id";
@@ -55,12 +46,15 @@ export const verifyClientId = async (client: ThirdwebClient) => {
   };
 };
 
-export const authFetchEmbeddedWalletUser = async (
-  client: ThirdwebClient,
-  url: string,
-  props: Parameters<typeof fetch>[1],
-): Promise<Response> => {
-  const authTokenClient = await getAuthTokenClient(client.clientId);
+export async function authFetchEmbeddedWalletUser(args: {
+  client: ThirdwebClient;
+  url: string;
+  props: Parameters<typeof fetch>[1];
+  storage: ClientScopedStorage;
+  retries?: number;
+}): Promise<Response> {
+  const { client, url, props, storage, retries = 0 } = args;
+  const authTokenClient = await storage.getAuthCookie();
   const params = { ...props };
   params.headers = params?.headers
     ? {
@@ -78,22 +72,42 @@ export const authFetchEmbeddedWalletUser = async (
         [PAPER_CLIENT_ID_HEADER]: client.clientId,
         ...getSessionHeaders(),
       };
-  return getClientFetch(client)(url, params);
-};
+
+  try {
+    return await getClientFetch(client)(url, params);
+  } catch (e) {
+    if (retries > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return await authFetchEmbeddedWalletUser({
+        client,
+        url,
+        props: params,
+        storage,
+        retries: retries - 1,
+      });
+    }
+    throw e;
+  }
+}
 
 export async function fetchUserDetails(args: {
   email?: string;
   client: ThirdwebClient;
+  storage: ClientScopedStorage;
 }): Promise<UserDetailsApiType> {
   const url = new URL(ROUTE_EMBEDDED_WALLET_DETAILS);
   if (args) {
-    if (args.email) {
-      url.searchParams.append("email", args.email);
-    }
+    // TODO (inapp) remove this, unused in the backend but still required
+    url.searchParams.append("email", args.email ?? "none");
     url.searchParams.append("clientId", args.client.clientId);
   }
-  const resp = await authFetchEmbeddedWalletUser(args.client, url.href, {
-    method: "GET",
+  const resp = await authFetchEmbeddedWalletUser({
+    client: args.client,
+    url: url.href,
+    props: {
+      method: "GET",
+    },
+    storage: args.storage,
   });
   if (!resp.ok) {
     const error = await resp.json();
@@ -105,110 +119,12 @@ export async function fetchUserDetails(args: {
   return result;
 }
 
-export async function generateAuthTokenFromCognitoEmailOtp(
-  session: CognitoUserSession,
-  clientId: string,
-) {
-  const resp = await fetch(ROUTE_VERIFY_COGNITO_OTP, {
-    method: "POST",
-    headers: {
-      ...getSessionHeaders(),
-    },
-    body: JSON.stringify({
-      access_token: session.getAccessToken().getJwtToken(),
-      refresh_token: session.getRefreshToken().getToken(),
-      id_token: session.getIdToken().getJwtToken(),
-      developerClientId: clientId,
-      otpMethod: "email",
-    }),
-  });
-  if (!resp.ok) {
-    const error = await resp.json();
-    throw new Error(
-      `Something went wrong generating auth token from user cognito email otp. ${error.message}`,
-    );
-  }
-  const respJ = await resp.json();
-  return respJ as VerifiedTokenResponse;
-}
-
-export async function sendUserManagedEmailOtp(email: string, clientId: string) {
-  const resp = await fetch(ROUTE_USER_MANAGED_OTP, {
-    method: "POST",
-    headers: {
-      ...getSessionHeaders(),
-    },
-    body: JSON.stringify({
-      email,
-      clientId,
-    }),
-  });
-  if (!resp.ok) {
-    const error = await resp.json();
-    throw new Error(
-      `Something went wrong generating auth token from user cognito email otp. ${error.message}`,
-    );
-  }
-  const respJ = await resp.json();
-  return respJ;
-}
-
-export async function validateUserManagedEmailOtp(options: {
-  email: string;
-  otp: string;
-  clientId: string;
-}) {
-  const resp = await fetch(ROUTE_VALIDATE_USER_MANAGED_OTP, {
-    method: "POST",
-    headers: {
-      ...getSessionHeaders(),
-    },
-    body: JSON.stringify({
-      email: options.email,
-      otp: options.otp,
-      clientId: options.clientId,
-    }),
-  });
-  if (!resp.ok) {
-    const error = await resp.json();
-    throw new Error(
-      `Something went wrong generating auth token from user cognito email otp. ${error.message}`,
-    );
-  }
-  const respJ = await resp.json();
-  return respJ as VerifiedTokenResponse;
-}
-export async function isValidUserManagedEmailOtp(options: {
-  email: string;
-  otp: string;
-  clientId: string;
-}) {
-  const resp = await fetch(ROUTE_IS_VALID_USER_MANAGED_OTP, {
-    method: "POST",
-    headers: {
-      ...getSessionHeaders(),
-    },
-    body: JSON.stringify({
-      email: options.email,
-      otp: options.otp,
-      clientId: options.clientId,
-    }),
-  });
-  if (!resp.ok) {
-    const error = await resp.json();
-    throw new Error(
-      `Something went wrong generating auth token from user cognito email otp. ${error.message}`,
-    );
-  }
-  const respJ = await resp.json();
-  return respJ as IsValidUserManagedEmailOTPResponse;
-}
-
 export async function storeUserShares({
   client,
   walletAddress,
   maybeEncryptedRecoveryShares,
   authShare,
+  storage,
 }: {
   client: ThirdwebClient;
   walletAddress: string;
@@ -217,11 +133,12 @@ export async function storeUserShares({
     isClientEncrypted: boolean;
   }[];
   authShare?: string;
+  storage: ClientScopedStorage;
 }) {
-  const resp = await authFetchEmbeddedWalletUser(
+  const resp = await authFetchEmbeddedWalletUser({
     client,
-    ROUTE_STORE_USER_SHARES,
-    {
+    url: ROUTE_STORE_USER_SHARES,
+    props: {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -230,7 +147,8 @@ export async function storeUserShares({
         authShare,
       }),
     },
-  );
+    storage,
+  });
 
   if (!resp.ok) {
     const error = await resp.json();
@@ -245,9 +163,18 @@ export async function storeUserShares({
   }
 }
 
-export async function getUserShares(client: ThirdwebClient, getShareUrl: URL) {
-  const resp = await authFetchEmbeddedWalletUser(client, getShareUrl.href, {
-    method: "GET",
+export async function getUserShares(args: {
+  client: ThirdwebClient;
+  getShareUrl: URL;
+  storage: ClientScopedStorage;
+}) {
+  const resp = await authFetchEmbeddedWalletUser({
+    client: args.client,
+    url: args.getShareUrl.href,
+    props: {
+      method: "GET",
+    },
+    storage: args.storage,
   });
   if (!resp.ok) {
     const error = await resp.json();
@@ -273,10 +200,18 @@ export async function getUserShares(client: ThirdwebClient, getShareUrl: URL) {
   }
 }
 
-export async function deleteAccount(client: ThirdwebClient) {
+export async function deleteAccount(args: {
+  client: ThirdwebClient;
+  storage: ClientScopedStorage;
+}) {
   const url = new URL(ROUTE_EMBEDDED_WALLET_DETAILS);
-  const resp = await authFetchEmbeddedWalletUser(client, url.href, {
-    method: "DELETE",
+  const resp = await authFetchEmbeddedWalletUser({
+    client: args.client,
+    url: url.href,
+    props: {
+      method: "DELETE",
+    },
+    storage: args.storage,
   });
   if (!resp.ok) {
     const error = await resp.json();

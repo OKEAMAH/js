@@ -2,6 +2,15 @@ import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ToolTipLabel } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Pencil, Trash2 } from "lucide-react";
@@ -13,112 +22,93 @@ import { usePartners } from "../../hooks/use-partners";
 import { UpdatePartnerModal } from "../client/update-partner-modal.client";
 
 export function PartnersTable({ ecosystem }: { ecosystem: Ecosystem }) {
-  const { partners, isLoading } = usePartners({ ecosystem });
+  const { partners, isPending } = usePartners({ ecosystem });
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="flex flex-col gap-2">
         {Array.from({ length: 3 }).map((_, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: static list with index as key
-          <Skeleton key={i} className="w-full h-10 rounded-md" />
+          <Skeleton key={i} className="h-10 w-full rounded-md" />
         ))}
       </div>
     );
   }
 
   return (
-    <table className="w-full">
-      <thead>
-        <tr className="border-b bg-muted">
-          <TableHeading>Name</TableHeading>
-          <TableHeading className="hidden md:table-cell">Domains</TableHeading>
-          <TableHeading className="hidden md:table-cell">
-            Bundle ID
-          </TableHeading>
-          <TableHeading className="hidden sm:table-cell">
-            Partner ID
-          </TableHeading>
-          <TableHeading className="hidden lg:table-cell">
-            Wallet Prompts
-          </TableHeading>
-          {/* Empty space for delete button */}
-          <th className="table-cell" />
-        </tr>
-      </thead>
-      <tbody>
-        {[...partners].reverse().map((partner: Partner) => (
-          <TableRow key={partner.id} partner={partner} ecosystem={ecosystem} />
-        ))}
-      </tbody>
-    </table>
+    <TableContainer>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead className="hidden md:table-cell">Domains</TableHead>
+            <TableHead className="hidden md:table-cell">Bundle ID</TableHead>
+            <TableHead className="hidden sm:table-cell">Partner ID</TableHead>
+
+            {/* Empty space for delete button */}
+            <th className="table-cell" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {[...partners].reverse().map((partner: Partner) => (
+            <PartnerRow
+              key={partner.id}
+              partner={partner}
+              ecosystem={ecosystem}
+            />
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 }
 
-function TableHeading(props: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <th
-      className={cn(
-        "text-xs p-4 font-semibold tracking-wide text-left uppercase text-muted-foreground",
-        props.className,
-      )}
-    >
-      {props.children}
-    </th>
-  );
-}
-
-function TableRow(props: {
+function PartnerRow(props: {
   partner: Partner;
   ecosystem: Ecosystem;
 }) {
-  const { deletePartner, isLoading: isDeleting } = useDeletePartner({
-    onError: (error) => {
-      const message =
-        error instanceof Error ? error.message : "Failed to delete partner";
-      toast.error(message);
-    },
-  });
+  const { mutateAsync: deletePartner, isPending: isDeleting } =
+    useDeletePartner({
+      onError: (error) => {
+        const message =
+          error instanceof Error ? error.message : "Failed to delete partner";
+        toast.error(message);
+      },
+    });
 
   return (
-    <tr
+    <TableRow
       className={cn(
-        "relative border-b hover:bg-secondary",
+        "relative hover:bg-muted/50",
         isDeleting && "animate-pulse",
       )}
     >
-      <TableData className="truncate align-top max-w-32">
+      <TableCell className="max-w-32 truncate align-top">
         {props.partner.name}
-      </TableData>
-      <TableData className="hidden align-top md:table-cell max-w-32 text-wrap">
+      </TableCell>
+      <TableCell className="hidden max-w-32 text-wrap align-top md:table-cell">
         {props.partner.allowlistedDomains.map((domain) => (
           <div key={domain}>{domain}</div>
         ))}
-      </TableData>
-      <TableData className="hidden align-top max-w-32 md:table-cell">
+      </TableCell>
+      <TableCell className="hidden max-w-32 align-top md:table-cell">
         {props.partner.allowlistedBundleIds.map((domain) => (
           <div key={domain} className="truncate">
             {domain}
           </div>
         ))}
-      </TableData>
-      <TableData className="hidden align-top max-w-32 sm:table-cell">
+      </TableCell>
+      <TableCell className="hidden max-w-32 align-top sm:table-cell">
         <ToolTipLabel label={props.partner.id}>
           <div className="truncate">
             <CopyButton text={props.partner.id} className="mr-1" />
             {props.partner.id}
           </div>
         </ToolTipLabel>
-      </TableData>
-      <TableData className="hidden align-top lg:table-cell">
-        {props.partner.permissions.includes("PROMPT_USER_V1")
-          ? "Prompt user"
-          : "Never prompt"}
-      </TableData>
+      </TableCell>
+
       <td className="table-cell py-1 align-middle">
-        <div className="flex gap-1.5 justify-end">
+        <div className="flex justify-end gap-1.5 pr-1.5">
           <UpdatePartnerModal
             partner={props.partner}
             ecosystem={props.ecosystem}
@@ -127,7 +117,7 @@ function TableRow(props: {
               type="button"
               variant="outline"
               size="icon"
-              className="text-accent-foreground/50 hover:text-accent-foreground hover:bg-accent"
+              className="text-accent-foreground/50 hover:bg-accent hover:text-accent-foreground"
               disabled={isDeleting}
             >
               <Pencil className="size-4" />
@@ -161,7 +151,7 @@ function TableRow(props: {
               type="button"
               variant="outline"
               size="icon"
-              className="text-destructive hover:text-destructive-foreground hover:bg-destructive"
+              className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
               disabled={isDeleting}
             >
               <Trash2 className="size-4" />
@@ -170,15 +160,6 @@ function TableRow(props: {
           </ConfirmationDialog>
         </div>
       </td>
-    </tr>
-  );
-}
-
-function TableData({
-  children,
-  className,
-}: { children: React.ReactNode; className?: string }) {
-  return (
-    <td className={cn("p-4 text-muted-foreground", className)}>{children}</td>
+    </TableRow>
   );
 }

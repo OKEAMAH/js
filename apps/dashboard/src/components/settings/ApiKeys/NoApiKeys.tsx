@@ -1,5 +1,3 @@
-"use client";
-
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
@@ -18,14 +16,14 @@ export const NoApiKeys: React.FC<NoApiKeysProps> = ({
 }) => {
   return (
     <Card className="pt-4 pb-8">
-      <div className="flex flex-col justify-center items-center gap-6">
+      <div className="flex flex-col items-center justify-center gap-6">
         <Image
           src="/assets/tw-icons/keys.png"
           width={77}
           height={95}
           alt="no keys"
         />
-        <div className="flex flex-col gap-4 items-center">
+        <div className="flex flex-col items-center gap-4">
           <p>
             {copyOverride ??
               `You'll need to create an API Key to use ${service}.`}

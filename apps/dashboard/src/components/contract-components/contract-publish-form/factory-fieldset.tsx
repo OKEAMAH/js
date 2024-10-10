@@ -1,5 +1,5 @@
 import { ButtonGroup, Flex } from "@chakra-ui/react";
-import type { Abi } from "@thirdweb-dev/sdk";
+import type { Abi } from "abitype";
 import type { Dispatch, SetStateAction } from "react";
 import { useFormContext } from "react-hook-form";
 import { Button, Heading } from "tw-components";
@@ -9,13 +9,11 @@ import { DefaultFactory } from "./default-factory";
 interface FactoryFieldsetProps {
   abi: Abi;
   setCustomFactoryAbi: Dispatch<SetStateAction<Abi>>;
-  shouldShowDynamicFactoryInput: boolean;
 }
 
 export const FactoryFieldset: React.FC<FactoryFieldsetProps> = ({
   abi,
   setCustomFactoryAbi,
-  shouldShowDynamicFactoryInput,
 }) => {
   const form = useFormContext();
 
@@ -50,10 +48,7 @@ export const FactoryFieldset: React.FC<FactoryFieldsetProps> = ({
           </Button>
         </ButtonGroup>
         {form.watch("deployType") === "autoFactory" && (
-          <DefaultFactory
-            abi={abi}
-            shouldShowDynamicFactoryInput={shouldShowDynamicFactoryInput}
-          />
+          <DefaultFactory abi={abi} />
         )}
         {form.watch("deployType") === "customFactory" && (
           <CustomFactory setCustomFactoryAbi={setCustomFactoryAbi} />

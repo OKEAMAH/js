@@ -4,7 +4,6 @@ import type { BaseTransactionOptions } from "../../../../../transaction/types.js
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { decodeAbiParameters } from "viem";
 import type { Hex } from "../../../../../utils/encoding/hex.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -37,21 +36,20 @@ const FN_OUTPUTS = [
 
 /**
  * Checks if the `currencyPriceForListing` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `currencyPriceForListing` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `currencyPriceForListing` method is supported.
  * @extension MARKETPLACE
  * @example
  * ```ts
  * import { isCurrencyPriceForListingSupported } from "thirdweb/extensions/marketplace";
- *
- * const supported = await isCurrencyPriceForListingSupported(contract);
+ * const supported = isCurrencyPriceForListingSupported(["0x..."]);
  * ```
  */
-export async function isCurrencyPriceForListingSupported(
-  contract: ThirdwebContract<any>,
+export function isCurrencyPriceForListingSupported(
+  availableSelectors: string[],
 ) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -63,7 +61,7 @@ export async function isCurrencyPriceForListingSupported(
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeCurrencyPriceForListingParams } "thirdweb/extensions/marketplace";
+ * import { encodeCurrencyPriceForListingParams } from "thirdweb/extensions/marketplace";
  * const result = encodeCurrencyPriceForListingParams({
  *  listingId: ...,
  *  currency: ...,
@@ -83,7 +81,7 @@ export function encodeCurrencyPriceForListingParams(
  * @extension MARKETPLACE
  * @example
  * ```ts
- * import { encodeCurrencyPriceForListing } "thirdweb/extensions/marketplace";
+ * import { encodeCurrencyPriceForListing } from "thirdweb/extensions/marketplace";
  * const result = encodeCurrencyPriceForListing({
  *  listingId: ...,
  *  currency: ...,
@@ -109,7 +107,7 @@ export function encodeCurrencyPriceForListing(
  * @example
  * ```ts
  * import { decodeCurrencyPriceForListingResult } from "thirdweb/extensions/marketplace";
- * const result = decodeCurrencyPriceForListingResult("...");
+ * const result = decodeCurrencyPriceForListingResultResult("...");
  * ```
  */
 export function decodeCurrencyPriceForListingResult(result: Hex) {

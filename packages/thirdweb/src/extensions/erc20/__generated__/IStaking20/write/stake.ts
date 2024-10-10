@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -27,19 +26,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `stake` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `stake` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `stake` method is supported.
  * @extension ERC20
  * @example
  * ```ts
  * import { isStakeSupported } from "thirdweb/extensions/erc20";
  *
- * const supported = await isStakeSupported(contract);
+ * const supported = isStakeSupported(["0x..."]);
  * ```
  */
-export async function isStakeSupported(contract: ThirdwebContract<any>) {
+export function isStakeSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -51,7 +50,7 @@ export async function isStakeSupported(contract: ThirdwebContract<any>) {
  * @extension ERC20
  * @example
  * ```ts
- * import { encodeStakeParams } "thirdweb/extensions/erc20";
+ * import { encodeStakeParams } from "thirdweb/extensions/erc20";
  * const result = encodeStakeParams({
  *  amount: ...,
  * });
@@ -68,7 +67,7 @@ export function encodeStakeParams(options: StakeParams) {
  * @extension ERC20
  * @example
  * ```ts
- * import { encodeStake } "thirdweb/extensions/erc20";
+ * import { encodeStake } from "thirdweb/extensions/erc20";
  * const result = encodeStake({
  *  amount: ...,
  * });
@@ -88,6 +87,7 @@ export function encodeStake(options: StakeParams) {
  * @extension ERC20
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { stake } from "thirdweb/extensions/erc20";
  *
  * const transaction = stake({
@@ -99,8 +99,7 @@ export function encodeStake(options: StakeParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function stake(

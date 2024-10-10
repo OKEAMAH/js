@@ -1,11 +1,4 @@
-import {
-  Box,
-  Fade,
-  Flex,
-  SimpleGrid,
-  Stack,
-  useDisclosure,
-} from "@chakra-ui/react";
+import { Box, Fade, SimpleGrid, useDisclosure } from "@chakra-ui/react";
 import { useEffect, useRef, useState } from "react";
 import { Card, Text } from "tw-components";
 import { NavCard } from "./NavCard";
@@ -83,15 +76,13 @@ export const HoverMenu: React.FC<HoverMenuProps> = ({
             borderRadius="8px"
             width={width}
           >
-            <Flex>
-              <Stack>
-                <SimpleGrid columns={columns} gap={2}>
-                  {items.map((item) => (
-                    <NavCard key={item.label} {...item} />
-                  ))}
-                </SimpleGrid>
-              </Stack>
-            </Flex>
+            <div className="flex flex-col gap-2">
+              <SimpleGrid columns={columns} gap={2}>
+                {items.map((item) => (
+                  <NavCard key={item.label} {...item} />
+                ))}
+              </SimpleGrid>
+            </div>
           </Card>
         </Fade>
       </Box>

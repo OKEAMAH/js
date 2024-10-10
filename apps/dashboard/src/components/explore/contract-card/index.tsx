@@ -1,202 +1,248 @@
-import {
-  Flex,
-  Icon,
-  LinkBox,
-  LinkOverlay,
-  Skeleton,
-  SkeletonText,
-} from "@chakra-ui/react";
-import {
-  type QueryClient,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
-import { Polygon } from "@thirdweb-dev/chains";
-import { ensQuery } from "components/contract-components/hooks";
-import { getDashboardChainRpc } from "lib/rpc";
-import { getThirdwebSDK, replaceIpfsUrl } from "lib/sdk";
-import { useMemo } from "react";
-import { BsShieldCheck } from "react-icons/bs";
-import invariant from "tiny-invariant";
-import { Badge, Card, Heading, Link, Text, TrackedLink } from "tw-components";
+"use client";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton, SkeletonContainer } from "@/components/ui/skeleton";
+import { TrackedLinkTW } from "@/components/ui/tracked-link";
+import { useThirdwebClient } from "@/constants/thirdweb.client";
+import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { moduleToBase64 } from "app/(dashboard)/published-contract/utils/module-base-64";
+import { RocketIcon, ShieldCheckIcon } from "lucide-react";
+import Link from "next/link";
+import { resolveScheme } from "thirdweb/storage";
+import { fetchPublishedContractVersion } from "../../contract-components/fetch-contracts-with-versions";
 import { ContractPublisher, replaceDeployerAddress } from "../publisher";
 
 interface ContractCardProps {
   publisher: string;
   contractId: string;
+  titleOverride?: string;
+  descriptionOverride?: string;
   version?: string;
   tracking?: {
     source: string;
     itemIndex: `${number}`;
   };
+  isBeta: boolean | undefined;
+  // for modular contracts to show the modules in the card
+  // publisher and moduleId are required
+  // version is optional
+  // if version is not provided, it will default to "latest"
+  modules?: {
+    publisher: string;
+    moduleId: string;
+    version?: string;
+  }[];
+}
+
+function getContractUrl(
+  {
+    version,
+    publisher,
+    contractId,
+    titleOverride,
+    modules = [],
+  }: {
+    publisher: string;
+    contractId: string;
+    version?: string;
+    titleOverride?: string;
+    modules?: {
+      publisher: string;
+      moduleId: string;
+      version?: string;
+    }[];
+  },
+  isDeploy?: true,
+) {
+  let pathName = "";
+  if (version !== "latest") {
+    pathName = `/${publisher}/${contractId}/${version}`;
+  } else {
+    pathName = `/${publisher}/${contractId}`;
+  }
+  if (isDeploy) {
+    pathName += "/deploy";
+  }
+  const moudleUrl = new URLSearchParams();
+
+  for (const m of modules) {
+    moudleUrl.append("module", moduleToBase64(m));
+  }
+
+  if (titleOverride) {
+    moudleUrl.append("displayName", titleOverride);
+  }
+
+  pathName += moudleUrl.toString() ? `?${moudleUrl.toString()}` : "";
+  return replaceDeployerAddress(pathName);
 }
 
 export const ContractCard: React.FC<ContractCardProps> = ({
   publisher,
   contractId,
+  titleOverride,
+  descriptionOverride,
   version = "latest",
   tracking,
+  modules = [],
+  isBeta,
 }) => {
+  const client = useThirdwebClient();
   const publishedContractResult = usePublishedContract(
     `${publisher}/${contractId}/${version}`,
   );
 
-  const isNewContract = useMemo(() => {
-    const newContracts = ["thirdweb.eth/AccountFactory"];
-    return newContracts.includes(`${publisher}/${contractId}`);
-  }, [publisher, contractId]);
+  const showSkeleton = publishedContractResult.isPending;
 
-  const showSkeleton =
-    publishedContractResult.isLoading ||
-    publishedContractResult.isPlaceholderData;
-
-  const href = useMemo(() => {
-    let h: string;
-    if (version !== "latest") {
-      h = `/${publisher}/${contractId}/${version}`;
-    } else {
-      h = `/${publisher}/${contractId}`;
-    }
-
-    return replaceDeployerAddress(h);
-  }, [contractId, publisher, version]);
-
-  return !publishedContractResult.isLoading &&
-    !publishedContractResult.data?.id ? null : (
-    <LinkBox as="article">
-      <Card
-        h="full"
-        p={4}
-        role="group"
-        as={Flex}
-        flexDirection="column"
-        borderColor="borderColor"
-        transition="150ms border-color ease-in-out"
-        _hover={{
-          _dark: {
-            borderColor: "blue.400",
-          },
-          _light: {
-            borderColor: "blue.600",
-          },
+  return (
+    <article
+      className={cn(
+        "relative flex min-h-[220px] flex-col rounded-lg border border-border p-4",
+        !showSkeleton ? "bg-muted/50 hover:bg-muted" : "pointer-events-none",
+      )}
+    >
+      <TrackedLinkTW
+        className="absolute inset-0 z-0 cursor-pointer"
+        href={getContractUrl({
+          publisher,
+          contractId,
+          version,
+          modules,
+          titleOverride,
+        })}
+        category="contract_card"
+        label={contractId}
+        trackingProps={{
+          publisher,
+          contractId,
+          version,
+          ...(tracking || {}),
         }}
-        overflow="hidden"
-        bg="linear-gradient(158.84deg, rgba(255, 255, 255, 0.05) 13.95%, rgba(255, 255, 255, 0) 38.68%)"
-        gap={3}
-        flexDir="column"
-      >
-        <Flex justifyContent="space-between">
-          <Flex
-            align="center"
-            gap={1}
-            color="rgba(255,255,255,.7)"
-            _light={{ color: "rgba(0,0,0,.6)" }}
-          >
-            {(showSkeleton || publishedContractResult.data?.audit) && (
-              <Flex
-                isExternal
-                as={Link}
-                align="center"
-                gap={0}
-                href={replaceIpfsUrl(publishedContractResult.data?.audit || "")}
-                _dark={{
-                  color: "green.300",
-                }}
-                _light={{
-                  color: "green.600",
-                }}
+      />
+
+      {/* Audited + Version  + Tags */}
+      <div className="flex justify-between">
+        <div className="flex items-center gap-1.5">
+          {/* Audited */}
+          {publishedContractResult.data?.audit && (
+            <>
+              <Link
+                target="_blank"
+                className="relative z-1 flex items-center gap-1 font-medium text-sm text-success-text hover:underline"
+                href={resolveScheme({
+                  uri: publishedContractResult.data.audit,
+                  client,
+                })}
               >
-                <Skeleton boxSize={5} isLoaded={!showSkeleton}>
-                  <Icon as={BsShieldCheck} />
-                </Skeleton>
-                <Skeleton isLoaded={!showSkeleton}>
-                  <Text color="inherit" size="label.sm" fontWeight={500}>
-                    Audited
-                  </Text>
-                </Skeleton>
-              </Flex>
-            )}
-            {showSkeleton ||
-              (publishedContractResult.data?.version &&
-                publishedContractResult.data?.audit && (
-                  <Text size="label.sm">·</Text>
-                ))}
-            {(showSkeleton || publishedContractResult.data?.version) && (
-              <Flex align="center" gap={0.5}>
-                <Skeleton isLoaded={!showSkeleton}>
-                  <Text color="inherit" size="label.sm" fontWeight={500}>
-                    v{publishedContractResult.data?.version}
-                  </Text>
-                </Skeleton>
-              </Flex>
-            )}
-          </Flex>
-          {isNewContract && (
-            <Flex>
-              <Badge
-                alignSelf="center"
-                borderRadius="xl"
-                px={2}
-                py={1.5}
-                textTransform="capitalize"
-              >
-                New
-              </Badge>
-            </Flex>
+                <ShieldCheckIcon className="size-4" />
+                Audited
+              </Link>
+              <div className="size-1 rounded-full bg-muted-foreground/50" />
+            </>
           )}
-        </Flex>
 
-        <Flex direction="column" gap={4}>
-          <Skeleton
-            noOfLines={1}
-            isLoaded={!showSkeleton}
-            w={showSkeleton ? "50%" : "auto"}
-          >
-            <LinkOverlay
-              as={TrackedLink}
-              category="contract_card"
-              label={contractId}
-              href={href}
-              trackingProps={{
-                publisher,
-                contractId,
-                version,
-                ...(tracking || {}),
-              }}
-              _hover={{ textDecor: "none" }}
-            >
-              <Heading as="h3" noOfLines={1} size="label.lg">
-                {publishedContractResult.data?.displayName ||
-                  publishedContractResult.data?.name}
-              </Heading>
-            </LinkOverlay>
-          </Skeleton>
-
-          <SkeletonText
-            isLoaded={!showSkeleton}
-            spacing={3}
-            noOfLines={2}
-            my={showSkeleton ? 2 : 0}
-          >
-            <Text size="body.md" noOfLines={2}>
-              {publishedContractResult.data?.description}
-            </Text>
-          </SkeletonText>
-        </Flex>
-        <Flex
-          pt={3}
-          mt="auto"
-          justify="space-between"
-          align="center"
-          as="footer"
-        >
-          <ContractPublisher
-            addressOrEns={publishedContractResult.data?.publisher}
-            showSkeleton={showSkeleton}
+          {/* Version */}
+          <SkeletonContainer
+            skeletonData="0.0.0"
+            loadedData={publishedContractResult.data?.version}
+            render={(v) => {
+              return (
+                <p className="font-medium text-muted-foreground text-sm">
+                  v{v}
+                </p>
+              );
+            }}
           />
-        </Flex>
-      </Card>
-    </LinkBox>
+        </div>
+
+        {/* Tags */}
+        {isBeta ? (
+          <Badge className="border-[#a21caf] bg-[linear-gradient(154deg,#d946ef,#9333ea)] px-[8px] py-[3px] text-white dark:border-[#86198f] dark:bg-[linear-gradient(154deg,#4a044e,#2e1065)]">
+            Beta
+          </Badge>
+        ) : null}
+      </div>
+
+      <div className="h-3.5" />
+
+      <SkeletonContainer
+        className="inline-block"
+        skeletonData="Edition Drop"
+        loadedData={
+          titleOverride ||
+          publishedContractResult.data?.displayName ||
+          publishedContractResult.data?.name
+        }
+        render={(v) => {
+          return (
+            <h3 className="font-semibold text-lg tracking-tight">
+              {v.replace("[Beta]", "")}
+            </h3>
+          );
+        }}
+      />
+
+      {publishedContractResult.data ? (
+        <p className="mt-1 text-muted-foreground text-sm leading-5">
+          {descriptionOverride || publishedContractResult.data?.description}
+        </p>
+      ) : (
+        <div className="mt-1">
+          <Skeleton className="h-4 w-[80%]" />
+          <div className="h-1" />
+          <Skeleton className="h-4 w-[60%]" />
+        </div>
+      )}
+      {modules.length ? (
+        <div className="mt-auto flex flex-row flex-wrap gap-1 pt-3">
+          {modules.slice(0, 2).map((m) => (
+            <Badge variant="outline" key={m.publisher + m.moduleId + m.version}>
+              {m.moduleId.split("ERC")[0]}
+            </Badge>
+          ))}
+          {modules.length > 2 ? (
+            <Badge variant="outline">+{modules.length - 2}</Badge>
+          ) : null}
+        </div>
+      ) : null}
+      <div
+        className={cn(
+          "relative z-1 flex justify-between gap-2 pt-3",
+          !modules?.length && "mt-auto",
+        )}
+      >
+        <ContractPublisher
+          addressOrEns={publishedContractResult.data?.publisher}
+          showSkeleton={showSkeleton}
+        />
+
+        <div className="flex items-center justify-between">
+          <Button
+            variant="primary"
+            size="sm"
+            className="relative z-10 h-auto gap-1.5 px-2.5 py-1.5 text-xs"
+            asChild
+          >
+            <Link
+              href={getContractUrl(
+                {
+                  publisher,
+                  contractId,
+                  version,
+                  modules,
+                },
+                true,
+              )}
+            >
+              <RocketIcon className="size-3" />
+              Deploy
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </article>
   );
 };
 
@@ -205,78 +251,12 @@ type PublishedContractId =
   | `${string}/${string}`
   | `${string}/${string}/${string}`;
 
-async function publishedContractQueryFn(
-  publisher: string,
-  contractId: string,
-  version: string,
-  queryClient: QueryClient,
-) {
-  const polygonSdk = getThirdwebSDK(
-    Polygon.chainId,
-    getDashboardChainRpc(Polygon),
-  );
-
-  const publisherEns = await queryClient.fetchQuery(ensQuery(publisher));
-  // START prefill both publisher ens variations
-  if (publisherEns.address) {
-    queryClient.setQueryData(
-      ensQuery(publisherEns.address).queryKey,
-      publisherEns,
-    );
-  }
-  if (publisherEns.ensName) {
-    queryClient.setQueryData(
-      ensQuery(publisherEns.ensName).queryKey,
-      publisherEns,
-    );
-  }
-  // END prefill both publisher ens variations
-  invariant(publisherEns.address, "publisher address not found");
-  const latestPublishedVersion = await polygonSdk
-    .getPublisher()
-    .getVersion(publisherEns.address, contractId, version);
-  invariant(latestPublishedVersion, "no published version found");
-  const contractInfo = await polygonSdk
-    .getPublisher()
-    .fetchPublishedContractInfo(latestPublishedVersion);
-  return {
-    ...latestPublishedVersion,
-    ...contractInfo.publishedMetadata,
-
-    publishedContractId: `${publisher}/${contractId}/${version}`,
-  };
-}
-
-export function publishedContractQuery(
-  publishedContractId: PublishedContractId,
-  queryClient: QueryClient,
-) {
-  const [publisher, contractId, version] = publishedContractId.split("/");
-  return {
-    queryKey: ["published-contract", { publisher, contractId, version }],
-    queryFn: () =>
-      publishedContractQueryFn(publisher, contractId, version, queryClient),
-    enabled: !!publisher || !!contractId,
-    placeholderData: {
-      publishedContractId,
-      version: "0.0.0",
-      name: "Loading...",
-      description: "Loading...",
-      publisher: "",
-      audit: "",
-      logo: "",
-      extensions: [],
-      id: "",
-      metadataUri: "",
-      timestamp: "",
-      bytecodeUri: "",
-    } as PublishedContract,
-  };
-}
-
-type PublishedContract = Awaited<ReturnType<typeof publishedContractQueryFn>>;
-
 function usePublishedContract(publishedContractId: PublishedContractId) {
-  const queryClient = useQueryClient();
-  return useQuery(publishedContractQuery(publishedContractId, queryClient));
+  const [publisher, contractId, version] = publishedContractId.split("/");
+  return useQuery({
+    queryKey: ["published-contract", { publishedContractId }],
+    queryFn: () =>
+      fetchPublishedContractVersion(publisher, contractId, version),
+    enabled: !!publisher || !!contractId,
+  });
 }

@@ -1,23 +1,12 @@
-import {
-  Box,
-  Center,
-  Flex,
-  Icon,
-  List,
-  SimpleGrid,
-  Stack,
-  Tag,
-  Tooltip,
-  useClipboard,
-  useToast,
-} from "@chakra-ui/react";
-import { useAllRoleMembers } from "@thirdweb-dev/react";
-import type { SmartContract } from "@thirdweb-dev/sdk";
-import { useTabHref } from "contract-ui/utils";
-import { constants } from "ethers";
+import { ToolTipLabel } from "@/components/ui/tooltip";
+import { Box, Flex, List, SimpleGrid, Tag } from "@chakra-ui/react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useClipboard } from "hooks/useClipboard";
+import { CopyIcon } from "lucide-react";
 import { useMemo } from "react";
-import { FiCopy } from "react-icons/fi";
+import { toast } from "sonner";
+import { type ThirdwebContract, ZERO_ADDRESS } from "thirdweb";
+import { useReadContract } from "thirdweb/react";
 import {
   Button,
   Card,
@@ -27,19 +16,23 @@ import {
   type TrackedLinkProps,
 } from "tw-components";
 import { shortenIfAddress } from "utils/usedapp-external";
+import { getAllRoleMembers } from "../../../hooks/permissions";
 
 interface PermissionsTableProps {
-  contract: SmartContract;
+  contract: ThirdwebContract;
   trackingCategory: TrackedLinkProps["category"];
+  chainSlug: string;
 }
 
 export const PermissionsTable: React.FC<PermissionsTableProps> = ({
   contract,
   trackingCategory,
+  chainSlug,
 }) => {
-  const allRoleMembers = useAllRoleMembers(contract);
-  const permissionsHref = useTabHref("permissions");
-
+  const allRoleMembers = useReadContract(getAllRoleMembers, {
+    contract,
+  });
+  const permissionsHref = `/${chainSlug}/${contract.address}/permissions`;
   const members = useMemo(() => {
     return (
       Object.entries(allRoleMembers.data || {}).reduce(
@@ -55,15 +48,13 @@ export const PermissionsTable: React.FC<PermissionsTableProps> = ({
         },
         [] as { member: string; roles: string[] }[],
       ) || []
-    ).filter((m) => m.member !== constants.AddressZero);
+    ).filter((m) => m.member !== ZERO_ADDRESS);
   }, [allRoleMembers.data]);
 
   return (
     <Flex gap={6} flexDirection="column">
       <Flex align="center" justify="space-between" w="full">
-        <Heading flexShrink={0} size="title.sm">
-          Permissions
-        </Heading>
+        <h2 className="font-semibold text-2xl tracking-tight">Permissions</h2>
         <TrackedLink
           category={trackingCategory}
           label="view_all_permissions"
@@ -98,15 +89,15 @@ export const PermissionsTable: React.FC<PermissionsTableProps> = ({
 
           <List overflow="auto">
             {members.length === 0 && (
-              <Center py={4}>
+              <div className="flex items-center justify-center py-4">
                 <Flex align="center" gap={2}>
                   <Text size="body.md" fontStyle="italic">
-                    {allRoleMembers.isLoading
+                    {allRoleMembers.isPending
                       ? "loading permissions"
                       : "no permissions found"}
                   </Text>
                 </Flex>
-              </Center>
+              </div>
             )}
             <AnimatePresence initial={false}>
               {members.map((e) => (
@@ -125,11 +116,10 @@ interface PermissionsItemProps {
 }
 
 const PermissionsItem: React.FC<PermissionsItemProps> = ({ data }) => {
-  const toast = useToast();
   const { onCopy } = useClipboard(data.member);
 
   return (
-    <Box>
+    <div>
       <SimpleGrid
         columns={9}
         gap={2}
@@ -166,39 +156,23 @@ const PermissionsItem: React.FC<PermissionsItemProps> = ({ data }) => {
         _last={{ borderBottomWidth: 0 }}
       >
         <Box gridColumn="span 2">
-          <Stack direction="row" align="center" spacing={3}>
-            <Tooltip
-              p={0}
-              bg="transparent"
-              boxShadow="none"
-              label={
-                <Card py={2} px={4} bgColor="backgroundHighlight">
-                  <Text size="label.sm">Copy address to clipboard</Text>
-                </Card>
-              }
-            >
+          <div className="flex flex-row items-center gap-3">
+            <ToolTipLabel label="Copy address to clipboard">
               <Button
                 size="sm"
                 bg="transparent"
                 onClick={() => {
                   onCopy();
-                  toast({
-                    variant: "solid",
-                    position: "bottom",
-                    title: "Address copied.",
-                    status: "success",
-                    duration: 5000,
-                    isClosable: true,
-                  });
+                  toast.info("Address copied.");
                 }}
               >
-                <Icon as={FiCopy} boxSize={3} />
+                <CopyIcon className="size-3" />
               </Button>
-            </Tooltip>
+            </ToolTipLabel>
             <Text fontFamily="mono" noOfLines={1}>
               {shortenIfAddress(data.member)}
             </Text>
-          </Stack>
+          </div>
         </Box>
 
         <Box gridColumn="span 1" />
@@ -224,6 +198,6 @@ const PermissionsItem: React.FC<PermissionsItemProps> = ({ data }) => {
           )}
         </Flex>
       </SimpleGrid>
-    </Box>
+    </div>
   );
 };

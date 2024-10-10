@@ -1,5 +1,5 @@
 import { flatten } from "flat";
-import posthog from "posthog-js-opensource";
+import posthog from "posthog-js";
 import { useCallback } from "react";
 
 type TExtendedTrackParams = {
@@ -34,7 +34,7 @@ export function useTrack() {
 
     try {
       posthog.capture(catActLab, flatten(restDataSafe));
-    } catch (e) {
+    } catch {
       // ignore - we just don't want to trigger an error in the app if posthog fails
     }
   }, []);

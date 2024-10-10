@@ -86,7 +86,7 @@ export const Modal: React.FC<{
         )}
 
         <FocusScope trapped={!props.hide}>
-          <Dialog.Content asChild>
+          <Dialog.Content asChild aria-describedby={undefined}>
             <DialogContent
               ref={contentRef}
               style={
@@ -102,9 +102,25 @@ export const Modal: React.FC<{
                     }
               }
             >
+              {/* Mimics Tailwind's sr-only tag */}
+              <Dialog.Title
+                style={{
+                  position: "absolute",
+                  width: "1px",
+                  height: "1px",
+                  padding: 0,
+                  margin: "-1px",
+                  overflow: "hidden",
+                  clip: "rect(0, 0, 0, 0)",
+                  whiteSpace: "nowrap",
+                  borderWidth: 0,
+                }}
+              >
+                Connect Modal
+              </Dialog.Title>
               {props.size === "compact" ? (
                 <DynamicHeight maxHeight={compactModalMaxHeight}>
-                  {props.children}{" "}
+                  {props.children}
                 </DynamicHeight>
               ) : (
                 props.children
@@ -114,7 +130,7 @@ export const Modal: React.FC<{
               {!props.hideCloseIcon && (
                 <CrossContainer>
                   <Dialog.Close asChild>
-                    <IconButton type="button" aria-label="Close">
+                    <IconButton autoFocus type="button" aria-label="Close">
                       <Cross2Icon
                         width={iconSize.md}
                         height={iconSize.md}
@@ -171,7 +187,7 @@ const DialogContent = /* @__PURE__ */ StyledDiv((_) => {
     background: theme.colors.modalBg,
     "--bg": theme.colors.modalBg,
     color: theme.colors.primaryText,
-    borderRadius: radius.xl,
+    borderRadius: radius.lg,
     position: "fixed",
     top: "50%",
     left: "50%",
@@ -196,7 +212,7 @@ const DialogContent = /* @__PURE__ */ StyledDiv((_) => {
       transform: "none",
       width: "100vw",
       animation: `${modalAnimationMobile} 0.35s cubic-bezier(0.15, 1.15, 0.6, 1)`,
-      borderRadius: radius.xxl,
+      borderRadius: radius.xl,
       borderBottomRightRadius: 0,
       borderBottomLeftRadius: 0,
       maxWidth: "none !important",

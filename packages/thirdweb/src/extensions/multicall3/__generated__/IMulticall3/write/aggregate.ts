@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -14,64 +13,58 @@ import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
  */
 export type AggregateParams = WithOverrides<{
   calls: AbiParameterToPrimitiveType<{
-    components: [
-      { internalType: "address"; name: "target"; type: "address" },
-      { internalType: "bytes"; name: "callData"; type: "bytes" },
-    ];
-    internalType: "struct Multicall3.Call[]";
-    name: "calls";
     type: "tuple[]";
+    name: "calls";
+    components: [
+      { type: "address"; name: "target" },
+      { type: "bytes"; name: "callData" },
+    ];
   }>;
 }>;
 
 export const FN_SELECTOR = "0x252dba42" as const;
 const FN_INPUTS = [
   {
+    type: "tuple[]",
+    name: "calls",
     components: [
       {
-        internalType: "address",
-        name: "target",
         type: "address",
+        name: "target",
       },
       {
-        internalType: "bytes",
-        name: "callData",
         type: "bytes",
+        name: "callData",
       },
     ],
-    internalType: "struct Multicall3.Call[]",
-    name: "calls",
-    type: "tuple[]",
   },
 ] as const;
 const FN_OUTPUTS = [
   {
-    internalType: "uint256",
-    name: "blockNumber",
     type: "uint256",
+    name: "blockNumber",
   },
   {
-    internalType: "bytes[]",
-    name: "returnData",
     type: "bytes[]",
+    name: "returnData",
   },
 ] as const;
 
 /**
  * Checks if the `aggregate` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `aggregate` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `aggregate` method is supported.
  * @extension MULTICALL3
  * @example
  * ```ts
  * import { isAggregateSupported } from "thirdweb/extensions/multicall3";
  *
- * const supported = await isAggregateSupported(contract);
+ * const supported = isAggregateSupported(["0x..."]);
  * ```
  */
-export async function isAggregateSupported(contract: ThirdwebContract<any>) {
+export function isAggregateSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -83,7 +76,7 @@ export async function isAggregateSupported(contract: ThirdwebContract<any>) {
  * @extension MULTICALL3
  * @example
  * ```ts
- * import { encodeAggregateParams } "thirdweb/extensions/multicall3";
+ * import { encodeAggregateParams } from "thirdweb/extensions/multicall3";
  * const result = encodeAggregateParams({
  *  calls: ...,
  * });
@@ -100,7 +93,7 @@ export function encodeAggregateParams(options: AggregateParams) {
  * @extension MULTICALL3
  * @example
  * ```ts
- * import { encodeAggregate } "thirdweb/extensions/multicall3";
+ * import { encodeAggregate } from "thirdweb/extensions/multicall3";
  * const result = encodeAggregate({
  *  calls: ...,
  * });
@@ -122,6 +115,7 @@ export function encodeAggregate(options: AggregateParams) {
  * @extension MULTICALL3
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { aggregate } from "thirdweb/extensions/multicall3";
  *
  * const transaction = aggregate({
@@ -133,8 +127,7 @@ export function encodeAggregate(options: AggregateParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function aggregate(

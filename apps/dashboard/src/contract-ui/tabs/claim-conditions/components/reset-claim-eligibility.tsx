@@ -1,21 +1,21 @@
+"use client";
+
+import { ToolTipLabel } from "@/components/ui/tooltip";
 import { AdminOnly } from "@3rdweb-sdk/react/components/roles/admin-only";
-import { Box } from "@chakra-ui/react";
-import {
-  type DropContract,
-  useResetClaimConditions,
-} from "@thirdweb-dev/react";
-import type { ValidContractInstance } from "@thirdweb-dev/sdk";
 import { TransactionButton } from "components/buttons/TransactionButton";
-import { TooltipBox } from "components/configure-networks/Form/TooltipBox";
 import { useTrack } from "hooks/analytics/useTrack";
 import { useTxNotifications } from "hooks/useTxNotifications";
-import { Text } from "tw-components";
+import { CircleHelpIcon } from "lucide-react";
+import type { ThirdwebContract } from "thirdweb";
+import * as ERC20Ext from "thirdweb/extensions/erc20";
+import * as ERC721Ext from "thirdweb/extensions/erc721";
+import * as ERC1155Ext from "thirdweb/extensions/erc1155";
+import { useSendAndConfirmTransaction } from "thirdweb/react";
 
 interface ResetClaimEligibilityProps {
   isErc20: boolean;
-  contract: DropContract;
+  contract: ThirdwebContract;
   tokenId?: string;
-  isColumn?: true;
 }
 
 export const ResetClaimEligibility: React.FC<ResetClaimEligibilityProps> = ({
@@ -24,7 +24,9 @@ export const ResetClaimEligibility: React.FC<ResetClaimEligibilityProps> = ({
   isErc20,
 }) => {
   const trackEvent = useTrack();
-  const resetClaimConditions = useResetClaimConditions(contract, tokenId);
+
+  const sendTxMutation = useSendAndConfirmTransaction();
+
   const txNotification = useTxNotifications(
     "Successfully reset claim eligibility",
     "Failed to reset claim eligibility",
@@ -39,7 +41,27 @@ export const ResetClaimEligibility: React.FC<ResetClaimEligibilityProps> = ({
       label: "attempt",
     });
 
-    resetClaimConditions.mutate(undefined, {
+    const tx = (() => {
+      switch (true) {
+        // erc 20
+        case isErc20: {
+          return ERC20Ext.resetClaimEligibility({ contract });
+        }
+        // erc 1155
+        case tokenId !== undefined: {
+          return ERC1155Ext.resetClaimEligibility({
+            contract,
+            tokenId: BigInt(tokenId),
+          });
+        }
+        // assume erc 721
+        default: {
+          return ERC721Ext.resetClaimEligibility({ contract });
+        }
+      }
+    })();
+
+    sendTxMutation.mutate(tx, {
       onSuccess: () => {
         txNotification.onSuccess();
         trackEvent({
@@ -60,35 +82,35 @@ export const ResetClaimEligibility: React.FC<ResetClaimEligibilityProps> = ({
     });
   };
 
+  if (!contract) {
+    return null;
+  }
+
   return (
-    <AdminOnly
-      contract={contract as ValidContractInstance}
-      fallback={<Box pb={5} />}
-    >
+    <AdminOnly contract={contract} fallback={<div className="pb-5" />}>
       <TransactionButton
-        colorScheme="secondary"
-        bg="bgBlack"
-        color="bgWhite"
         transactionCount={1}
         type="button"
-        isLoading={resetClaimConditions.isLoading}
+        isLoading={sendTxMutation.isPending}
         onClick={handleResetClaimEligibility}
         loadingText="Resetting..."
         size="sm"
+        txChainID={contract.chain.id}
       >
-        Reset Eligibility{" "}
-        <TooltipBox
-          iconColor="secondary.500"
-          content={
-            <Text>
-              This contract&apos;s claim eligibility stores who has already
+        Reset Eligibility
+        <ToolTipLabel
+          label={
+            <>
+              This {`contract's`} claim eligibility stores who has already
               claimed {isErc20 ? "tokens" : "NFTs"} from this contract and
               carries across claim phases. Resetting claim eligibility will
               reset this state permanently, and wallets that have already
               claimed to their limit will be able to claim again.
-            </Text>
+            </>
           }
-        />
+        >
+          <CircleHelpIcon className="ml-2 size-4 text-muted-foreground" />
+        </ToolTipLabel>
       </TransactionButton>
     </AdminOnly>
   );

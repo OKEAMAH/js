@@ -1,17 +1,20 @@
 import "@/styles/globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { DashboardRouterTopProgressBar } from "@/lib/DashboardRouter";
 import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
 import PlausibleProvider from "next-plausible";
 import dynamic from "next/dynamic";
-import { Inter as interFont } from "next/font/google";
+import { Inter } from "next/font/google";
 import NextTopLoader from "nextjs-toploader";
+import { UnlimitedWalletsBanner } from "../components/notices/AnnouncementBanner";
 import { PostHogProvider } from "./components/root-providers";
 import { AppRouterProviders } from "./providers";
 
-const fontSans = interFont({
+const fontSans = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -63,13 +66,15 @@ export default function RootLayout({
       <PostHogProvider>
         <body
           className={cn(
-            "h-screen bg-background font-sans antialiased",
+            "bg-background font-sans antialiased",
             fontSans.variable,
           )}
         >
           <PostHogPageView />
+          <UnlimitedWalletsBanner />
           <AppRouterProviders>{children}</AppRouterProviders>
-          <Toaster />
+          <Toaster richColors />
+          <DashboardRouterTopProgressBar />
           <NextTopLoader
             color="hsl(var(--primary))"
             height={2}

@@ -11,6 +11,9 @@ import { initialize as initTokenERC20 } from "./__generated__/TokenERC20/write/i
 
 export type ERC20ContractType = "DropERC20" | "TokenERC20";
 
+/**
+ * @extension DEPLOY
+ */
 export type ERC20ContractParams = {
   name: string;
   description?: string;
@@ -26,10 +29,14 @@ export type ERC20ContractParams = {
   trustedForwarders?: string[];
 };
 
+/**
+ * @extension DEPLOY
+ */
 export type DeployERC20ContractOptions = Prettify<
   ClientAndChainAndAccount & {
     type: ERC20ContractType;
     params: ERC20ContractParams;
+    publisher?: string;
   }
 >;
 
@@ -55,14 +62,14 @@ export type DeployERC20ContractOptions = Prettify<
  * ```
  */
 export async function deployERC20Contract(options: DeployERC20ContractOptions) {
-  const { chain, client, account, type, params } = options;
+  const { chain, client, account, type, params, publisher } = options;
   const { cloneFactoryContract, implementationContract } =
     await getOrDeployInfraForPublishedContract({
       chain,
       client,
       account,
       contractId: type,
-      constructorParams: [],
+      publisher,
     });
   const initializeTransaction = await getInitializeTransaction({
     client,

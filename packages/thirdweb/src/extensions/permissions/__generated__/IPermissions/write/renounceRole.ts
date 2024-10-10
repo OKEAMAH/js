@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -32,19 +31,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `renounceRole` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `renounceRole` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `renounceRole` method is supported.
  * @extension PERMISSIONS
  * @example
  * ```ts
  * import { isRenounceRoleSupported } from "thirdweb/extensions/permissions";
  *
- * const supported = await isRenounceRoleSupported(contract);
+ * const supported = isRenounceRoleSupported(["0x..."]);
  * ```
  */
-export async function isRenounceRoleSupported(contract: ThirdwebContract<any>) {
+export function isRenounceRoleSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -56,7 +55,7 @@ export async function isRenounceRoleSupported(contract: ThirdwebContract<any>) {
  * @extension PERMISSIONS
  * @example
  * ```ts
- * import { encodeRenounceRoleParams } "thirdweb/extensions/permissions";
+ * import { encodeRenounceRoleParams } from "thirdweb/extensions/permissions";
  * const result = encodeRenounceRoleParams({
  *  role: ...,
  *  account: ...,
@@ -74,7 +73,7 @@ export function encodeRenounceRoleParams(options: RenounceRoleParams) {
  * @extension PERMISSIONS
  * @example
  * ```ts
- * import { encodeRenounceRole } "thirdweb/extensions/permissions";
+ * import { encodeRenounceRole } from "thirdweb/extensions/permissions";
  * const result = encodeRenounceRole({
  *  role: ...,
  *  account: ...,
@@ -97,6 +96,7 @@ export function encodeRenounceRole(options: RenounceRoleParams) {
  * @extension PERMISSIONS
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { renounceRole } from "thirdweb/extensions/permissions";
  *
  * const transaction = renounceRole({
@@ -109,8 +109,7 @@ export function encodeRenounceRole(options: RenounceRoleParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function renounceRole(

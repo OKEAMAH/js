@@ -8,8 +8,10 @@ import {
   useSetSelectionData,
 } from "../../providers/wallet-ui-states-provider.js";
 import type { ConnectLocale } from "../../ui/ConnectWallet/locale/types.js";
+import { WalletAuth } from "../in-app/WalletAuth.js";
 import { useInAppWalletLocale } from "../in-app/useInAppWalletLocale.js";
 import type { ConnectWalletSelectUIState } from "../shared/ConnectWalletSocialOptions.js";
+import { GuestLogin } from "../shared/GuestLogin.js";
 import { LoadingScreen } from "../shared/LoadingScreen.js";
 import { OTPLoginUI } from "../shared/OTPLoginUI.js";
 import { PassKeyLogin } from "../shared/PassKeyLogin.js";
@@ -35,6 +37,8 @@ function EcosystemWalletConnectUI(props: {
     termsOfServiceUrl?: string;
     privacyPolicyUrl?: string;
   };
+  walletConnect: { projectId?: string } | undefined;
+  isLinking?: boolean;
 }) {
   const data = useSelectionData();
   const setSelectionData = useSetSelectionData();
@@ -46,12 +50,17 @@ function EcosystemWalletConnectUI(props: {
     return <LoadingScreen />;
   }
 
-  const goBackToMain =
-    props.size === "compact"
-      ? props.goBack
-      : () => {
-          setSelectionData({});
-        };
+  const goBackToMain = () => {
+    if (props.size === "compact") {
+      props.goBack?.();
+    }
+    setSelectionData({});
+  };
+
+  const done = () => {
+    props.done();
+    setSelectionData({});
+  };
 
   const otpUserInfo = state?.emailLogin
     ? { email: state.emailLogin }
@@ -64,12 +73,13 @@ function EcosystemWalletConnectUI(props: {
       <OTPLoginUI
         userInfo={otpUserInfo}
         locale={locale}
-        done={props.done}
+        done={done}
         goBack={goBackToMain}
         wallet={props.wallet}
         chain={props.chain}
         client={props.client}
         size={props.size}
+        isLinking={props.isLinking}
       />
     );
   }
@@ -77,12 +87,14 @@ function EcosystemWalletConnectUI(props: {
   if (state?.passkeyLogin) {
     return (
       <PassKeyLogin
+        locale={props.connectLocale}
         wallet={props.wallet}
-        done={props.done}
+        done={done}
         onBack={goBackToMain}
         chain={props.chain}
         client={props.client}
         size={props.size}
+        isLinking={props.isLinking}
       />
     );
   }
@@ -92,13 +104,46 @@ function EcosystemWalletConnectUI(props: {
       <SocialLogin
         socialAuth={state.socialLogin.type}
         locale={locale}
-        done={props.done}
+        done={done}
         goBack={goBackToMain}
         wallet={props.wallet}
         state={state}
         chain={props.chain}
         client={props.client}
         size={props.size}
+        connectLocale={props.connectLocale}
+        isLinking={props.isLinking}
+      />
+    );
+  }
+
+  if (state?.walletLogin) {
+    return (
+      <WalletAuth
+        meta={props.meta}
+        inAppLocale={locale}
+        walletConnect={props.walletConnect}
+        wallet={props.wallet}
+        client={props.client}
+        size={props.size}
+        done={done}
+        onBack={goBackToMain || (() => setSelectionData({}))}
+        locale={props.connectLocale}
+      />
+    );
+  }
+
+  if (state?.guestLogin) {
+    return (
+      <GuestLogin
+        locale={locale}
+        done={done}
+        goBack={goBackToMain}
+        wallet={props.wallet}
+        state={state}
+        client={props.client}
+        size={props.size}
+        connectLocale={props.connectLocale}
       />
     );
   }
@@ -107,7 +152,7 @@ function EcosystemWalletConnectUI(props: {
     <EcosystemWalletFormUIScreen
       select={() => {}}
       locale={locale}
-      done={props.done}
+      done={done}
       goBack={props.goBack}
       wallet={props.wallet}
       chain={props.chain}
@@ -115,6 +160,7 @@ function EcosystemWalletConnectUI(props: {
       size={props.size}
       connectLocale={props.connectLocale}
       meta={props.meta}
+      isLinking={props.isLinking}
     />
   );
 }

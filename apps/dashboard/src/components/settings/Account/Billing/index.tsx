@@ -1,12 +1,12 @@
+"use client";
 import {
   type Account,
   AccountPlan,
   AccountStatus,
   useUpdateAccountPlan,
 } from "@3rdweb-sdk/react/hooks/useApi";
-import { Flex, HStack, Icon, useDisclosure } from "@chakra-ui/react";
+import { Flex, Icon, useDisclosure } from "@chakra-ui/react";
 import { StepsCard } from "components/dashboard/StepsCard";
-import { OnboardingBilling } from "components/onboarding/Billing";
 import { OnboardingModal } from "components/onboarding/Modal";
 import { AccountForm } from "components/settings/Account/AccountForm";
 import { ManageBillingButton } from "components/settings/Account/Billing/ManageButton";
@@ -16,6 +16,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiExternalLink } from "react-icons/fi";
 import { Button, Heading, Text, TrackedLink } from "tw-components";
 import { PLANS } from "utils/pricing";
+import { LazyOnboardingBilling } from "../../../onboarding/LazyOnboardingBilling";
+import { CouponSection } from "./CouponCard";
 import { BillingDowngradeDialog } from "./DowngradeDialog";
 import { BillingHeader } from "./Header";
 import { BillingPlanCard } from "./PlanCard";
@@ -23,9 +25,10 @@ import { BillingPricing } from "./Pricing";
 
 interface BillingProps {
   account: Account;
+  teamId: string | undefined;
 }
 
-export const Billing: React.FC<BillingProps> = ({ account }) => {
+export const Billing: React.FC<BillingProps> = ({ account, teamId }) => {
   const updatePlanMutation = useUpdateAccountPlan(
     account?.plan === AccountPlan.Free,
   );
@@ -73,7 +76,6 @@ export const Billing: React.FC<BillingProps> = ({ account }) => {
         {
           plan,
           feedback,
-          useTrial: !account?.trialPeriodEndedAt,
         },
         {
           onSuccess: () => {
@@ -102,14 +104,7 @@ export const Billing: React.FC<BillingProps> = ({ account }) => {
         },
       );
     },
-    [
-      account?.trialPeriodEndedAt,
-      downgradePlan,
-      onError,
-      onSuccess,
-      trackEvent,
-      updatePlanMutation,
-    ],
+    [downgradePlan, onError, onSuccess, trackEvent, updatePlanMutation],
   );
 
   const handlePlanSelect = (plan: AccountPlan) => {
@@ -147,7 +142,7 @@ export const Billing: React.FC<BillingProps> = ({ account }) => {
     return [
       {
         title: (
-          <HStack justifyContent="space-between">
+          <div className="flex flex-row items-center justify-between gap-2">
             <Heading
               size="label.md"
               opacity={!stepsCompleted.account ? 1 : 0.6}
@@ -167,7 +162,7 @@ export const Billing: React.FC<BillingProps> = ({ account }) => {
                 Edit
               </Button>
             )}
-          </HStack>
+          </div>
         ),
         description:
           "This information will be used for billing notifications and invoices.",
@@ -254,11 +249,8 @@ export const Billing: React.FC<BillingProps> = ({ account }) => {
         <>
           <StepsCard title="Get started with billing" steps={steps} />
 
-          <OnboardingModal
-            isOpen={isPaymentMethodOpen}
-            onClose={onPaymentMethodClose}
-          >
-            <OnboardingBilling
+          <OnboardingModal isOpen={isPaymentMethodOpen}>
+            <LazyOnboardingBilling
               onSave={handlePaymentAdded}
               onCancel={onPaymentMethodClose}
             />
@@ -282,7 +274,7 @@ export const Billing: React.FC<BillingProps> = ({ account }) => {
         validPayment={validPayment}
         paymentVerification={paymentVerification}
         invalidPayment={invalidPayment}
-        loading={paymentMethodSaving || updatePlanMutation.isLoading}
+        loading={paymentMethodSaving || updatePlanMutation.isPending}
         onSelect={handlePlanSelect}
       />
 
@@ -294,10 +286,10 @@ export const Billing: React.FC<BillingProps> = ({ account }) => {
         color="blue.500"
         isExternal
       >
-        <HStack alignItems="center" gap={2}>
+        <div className="flex flex-row items-center gap-2">
           <Text color="blue.500">Learn more about thirdweb&apos;s pricing</Text>
           <Icon as={FiExternalLink} />
-        </HStack>
+        </div>
       </TrackedLink>
 
       {downgradePlan && (
@@ -307,9 +299,11 @@ export const Billing: React.FC<BillingProps> = ({ account }) => {
           oldPlanFeatures={PLANS[account.plan].features}
           onClose={handleDowngradeAlertClose}
           onConfirm={(feedback) => handleUpdatePlan(downgradePlan, feedback)}
-          loading={updatePlanMutation.isLoading}
+          loading={updatePlanMutation.isPending}
         />
       )}
+
+      <CouponSection teamId={teamId} />
     </Flex>
   );
 };

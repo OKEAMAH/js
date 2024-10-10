@@ -28,9 +28,17 @@ export {
   fetchDeployBytecodeFromPublishedContractMetadata,
 } from "../contract/deployment/publisher.js";
 
+// contract metadata
+export {
+  fetchDeployMetadata,
+  type FetchDeployMetadataResult,
+} from "../utils/any-evm/deploy-metadata.js";
+
 // deployment - TODO: these end up looking more like extensions -> should they be?
 export {
   prepareDirectDeployTransaction,
   type PrepareDirectDeployTransactionOptions,
 } from "../contract/deployment/deploy-with-abi.js";
 export { prepareAutoFactoryDeployTransaction } from "../contract/deployment/deploy-via-autofactory.js";
+
+export { getCompilerMetadata } from "../contract/actions/get-compiler-metadata.js";

@@ -27,7 +27,7 @@ import type {
   WalletConnectSessionRequestEvent,
 } from "./types.js";
 
-export type CreateWalletConnectClientOptions = Prettify<
+type CreateWalletConnectClientOptions = Prettify<
   WalletConnectConfig & {
     /**
      * Your application's thirdweb client.
@@ -66,7 +66,7 @@ export type CreateWalletConnectClientOptions = Prettify<
   }
 >;
 
-export type CreateWalletConnectSessionOptions = {
+type CreateWalletConnectSessionOptions = {
   /**
    * The WalletConnect client returned from `createWalletConnectClient`
    */
@@ -344,7 +344,7 @@ export async function disconnectWalletConnectSession(options: {
         message: "Disconnected",
       },
     });
-  } catch (error) {
+  } catch {
     // ignore, the session doesn't exist already
   }
 }

@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -60,21 +59,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `airdropERC721` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `airdropERC721` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `airdropERC721` method is supported.
  * @extension ERC721
  * @example
  * ```ts
  * import { isAirdropERC721Supported } from "thirdweb/extensions/erc721";
  *
- * const supported = await isAirdropERC721Supported(contract);
+ * const supported = isAirdropERC721Supported(["0x..."]);
  * ```
  */
-export async function isAirdropERC721Supported(
-  contract: ThirdwebContract<any>,
-) {
+export function isAirdropERC721Supported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -86,7 +83,7 @@ export async function isAirdropERC721Supported(
  * @extension ERC721
  * @example
  * ```ts
- * import { encodeAirdropERC721Params } "thirdweb/extensions/erc721";
+ * import { encodeAirdropERC721Params } from "thirdweb/extensions/erc721";
  * const result = encodeAirdropERC721Params({
  *  tokenAddress: ...,
  *  tokenOwner: ...,
@@ -109,7 +106,7 @@ export function encodeAirdropERC721Params(options: AirdropERC721Params) {
  * @extension ERC721
  * @example
  * ```ts
- * import { encodeAirdropERC721 } "thirdweb/extensions/erc721";
+ * import { encodeAirdropERC721 } from "thirdweb/extensions/erc721";
  * const result = encodeAirdropERC721({
  *  tokenAddress: ...,
  *  tokenOwner: ...,
@@ -133,6 +130,7 @@ export function encodeAirdropERC721(options: AirdropERC721Params) {
  * @extension ERC721
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { airdropERC721 } from "thirdweb/extensions/erc721";
  *
  * const transaction = airdropERC721({
@@ -146,8 +144,7 @@ export function encodeAirdropERC721(options: AirdropERC721Params) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function airdropERC721(

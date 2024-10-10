@@ -1,4 +1,5 @@
-import { StorageSingleton } from "lib/sdk";
+import { getThirdwebClient } from "@/constants/thirdweb.server";
+import { download } from "thirdweb/storage";
 import { handleArbitraryTokenURI, shouldDownloadURI } from "./tokenUri";
 import {
   type GenerateURLParams,
@@ -31,18 +32,23 @@ export async function transformMoralisResponseToNFT(
       moralisResponse.result.map(async (moralisNft) => {
         try {
           return {
+            id: moralisNft.token_id,
             contractAddress: moralisNft.token_address,
             tokenId: moralisNft.token_id,
             metadata: shouldDownloadURI(moralisNft.token_uri)
-              ? await StorageSingleton.downloadJSON(
-                  handleArbitraryTokenURI(moralisNft.token_uri),
-                )
+              ? await download({
+                  uri: handleArbitraryTokenURI(moralisNft.token_uri),
+                  client: getThirdwebClient(),
+                })
+                  .then((res) => res.json())
+                  .catch(() => ({}))
               : moralisNft.token_uri,
             owner,
+            tokenURI: moralisNft.token_uri,
             supply: moralisNft.amount || "1",
             type: moralisNft.contract_type,
           } as WalletNFT;
-        } catch (e) {
+        } catch {
           return undefined as unknown as WalletNFT;
         }
       }),

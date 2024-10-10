@@ -1,20 +1,25 @@
 import { Flex, useDisclosure } from "@chakra-ui/react";
-import { type SmartContract, useUpdateNFTMetadata } from "@thirdweb-dev/react";
-import type { NFT } from "thirdweb";
+import type { NFT, ThirdwebContract } from "thirdweb";
 import { Button, Drawer, Text } from "tw-components";
-import { NFTMintForm } from "./mint-form";
+import { UpdateNftMetadata } from "./update-metadata-form";
 
 interface UpdateMetadataTabProps {
-  contract: SmartContract | null;
+  contract: ThirdwebContract;
   nft: NFT;
+
+  /**
+   * If useUpdateMetadata (NFT Drop, Edition Drop) -> use `updateMetadata`
+   * else (NFT Collection, Edition) -> use `setTokenURI`
+   */
+  useUpdateMetadata: boolean;
 }
 
 const UpdateMetadataTab: React.FC<UpdateMetadataTabProps> = ({
   contract,
   nft,
+  useUpdateMetadata,
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const mutation = useUpdateNFTMetadata(contract);
 
   return (
     <>
@@ -25,18 +30,18 @@ const UpdateMetadataTab: React.FC<UpdateMetadataTabProps> = ({
         onClose={onClose}
         isOpen={isOpen}
       >
-        <NFTMintForm
+        <UpdateNftMetadata
           contract={contract}
-          updateMetadataMutation={mutation}
           nft={nft}
+          useUpdateMetadata={useUpdateMetadata}
         />
       </Drawer>
-      <Flex direction={"column"} gap={6}>
+      <Flex direction="column" gap={6}>
         <Text>
           You can update the metadata of this NFT at any time, this will only
           change the representation of the NFT, not the owner or tokenId.
         </Text>
-        <Flex justifyContent={"right"}>
+        <Flex justifyContent="right">
           <Button colorScheme="primary" onClick={onOpen}>
             Update Metadata
           </Button>

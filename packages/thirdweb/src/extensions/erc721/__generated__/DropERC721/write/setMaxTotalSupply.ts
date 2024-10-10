@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -30,21 +29,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `setMaxTotalSupply` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `setMaxTotalSupply` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `setMaxTotalSupply` method is supported.
  * @extension ERC721
  * @example
  * ```ts
  * import { isSetMaxTotalSupplySupported } from "thirdweb/extensions/erc721";
  *
- * const supported = await isSetMaxTotalSupplySupported(contract);
+ * const supported = isSetMaxTotalSupplySupported(["0x..."]);
  * ```
  */
-export async function isSetMaxTotalSupplySupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isSetMaxTotalSupplySupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -56,7 +53,7 @@ export async function isSetMaxTotalSupplySupported(
  * @extension ERC721
  * @example
  * ```ts
- * import { encodeSetMaxTotalSupplyParams } "thirdweb/extensions/erc721";
+ * import { encodeSetMaxTotalSupplyParams } from "thirdweb/extensions/erc721";
  * const result = encodeSetMaxTotalSupplyParams({
  *  maxTotalSupply: ...,
  * });
@@ -75,7 +72,7 @@ export function encodeSetMaxTotalSupplyParams(
  * @extension ERC721
  * @example
  * ```ts
- * import { encodeSetMaxTotalSupply } "thirdweb/extensions/erc721";
+ * import { encodeSetMaxTotalSupply } from "thirdweb/extensions/erc721";
  * const result = encodeSetMaxTotalSupply({
  *  maxTotalSupply: ...,
  * });
@@ -97,6 +94,7 @@ export function encodeSetMaxTotalSupply(options: SetMaxTotalSupplyParams) {
  * @extension ERC721
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { setMaxTotalSupply } from "thirdweb/extensions/erc721";
  *
  * const transaction = setMaxTotalSupply({
@@ -108,8 +106,7 @@ export function encodeSetMaxTotalSupply(options: SetMaxTotalSupplyParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function setMaxTotalSupply(

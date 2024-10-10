@@ -1,17 +1,14 @@
+import { UnorderedList } from "@/components/ui/List/List";
+import { useThirdwebClient } from "@/constants/thirdweb.client";
+import { cn } from "@/lib/utils";
 import {
-  AspectRatio,
   Box,
-  Center,
   Container,
   Flex,
-  HStack,
-  Icon,
   IconButton,
   Link,
-  ListItem,
   Portal,
   Select,
-  Stack,
   Table,
   TableContainer,
   Tbody,
@@ -20,24 +17,22 @@ import {
   Thead,
   Tooltip,
   Tr,
-  UnorderedList,
-  VStack,
 } from "@chakra-ui/react";
-import { resolveAddress } from "@thirdweb-dev/sdk";
 import { Logo } from "components/logo";
-import { utils } from "ethers";
+import {
+  ChevronFirstIcon,
+  ChevronLastIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CircleAlertIcon,
+  UploadIcon,
+} from "lucide-react";
 import Papa from "papaparse";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type DropzoneOptions, useDropzone } from "react-dropzone";
-import { BsFillCloudUploadFill } from "react-icons/bs";
-import { IoAlertCircleOutline } from "react-icons/io5";
-import {
-  MdFirstPage,
-  MdLastPage,
-  MdNavigateBefore,
-  MdNavigateNext,
-} from "react-icons/md";
 import { type Column, usePagination, useTable } from "react-table";
+import { resolveAddress } from "thirdweb/extensions/ens";
+import { isAddress } from "thirdweb/utils";
 import { Button, Drawer, Heading, Text } from "tw-components";
 import { csvMimeTypes } from "utils/batch";
 
@@ -57,6 +52,7 @@ export const AirdropUpload: React.FC<AirdropUploadProps> = ({
   isOpen,
   onClose,
 }) => {
+  const client = useThirdwebClient();
   const [validAirdrop, setValidAirdrop] = useState<AirdropAddressInput[]>([]);
   const [airdropData, setAirdropData] = useState<AirdropAddressInput[]>([]);
   const [noCsv, setNoCsv] = useState(false);
@@ -110,7 +106,7 @@ export const AirdropUpload: React.FC<AirdropUploadProps> = ({
     [],
   );
 
-  // FIXME: this can be a mutation or query insead!
+  // FIXME: this can be a mutation or query instead!
   // eslint-disable-next-line no-restricted-syntax
   useEffect(() => {
     if (validAirdrop.length === 0) {
@@ -124,9 +120,9 @@ export const AirdropUpload: React.FC<AirdropUploadProps> = ({
           let resolvedAddress = address;
 
           try {
-            resolvedAddress = utils.isAddress(address)
+            resolvedAddress = isAddress(address)
               ? address
-              : await resolveAddress(address);
+              : await resolveAddress({ name: address, client });
             isValid = !!resolvedAddress;
           } catch {
             isValid = false;
@@ -158,7 +154,7 @@ export const AirdropUpload: React.FC<AirdropUploadProps> = ({
       setAirdropData(ordered);
     };
     normalizeAddresses(validAirdrop);
-  }, [validAirdrop]);
+  }, [validAirdrop, client]);
 
   const removeInvalid = useCallback(() => {
     const filteredData = airdropData.filter(({ isValid }) => isValid);
@@ -189,12 +185,12 @@ export const AirdropUpload: React.FC<AirdropUploadProps> = ({
         <Flex shadow="sm">
           <Container maxW="container.page">
             <Flex align="center" justify="space-between" p={4}>
-              <Flex gap={2}>
+              <div className="flex flex-row gap-2">
                 <Logo hideWordmark />
                 <Heading size="title.md">
                   {validAirdrop.length ? "Edit" : "Upload"} Airdrop
                 </Heading>
-              </Flex>
+              </div>
             </Flex>
           </Container>
         </Flex>
@@ -205,29 +201,28 @@ export const AirdropUpload: React.FC<AirdropUploadProps> = ({
           <Flex flexGrow={1} align="center" overflow="auto">
             <Container maxW="container.page">
               <Flex gap={8} flexDir="column">
-                <AspectRatio ratio={21 / 9} w="100%">
-                  <Center
-                    borderRadius="md"
+                <div className="relative aspect-[21/9] w-full">
+                  <div
+                    className={cn(
+                      "flex h-full cursor-pointer rounded-md border border-border hover:border-primary",
+                      noCsv ? "bg-red-200" : "bg-card",
+                    )}
                     {...getRootProps()}
-                    cursor="pointer"
-                    bg={noCsv ? "red.200" : "inputBg"}
-                    _hover={{
-                      bg: "inputBgHover",
-                      borderColor: "primary.500",
-                    }}
-                    borderColor="inputBorder"
-                    borderWidth="1px"
                   >
                     <input {...getInputProps()} />
-                    <VStack p={6}>
-                      <Icon
-                        as={BsFillCloudUploadFill}
-                        boxSize={8}
-                        mb={2}
-                        color={noCsv ? "red.500" : "gray.600"}
+                    <div className="m-auto flex flex-col p-6">
+                      <UploadIcon
+                        size={16}
+                        className={cn("mx-auto mb-2 text-gray-500", {
+                          "text-red-500": noCsv,
+                        })}
                       />
                       {isDragActive ? (
-                        <Heading as={Text} size="label.md">
+                        <Heading
+                          as={Text}
+                          size="label.md"
+                          className="text-center"
+                        >
                           Drop the files here
                         </Heading>
                       ) : (
@@ -235,32 +230,33 @@ export const AirdropUpload: React.FC<AirdropUploadProps> = ({
                           as={Text}
                           size="label.md"
                           color={noCsv ? "red.500" : "gray.600"}
+                          className="text-center"
                         >
                           {noCsv
                             ? `No valid CSV file found, make sure your CSV includes the "address" column.`
                             : "Drag & Drop a CSV file here"}
                         </Heading>
                       )}
-                    </VStack>
-                  </Center>
-                </AspectRatio>
-                <Flex gap={2} flexDir="column">
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-row gap-2">
                   <Heading size="subtitle.sm">Requirements</Heading>
                   <UnorderedList>
-                    <ListItem>
+                    <li>
                       Files <em>must</em> contain one .csv file with an address
                       and quantity column, if the quantity column is not
                       provided, it will default to 1 NFT per wallet. -{" "}
                       <Link download color="primary.500" href="/airdrop.csv">
                         Download an example CSV
                       </Link>
-                    </ListItem>
-                    <ListItem>
+                    </li>
+                    <li>
                       Repeated addresses will be removed and only the first
                       found will be kept.
-                    </ListItem>
+                    </li>
                   </UnorderedList>
-                </Flex>
+                </div>
               </Flex>
             </Container>
           </Flex>
@@ -339,7 +335,7 @@ const AirdropTable: React.FC<AirdropTableProps> = ({ data, portalRef }) => {
             return address;
           }
           return (
-            <Flex>
+            <div className="flex flex-row items-center gap-2">
               <Tooltip
                 label={
                   address.startsWith("0x")
@@ -347,14 +343,14 @@ const AirdropTable: React.FC<AirdropTableProps> = ({ data, portalRef }) => {
                     : "Address couldn't be resolved"
                 }
               >
-                <Stack direction="row" align="center">
-                  <Icon as={IoAlertCircleOutline} color="red.500" boxSize={5} />
+                <div className="flex flex-row items-center gap-2">
+                  <CircleAlertIcon className="size-5 text-red-500" />
                   <Text fontWeight="bold" color="red.500" cursor="default">
                     {address}
                   </Text>
-                </Stack>
+                </div>
               </Tooltip>
-            </Flex>
+            </div>
           );
         },
       },
@@ -395,6 +391,8 @@ const AirdropTable: React.FC<AirdropTableProps> = ({ data, portalRef }) => {
         pageIndex: 0,
       },
     },
+    // old package: this will be removed
+    // eslint-disable-next-line react-compiler/react-compiler
     usePagination,
   );
 
@@ -444,36 +442,35 @@ const AirdropTable: React.FC<AirdropTableProps> = ({ data, portalRef }) => {
           </Tbody>
         </Table>
       </TableContainer>
-
       <Portal containerRef={portalRef}>
-        <Center w="100%">
-          <HStack>
+        <div className="flex w-full items-center justify-center">
+          <div className="flex flex-row gap-1">
             <IconButton
               isDisabled={!canPreviousPage}
               aria-label="first page"
-              icon={<Icon as={MdFirstPage} />}
+              icon={<ChevronFirstIcon className="size-4" />}
               onClick={() => gotoPage(0)}
             />
             <IconButton
               isDisabled={!canPreviousPage}
               aria-label="previous page"
-              icon={<Icon as={MdNavigateBefore} />}
+              icon={<ChevronLeftIcon className="size-4" />}
               onClick={() => previousPage()}
             />
-            <Text whiteSpace="nowrap">
+            <p className="my-auto whitespace-nowrap">
               Page <strong>{pageIndex + 1}</strong> of{" "}
               <strong>{pageOptions.length}</strong>
-            </Text>
+            </p>
             <IconButton
               isDisabled={!canNextPage}
               aria-label="next page"
-              icon={<Icon as={MdNavigateNext} />}
+              icon={<ChevronRightIcon className="size-4" />}
               onClick={() => nextPage()}
             />
             <IconButton
               isDisabled={!canNextPage}
               aria-label="last page"
-              icon={<Icon as={MdLastPage} />}
+              icon={<ChevronLastIcon className="size-4" />}
               onClick={() => gotoPage(pageCount - 1)}
             />
 
@@ -489,8 +486,8 @@ const AirdropTable: React.FC<AirdropTableProps> = ({ data, portalRef }) => {
               <option value="250">250</option>
               <option value="500">500</option>
             </Select>
-          </HStack>
-        </Center>
+          </div>
+        </div>
       </Portal>
     </Flex>
   );

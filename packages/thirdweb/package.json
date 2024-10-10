@@ -1,6 +1,6 @@
 {
   "name": "thirdweb",
-  "version": "5.37.0",
+  "version": "5.61.5",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/thirdweb-dev/js.git#main"
@@ -113,6 +113,16 @@
       "import": "./dist/esm/exports/wallets/*.js",
       "default": "./dist/cjs/exports/wallets/*.js"
     },
+    "./modules": {
+      "types": "./dist/types/exports/modules.d.ts",
+      "import": "./dist/esm/exports/modules.js",
+      "default": "./dist/cjs/exports/modules.js"
+    },
+    "./social": {
+      "types": "./dist/types/exports/social.d.ts",
+      "import": "./dist/esm/exports/social.js",
+      "default": "./dist/cjs/exports/social.js"
+    },
     "./package.json": "./package.json"
   },
   "typesVersions": {
@@ -164,6 +174,12 @@
       ],
       "wallets/*": [
         "./dist/types/exports/wallets/*.d.ts"
+      ],
+      "modules": [
+        "./dist/types/exports/modules.d.ts"
+      ],
+      "social": [
+        "./dist/types/exports/social.d.ts"
       ]
     }
   },
@@ -183,9 +199,9 @@
     "!tsconfig.build.json"
   ],
   "dependencies": {
-    "@coinbase/wallet-sdk": "4.0.3",
-    "@emotion/react": "11.11.4",
-    "@emotion/styled": "11.11.5",
+    "@coinbase/wallet-sdk": "4.1.0",
+    "@emotion/react": "11.13.3",
+    "@emotion/styled": "11.13.0",
     "@google/model-viewer": "2.1.1",
     "@noble/curves": "1.4.0",
     "@noble/hashes": "1.4.0",
@@ -194,26 +210,22 @@
     "@radix-ui/react-focus-scope": "1.1.0",
     "@radix-ui/react-icons": "1.3.0",
     "@radix-ui/react-tooltip": "1.1.2",
-    "@tanstack/react-query": "5.29.2",
-    "@walletconnect/ethereum-provider": "2.12.2",
-    "@walletconnect/sign-client": "^2.13.3",
+    "@tanstack/react-query": "5.56.2",
+    "@walletconnect/ethereum-provider": "2.16.3",
+    "@walletconnect/sign-client": "2.16.3",
     "abitype": "1.0.5",
-    "fast-text-encoding": "^1.0.6",
     "fuse.js": "7.0.0",
     "input-otp": "^1.2.4",
     "mipd": "0.0.7",
-    "node-libs-browser": "2.2.1",
     "uqr": "0.1.2",
-    "viem": "2.16.5"
+    "viem": "2.21.16"
   },
   "peerDependencies": {
     "@aws-sdk/client-lambda": "^3",
     "@aws-sdk/credential-providers": "^3",
     "@coinbase/wallet-mobile-sdk": "^1",
-    "@react-native-async-storage/async-storage": "^1",
-    "@react-native-clipboard/clipboard": "*",
-    "amazon-cognito-identity-js": "^6",
-    "aws-amplify": "^5",
+    "@mobile-wallet-protocol/client": "0.0.3",
+    "@react-native-async-storage/async-storage": "^1 || ^2",
     "ethers": "^5 || ^6",
     "expo-linking": "^6",
     "expo-web-browser": "^13",
@@ -249,10 +261,10 @@
     "react-native-quick-crypto": {
       "optional": true
     },
-    "react-native-svg": {
+    "react-native-passkey": {
       "optional": true
     },
-    "aws-amplify": {
+    "react-native-svg": {
       "optional": true
     },
     "@aws-sdk/client-lambda": {
@@ -261,16 +273,13 @@
     "@aws-sdk/credential-providers": {
       "optional": true
     },
-    "amazon-cognito-identity-js": {
-      "optional": true
-    },
     "@react-native-async-storage/async-storage": {
       "optional": true
     },
-    "@react-native-clipboard/clipboard": {
+    "@coinbase/wallet-mobile-sdk": {
       "optional": true
     },
-    "@coinbase/wallet-mobile-sdk": {
+    "@mobile-wallet-protocol/client": {
       "optional": true
     }
   },
@@ -278,56 +287,82 @@
     "bench:compare": "bun run ./benchmarks/run.ts",
     "bench": "vitest -c ./test/vitest.config.ts bench",
     "format": "biome format ./src --write",
-    "lint": "biome check ./src",
+    "lint": "knip && biome check ./src && tsc --project ./tsconfig.build.json --module esnext --noEmit",
     "fix": "biome check ./src --fix",
     "knip": "knip",
     "build:generate": "bun scripts/generate/generate.ts",
     "build:generate-wallets": "bun scripts/wallets/generate.ts",
     "dev": "tsc --project ./tsconfig.build.json --module es2020 --outDir ./dist/esm --watch",
-    "dev:cjs": "printf '{\"type\":\"commonjs\"}' > ./dist/cjs/package.json && tsc --project ./tsconfig.build.json --module commonjs --outDir ./dist/cjs --verbatimModuleSyntax false --watch",
-    "dev:esm": "printf '{\"type\": \"module\",\"sideEffects\":false}' > ./dist/esm/package.json && tsc --project ./tsconfig.build.json --module es2020 --outDir ./dist/esm --watch",
-    "build": "pnpm clean && pnpm build:cjs && pnpm build:esm && pnpm build:types",
-    "build:cjs": "tsc --project ./tsconfig.build.json --module commonjs --outDir ./dist/cjs --verbatimModuleSyntax false && printf '{\"type\":\"commonjs\"}' > ./dist/cjs/package.json",
-    "build:esm": "tsc --project ./tsconfig.build.json --module es2020 --outDir ./dist/esm && printf '{\"type\": \"module\",\"sideEffects\":false}' > ./dist/esm/package.json",
+    "dev:cjs": "printf '{\"type\":\"commonjs\"}' > ./dist/cjs/package.json && tsc --noCheck --project ./tsconfig.build.json --module commonjs --outDir ./dist/cjs --verbatimModuleSyntax false --watch",
+    "dev:esm": "printf '{\"type\": \"module\",\"sideEffects\":false}' > ./dist/esm/package.json && tsc --noCheck --project ./tsconfig.build.json --module es2020 --outDir ./dist/esm --watch",
+    "build": "pnpm clean && pnpm build:types && pnpm build:cjs && pnpm build:esm",
+    "build:cjs": "tsc --noCheck --project ./tsconfig.build.json --module commonjs --outDir ./dist/cjs --verbatimModuleSyntax false && printf '{\"type\":\"commonjs\"}' > ./dist/cjs/package.json",
+    "build:esm": "tsc --noCheck --project ./tsconfig.build.json --module es2020 --outDir ./dist/esm && printf '{\"type\": \"module\",\"sideEffects\":false}' > ./dist/esm/package.json",
     "build:types": "tsc --project ./tsconfig.build.json --module esnext --declarationDir ./dist/types --emitDeclarationOnly --declaration --declarationMap",
     "clean": "rimraf dist",
-    "push": "yalc push",
     "size": "size-limit",
     "test:watch": "vitest -c ./test/vitest.config.ts dev",
     "test": "vitest run -c ./test/vitest.config.ts --coverage",
     "test:cov": "vitest dev -c ./test/vitest.config.ts --coverage",
     "test:dev": "vitest run -c ./test/vitest.config.ts",
     "test:react": "vitest run -c ./test/vitest.config.ts dev --ui src/react",
-    "typedoc": "node scripts/typedoc.mjs",
-    "update-version": "node scripts/version.mjs"
+    "typedoc": "bun run scripts/typedoc.mjs",
+    "update-version": "node scripts/version.mjs",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "engines": {
     "node": ">=18"
   },
   "devDependencies": {
-    "@aws-sdk/client-lambda": "3.577.0",
-    "@aws-sdk/credential-providers": "3.577.0",
-    "@coinbase/wallet-mobile-sdk": "1.0.13",
-    "@react-native-async-storage/async-storage": "^1.23.1",
-    "@react-native-clipboard/clipboard": "1.14.1",
-    "@testing-library/jest-dom": "^6.4.6",
+    "@aws-sdk/client-lambda": "3.659.0",
+    "@aws-sdk/credential-providers": "3.658.1",
+    "@biomejs/biome": "1.9.2",
+    "@chromatic-com/storybook": "2.0.2",
+    "@codspeed/vitest-plugin": "3.1.1",
+    "@coinbase/wallet-mobile-sdk": "1.1.2",
+    "@mobile-wallet-protocol/client": "0.0.3",
+    "@react-native-async-storage/async-storage": "1.24.0",
+    "@size-limit/preset-big-lib": "11.1.6",
+    "@storybook/addon-essentials": "8.3.4",
+    "@storybook/addon-interactions": "8.3.5",
+    "@storybook/addon-links": "8.3.4",
+    "@storybook/addon-onboarding": "8.3.4",
+    "@storybook/react": "8.3.4",
+    "@storybook/react-vite": "8.3.4",
+    "@storybook/test": "8.3.5",
+    "@testing-library/jest-dom": "^6.4.7",
     "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.5.2",
     "@types/cross-spawn": "^6.0.6",
-    "@types/react": "^18.3.3",
-    "@vitejs/plugin-react": "^4.3.1",
-    "@vitest/ui": "1.6.0",
-    "amazon-cognito-identity-js": "6.3.12",
-    "aws-amplify": "5.3.18",
+    "@types/react": "^18.3.10",
+    "@viem/anvil": "0.0.10",
+    "@vitejs/plugin-react": "^4.3.2",
+    "@vitest/coverage-v8": "2.1.1",
+    "@vitest/ui": "2.1.1",
     "cross-spawn": "7.0.3",
+    "dotenv-mono": "^1.3.14",
+    "ethers5": "npm:ethers@5",
+    "ethers6": "npm:ethers@6",
     "expo-linking": "6.3.1",
     "expo-web-browser": "13.0.3",
-    "happy-dom": "^14.12.0",
-    "react-native": "0.74.2",
+    "happy-dom": "^15.7.4",
+    "knip": "^5.30.6",
+    "msw": "^2.4.9",
+    "prettier": "^3.3.2",
+    "react": "18.3.1",
+    "react-native": "0.75.3",
     "react-native-aes-gcm-crypto": "0.2.2",
-    "react-native-quick-crypto": "0.7.0-rc.6",
-    "react-native-svg": "15.3.0",
-    "vitest": "1.6.0",
-    "typescript": "5.5.2"
+    "react-native-passkey": "3.0.0-beta2",
+    "react-native-quick-crypto": "0.7.5",
+    "react-native-svg": "15.7.1",
+    "rimraf": "6.0.1",
+    "sharp": "^0.33.5",
+    "size-limit": "11.1.6",
+    "storybook": "8.3.4",
+    "typedoc": "0.26.7",
+    "typescript": "5.6.2",
+    "vite": "5.4.8",
+    "vitest": "2.1.1"
   }
 }

@@ -1,5 +1,5 @@
+import { WalletAddress } from "@/components/blocks/wallet-address";
 import {
-  AspectRatio,
   Flex,
   GridItem,
   SimpleGrid,
@@ -7,13 +7,9 @@ import {
   SkeletonText,
   useBreakpointValue,
 } from "@chakra-ui/react";
-import { useContract } from "@thirdweb-dev/react";
-import type { MarketplaceV3 } from "@thirdweb-dev/sdk";
 import { ListingStatsV3 } from "contract-ui/tabs/listings/components/listing-stats";
-import { useTabHref } from "contract-ui/utils";
-import { BigNumber } from "ethers";
 import { useMemo } from "react";
-import { getContract } from "thirdweb";
+import type { ThirdwebContract } from "thirdweb";
 import {
   type DirectListing,
   type EnglishAuction,
@@ -23,18 +19,9 @@ import {
   totalListings,
 } from "thirdweb/extensions/marketplace";
 import { useReadContract } from "thirdweb/react";
-import {
-  Badge,
-  Card,
-  Heading,
-  Text,
-  TrackedLink,
-  type TrackedLinkProps,
-} from "tw-components";
-import { AddressCopyButton } from "tw-components/AddressCopyButton";
+import { min } from "thirdweb/utils";
+import { Badge, Card, Heading, Text, TrackedLink } from "tw-components";
 import { NFTMediaWithEmptyState } from "tw-components/nft-media";
-import { thirdwebClient } from "../../../../lib/thirdweb-client";
-import { defineDashboardChain } from "../../../../lib/v5-adapter";
 
 type ListingData =
   | (Pick<
@@ -52,60 +39,28 @@ type ListingData =
       currencyValue: DirectListing["currencyValuePerToken"];
     });
 
-type MarketplaceDetailsProps = {
-  contractAddress: string;
-  contractType: "marketplace" | "marketplace-v3";
-  features: string[];
-  trackingCategory: TrackedLinkProps["category"];
-};
-
-interface MarketplaceDetailsVersionProps<T> {
-  contract: T;
-  trackingCategory: TrackedLinkProps["category"];
-  features: MarketplaceDetailsProps["features"];
-}
-
-export const MarketplaceDetails: React.FC<MarketplaceDetailsProps> = ({
-  contractAddress,
-  contractType,
-  trackingCategory,
-  features,
-}) => {
-  const { contract } = useContract(contractAddress, contractType);
-
-  if (contractType === "marketplace" && contract) {
-    // no longer supported
-    return null;
-  }
-  return (
-    <MarketplaceV3Details
-      contract={contract as MarketplaceV3}
-      trackingCategory={trackingCategory}
-      features={features}
-    />
-  );
-};
-
 type ListingCardsSectionProps = {
-  contract: MarketplaceV3;
-  trackingCategory: TrackedLinkProps["category"];
+  contract: ThirdwebContract;
+  trackingCategory: string;
+  chainSlug: string;
 };
 
 const DirectListingCards: React.FC<ListingCardsSectionProps> = ({
   trackingCategory,
-  contract: v4Contract,
+  contract,
+  chainSlug,
 }) => {
-  const contract = getContract({
-    client: thirdwebClient,
-    address: v4Contract.getAddress(),
-    chain: defineDashboardChain(v4Contract.chainId),
-  });
-  const directListingsHref = useTabHref("direct-listings");
+  const directListingsHref = `/${chainSlug}/${contract.address}/direct-listings`;
   const countQuery = useReadContract(totalListings, { contract });
   const listingsQuery = useReadContract(getAllListings, {
     contract,
     count: 3n,
-    start: Math.max(BigNumber.from(countQuery?.data || 3)?.toNumber() - 3, 0),
+    start: Math.max(
+      Number(
+        min((countQuery?.data || 3n) - 3n, BigInt(Number.MAX_SAFE_INTEGER)),
+      ),
+      0,
+    ),
   });
   const listings = useMemo(
     () =>
@@ -120,17 +75,19 @@ const DirectListingCards: React.FC<ListingCardsSectionProps> = ({
     [listingsQuery?.data],
   );
 
-  if (!countQuery.isLoading && BigNumber.from(countQuery.data || 0).eq(0)) {
+  if (!countQuery.isPending && (countQuery.data || 0n) === 0n) {
     return null;
   }
-  if (!listingsQuery.isLoading && listings.length === 0) {
+  if (!listingsQuery.isPending && listings.length === 0) {
     return null;
   }
 
   return (
     <>
       <Flex align="center" justify="space-between" w="full">
-        <Heading size="label.lg">Direct Listings</Heading>
+        <h2 className="font-semibold text-2xl tracking-tight">
+          Direct Listing
+        </h2>
         <TrackedLink
           category={trackingCategory}
           label="view_all_direct_listings"
@@ -146,8 +103,10 @@ const DirectListingCards: React.FC<ListingCardsSectionProps> = ({
       </Flex>
       <ListingCards
         listings={listings}
-        isLoading={listingsQuery.isLoading}
+        isPending={listingsQuery.isPending}
         trackingCategory={trackingCategory}
+        chainSlug={chainSlug}
+        contractAddress={contract.address}
       />
     </>
   );
@@ -155,20 +114,20 @@ const DirectListingCards: React.FC<ListingCardsSectionProps> = ({
 
 const EnglishAuctionCards: React.FC<ListingCardsSectionProps> = ({
   trackingCategory,
-  contract: v4Contract,
+  contract,
+  chainSlug,
 }) => {
-  const contract = getContract({
-    client: thirdwebClient,
-    address: v4Contract.getAddress(),
-    chain: defineDashboardChain(v4Contract.chainId),
-  });
-
-  const englishAuctionsHref = useTabHref("english-auctions");
+  const englishAuctionsHref = `/${chainSlug}/${contract.address}/english-auctions`;
   const countQuery = useReadContract(totalAuctions, { contract });
   const auctionsQuery = useReadContract(getAllAuctions, {
     contract,
     count: 3n,
-    start: Math.max(BigNumber.from(countQuery?.data || 3)?.toNumber() - 3, 0),
+    start: Math.max(
+      Number(
+        min((countQuery?.data || 3n) - 3n, BigInt(Number.MAX_SAFE_INTEGER)),
+      ),
+      0,
+    ),
   });
   const auctions = useMemo(
     () =>
@@ -183,10 +142,10 @@ const EnglishAuctionCards: React.FC<ListingCardsSectionProps> = ({
     [auctionsQuery?.data],
   );
 
-  if (!countQuery.isLoading && BigNumber.from(countQuery.data || 0).eq(0)) {
+  if (!countQuery.isPending && (countQuery.data || 0n) === 0n) {
     return null;
   }
-  if (!auctionsQuery.isLoading && auctions.length === 0) {
+  if (!auctionsQuery.isPending && auctions.length === 0) {
     return null;
   }
 
@@ -209,33 +168,50 @@ const EnglishAuctionCards: React.FC<ListingCardsSectionProps> = ({
       </Flex>
       <ListingCards
         listings={auctions}
-        isLoading={auctionsQuery.isLoading}
+        isPending={auctionsQuery.isPending}
         trackingCategory={trackingCategory}
+        chainSlug={chainSlug}
+        contractAddress={contract.address}
       />
     </>
   );
 };
 
-const MarketplaceV3Details: React.FC<
-  MarketplaceDetailsVersionProps<MarketplaceV3>
-> = ({ contract, trackingCategory, features }) => {
-  const hasDirectListings = features.includes("DirectListings");
-  const hasEnglishAuctions = features.includes("EnglishAuctions");
+interface MarketplaceDetailsVersionProps {
+  contract: ThirdwebContract;
+  trackingCategory: string;
+  hasEnglishAuctions: boolean;
+  hasDirectListings: boolean;
+  chainSlug: string;
+}
 
+export const MarketplaceDetails: React.FC<MarketplaceDetailsVersionProps> = ({
+  contract,
+  trackingCategory,
+  hasDirectListings,
+  hasEnglishAuctions,
+  chainSlug,
+}) => {
   return (
     <Flex gap={6} flexDirection="column">
       <Heading size="title.sm">Listings</Heading>
-      <ListingStatsV3 contract={contract} features={features} />
+      <ListingStatsV3
+        contract={contract}
+        hasDirectListings={hasDirectListings}
+        hasEnglishAuctions={hasEnglishAuctions}
+      />
       {hasDirectListings && contract && (
         <DirectListingCards
           contract={contract}
           trackingCategory={trackingCategory}
+          chainSlug={chainSlug}
         />
       )}
       {hasEnglishAuctions && contract && (
         <EnglishAuctionCards
           contract={contract}
           trackingCategory={trackingCategory}
+          chainSlug={chainSlug}
         />
       )}
     </Flex>
@@ -272,26 +248,30 @@ const dummyMetadata: (idx: number) => ListingData = (idx) => ({
 
 interface ListingCardsProps {
   listings: ListingData[];
-  isLoading: boolean;
-  trackingCategory: TrackedLinkProps["category"];
+  isPending: boolean;
+  trackingCategory: string;
   isMarketplaceV1?: boolean;
+  chainSlug: string;
+  contractAddress: string;
 }
 const ListingCards: React.FC<ListingCardsProps> = ({
   listings,
-  isLoading,
+  isPending,
   isMarketplaceV1,
   trackingCategory,
+  chainSlug,
+  contractAddress,
 }) => {
   const isMobile = useBreakpointValue({ base: true, md: false });
 
-  listings = isLoading
+  listings = isPending
     ? Array.from({ length: isMobile ? 2 : 3 }).map((_, idx) =>
         dummyMetadata(idx),
       )
     : listings.slice(0, isMobile ? 2 : 3);
 
-  const directListingsHref = useTabHref("direct-listings");
-  const englishAuctionsHref = useTabHref("english-auctions");
+  const directListingsHref = `/${chainSlug}/${contractAddress}/direct-listings`;
+  const englishAuctionsHref = `/${chainSlug}/${contractAddress}/english-auctions`;
 
   return (
     <SimpleGrid gap={{ base: 3, md: 6 }} columns={{ base: 2, md: 3 }}>
@@ -308,8 +288,8 @@ const ListingCards: React.FC<ListingCardsProps> = ({
           _hover={{ opacity: 0.75, textDecoration: "none" }}
         >
           <Card p={0} position="relative">
-            <AspectRatio w="100%" ratio={1} overflow="hidden" rounded="xl">
-              <Skeleton isLoaded={!isLoading}>
+            <div className="relative aspect-square w-full overflow-hidden rounded-xl">
+              <Skeleton isLoaded={!isPending}>
                 <NFTMediaWithEmptyState
                   metadata={listing.asset.metadata}
                   requireInteraction
@@ -317,13 +297,13 @@ const ListingCards: React.FC<ListingCardsProps> = ({
                   height="100%"
                 />
               </Skeleton>
-            </AspectRatio>
+            </div>
             <Flex p={4} pb={3} gap={1} direction="column">
-              <Skeleton w={!isLoading ? "100%" : "50%"} isLoaded={!isLoading}>
+              <Skeleton w={!isPending ? "100%" : "50%"} isLoaded={!isPending}>
                 <Heading size="label.md">{listing.asset.metadata.name}</Heading>
               </Skeleton>
               {isMarketplaceV1 && (
-                <SkeletonText isLoaded={!isLoading}>
+                <SkeletonText isLoaded={!isPending}>
                   <Text size="body.sm">
                     {listing.type === "direct-listing"
                       ? "Direct Listing"
@@ -335,13 +315,13 @@ const ListingCards: React.FC<ListingCardsProps> = ({
               <Text size="body.sm" mt={4}>
                 Seller
               </Text>
-              <SkeletonText isLoaded={!isLoading}>
-                <AddressCopyButton address={listing.creatorAddress} size="xs" />
+              <SkeletonText isLoaded={!isPending}>
+                <WalletAddress address={listing.creatorAddress} />
               </SkeletonText>
               <SkeletonText
                 as={Badge}
                 background="backgroundHighlight"
-                isLoaded={!isLoading}
+                isLoaded={!isPending}
                 skeletonHeight={3.5}
                 noOfLines={1}
                 position="absolute"

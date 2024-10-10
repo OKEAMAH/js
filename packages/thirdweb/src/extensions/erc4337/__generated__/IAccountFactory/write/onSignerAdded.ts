@@ -6,7 +6,6 @@ import type {
 import { prepareContractCall } from "../../../../../transaction/prepare-contract-call.js";
 import { encodeAbiParameters } from "../../../../../utils/abi/encodeAbiParameters.js";
 import { once } from "../../../../../utils/promise/once.js";
-import type { ThirdwebContract } from "../../../../../contract/contract.js";
 import { detectMethod } from "../../../../../utils/bytecode/detectExtension.js";
 
 /**
@@ -40,21 +39,19 @@ const FN_OUTPUTS = [] as const;
 
 /**
  * Checks if the `onSignerAdded` method is supported by the given contract.
- * @param contract The ThirdwebContract.
- * @returns A promise that resolves to a boolean indicating if the `onSignerAdded` method is supported.
+ * @param availableSelectors An array of 4byte function selectors of the contract. You can get this in various ways, such as using "whatsabi" or if you have the ABI of the contract available you can use it to generate the selectors.
+ * @returns A boolean indicating if the `onSignerAdded` method is supported.
  * @extension ERC4337
  * @example
  * ```ts
  * import { isOnSignerAddedSupported } from "thirdweb/extensions/erc4337";
  *
- * const supported = await isOnSignerAddedSupported(contract);
+ * const supported = isOnSignerAddedSupported(["0x..."]);
  * ```
  */
-export async function isOnSignerAddedSupported(
-  contract: ThirdwebContract<any>,
-) {
+export function isOnSignerAddedSupported(availableSelectors: string[]) {
   return detectMethod({
-    contract,
+    availableSelectors,
     method: [FN_SELECTOR, FN_INPUTS, FN_OUTPUTS] as const,
   });
 }
@@ -66,7 +63,7 @@ export async function isOnSignerAddedSupported(
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeOnSignerAddedParams } "thirdweb/extensions/erc4337";
+ * import { encodeOnSignerAddedParams } from "thirdweb/extensions/erc4337";
  * const result = encodeOnSignerAddedParams({
  *  signer: ...,
  *  creatorAdmin: ...,
@@ -89,7 +86,7 @@ export function encodeOnSignerAddedParams(options: OnSignerAddedParams) {
  * @extension ERC4337
  * @example
  * ```ts
- * import { encodeOnSignerAdded } "thirdweb/extensions/erc4337";
+ * import { encodeOnSignerAdded } from "thirdweb/extensions/erc4337";
  * const result = encodeOnSignerAdded({
  *  signer: ...,
  *  creatorAdmin: ...,
@@ -113,6 +110,7 @@ export function encodeOnSignerAdded(options: OnSignerAddedParams) {
  * @extension ERC4337
  * @example
  * ```ts
+ * import { sendTransaction } from "thirdweb";
  * import { onSignerAdded } from "thirdweb/extensions/erc4337";
  *
  * const transaction = onSignerAdded({
@@ -126,8 +124,7 @@ export function encodeOnSignerAdded(options: OnSignerAddedParams) {
  * });
  *
  * // Send the transaction
- * ...
- *
+ * await sendTransaction({ transaction, account });
  * ```
  */
 export function onSignerAdded(
